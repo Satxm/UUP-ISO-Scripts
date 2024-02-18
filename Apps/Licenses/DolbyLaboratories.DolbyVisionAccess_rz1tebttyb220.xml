@@ -1,0 +1,39 @@
+<License xmlns:xsd="http://www.w3.org/2001/XMLSchema"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" ID="48bb086a-efd8-44d7-ae08-ea24c9ffdd95" LicenseID="ae6af34d-d99f-b13d-dc89-324bcefe244d" ContentID="f5e5ad02-9a20-5e1b-5470-8d8ab37fafaf" Version="3"
+    xmlns="urn:schemas-microsoft-com:windows:store:licensing:ls">
+    <Binding Binding_Type="Machine">
+        <ProductID>9PLTG1LWPHLF</ProductID>
+        <PFM>dolbylaboratories.dolbyvisionaccess_rz1tebttyb220</PFM>
+        <LicenseInstanceID>a679afbd-f546-4bb1-9ab9-7b45b505fb91</LicenseInstanceID>
+        <RequestorID>2fa7c3c7-f25a-20c4-9999-7e8ac77be36f</RequestorID>
+        <LeaseRequired>False</LeaseRequired>
+    </Binding>
+    <LicenseInfo Type="Full" LicenseUsage="Offline" LicenseCategory="OEM">
+        <IssuedDate>2021-07-09T01:18:20.9357058Z</IssuedDate>
+        <LastUpdateDate>2021-07-09T01:18:20.9374611Z</LastUpdateDate>
+        <BeginDate>2021-07-09T01:18:20.93746Z</BeginDate>
+    </LicenseInfo>
+    <SPLicenseBlock>FAAAAMwAAADJAAAACgAAAAMAAQDdo+dgAgDLAAAAEAAAAE3zaq6f2T2x3IkyS87+JE3OAAAAZAAAAGQAbwBsAGIAeQBsAGEAYgBvAHIAYQB0AG8AcgBpAGUAcwAuAGQAbwBsAGIAeQB2AGkAcwBpAG8AbgBhAGMAYwBlAHMAcwBfAHIAegAxAHQAZQBiAHQAdAB5AGIAMgAyADAAAADNAAAAIgAAAAEAd8cSmUJGg1tEeJ1dPYtG/HtW3ibSfPVtvSS+tDb8GUcgAAAABAAAAN2j52DMAAAARAAAAAEAAgBfPF3dGWABv9gQrsmKC03/O34qG7aruyjFSIaMNkQaRnx52i9pE4mTeKj/tPVY2S+cUBsLdRSSyTuUbSLUsVRY</SPLicenseBlock>
+    <Signature xmlns="http://www.w3.org/2000/09/xmldsig#">
+        <SignedInfo>
+            <CanonicalizationMethod Algorithm="http://www.w3.org/2001/10/xml-exc-c14n#" />
+            <SignatureMethod Algorithm="http://www.w3.org/2001/04/xmldsig-more#rsa-sha256" />
+            <Reference URI="">
+                <Transforms>
+                    <Transform Algorithm="http://www.w3.org/2000/09/xmldsig#enveloped-signature" />
+                </Transforms>
+                <DigestMethod Algorithm="http://www.w3.org/2001/04/xmlenc#sha256" />
+                <DigestValue>UHD3zsq5Kk2RiopgHkcMZaUtxPWUVF5uUSEtADafdPc=</DigestValue>
+            </Reference>
+        </SignedInfo>
+        <SignatureValue>Dk1k+nS+WuK9MBqINI5pzF68miRbWzSdESGr2IgSkw2rpQG2h7zDhy9RjDssCjq8gu0ZJy3NpLv4ivzP3M/yfZzaSil84vL5JLlnAKWP6AfNVKNbEP60J84DVBdPHWTbBsjVVt8qVWvDXRo5K1gLVEP2Ez06S8RlrjMUj63tdEQNVQxtFHYWcriZKQuSYZb13PeJ8UphgPrdYqdoik6B8vMbfgr1lqNzD5dXOOM8O0m8W2A+PofE3gfQ36r8QjoKKNQ7VB4qwJrGtJ6XgAbgoO+eAzEpWlcT1FUXb+7RL4ek5mrE+OyzdXpJMZnXploaDYn0WU0kEtSKaCo0+QnswA==</SignatureValue>
+        <KeyInfo Id="_0f81b24f-bc40-2712-0d5d-e7c10085c330">
+            <KeyValue>
+                <RSAKeyValue>
+                    <Modulus>oVSJXItDsaAIfwyR9bhh/ZSppCAO+in9POLWdC2/TQodgeHZzbdBvxJvKhpbrq6ZP0FsSElLwRoLAmv7zIuVw3Vb7tfQt5bjCDHRAG9fesNlYKV3ybyNrHyzglfZPRB5UJZw32yi03zQa+LLa05fjs6joEmlHc5BrGQrGrbNMBahz4cmuxKC4/dhEb7JZFUkc0MRhs/M3Ve511HQfKuG+92g1OffJdRsAPzWRdskPoN35knnqno7F85OBmGV/LNBgdtDWUH6di1eUCQFeKGfMp+Q/LFUX9jawTTEPn72tYbpYASug05Skcg6KTHlcLGzevxGw7BYsOsqfDka5n0YGw==</Modulus>
+                    <Exponent>AAEAAQ==</Exponent>
+                </RSAKeyValue>
+            </KeyValue>
+        </KeyInfo>
+    </Signature>
+</License>

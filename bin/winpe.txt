@@ -1,0 +1,11 @@
+Microsoft-Windows-WinPE-Fonts-Legacy
+Microsoft-Windows-WinPE-FontSupport-WinRE
+WinPE-AppxPackaging
+WinPE-CILockdownPolicies
+WinPE-FMAPI
+WinPE-HTA
+WinPE-OpcServices
+WinPE-Rejuv
+WinPE-StorageWMI
+WinPE-WiFi
+WinPE-WindowsUpdate
