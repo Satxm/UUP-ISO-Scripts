@@ -513,7 +513,6 @@ if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (
 goto :BootNoDism
 
 :BootDone
-if defined pesetup wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 2 sources\setup.exe --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\boot.wim ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info ISOFOLDER\sources\boot.wim %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -1949,7 +1948,10 @@ goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :addedge
 call :updatewim
 if defined mounterr goto :eof
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" set pesetup=1
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
+    xcopy /CDRUY "%_mount%\sources" "ISOFOLDER\sources\" %_Nul3%
+    for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
+)
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddAppxs% equ 1 call :doappx
 if !handle1! equ 0 (
