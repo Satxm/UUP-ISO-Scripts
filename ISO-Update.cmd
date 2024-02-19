@@ -561,7 +561,6 @@ goto :%_rtrn%
 
 :BootWim
 if %uwinpe% equ 1 call :update ISOFOLDER\sources\boot.wim
-if defined pesetup wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 2 sources\setup.exe --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3% && goto :nosetup
 if not defined isoupdate goto :BootDone
 mkdir "temp\du" %_Nul3%
 for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "temp\du" %_Nul1%
@@ -575,6 +574,7 @@ if exist "temp\du\%langid%\" for /f %%# in ('dir /b /a-d "temp\du\%langid%" %_Nu
 wimlib-imagex.exe update ISOFOLDER\sources\boot.wim 2 < temp\boot.txt %_Nul3%
 
 :BootDone
+if defined pesetup wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 2 sources\setup.exe --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\boot.wim ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info ISOFOLDER\sources\boot.wim %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"

@@ -513,6 +513,7 @@ if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (
 goto :BootNoDism
 
 :BootDone
+if defined pesetup wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 2 sources\setup.exe --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\boot.wim ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info ISOFOLDER\sources\boot.wim %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -620,7 +621,6 @@ copy ISOFOLDER\sources\lang.ini %_mount%\sources\lang.ini %_Nul3%
 call :cleanup
 Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Commit
 if %uwinpe% equ 1 call :update ISOFOLDER\sources\boot.wim
-if defined pesetup wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 2 sources\setup.exe --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 goto :BootDone
 
 :BootRemove
