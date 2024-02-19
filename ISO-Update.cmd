@@ -24,6 +24,9 @@ set wim2swm=0
 :: 若不需要创建 ISO 文件，保留原始文件夹，请将此参数更改为 1
 set SkipISO=0
 
+:: 若不添加 Winre.wim 到 install.wim，请将此参数更改为 1
+set SkipWinRE=0
+
 :: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
 set LCUWinre=0
 
@@ -197,8 +200,8 @@ if exist temp\ rmdir /s /q temp\
 mkdir temp
 
 :ReadConfig
-if not exist "Config.ini" goto :checkupd
-findstr /i \[Config\] Config.ini %_Nul1% || goto :checkupd
+if not exist "Config.ini" goto :checkdone
+findstr /i \[Config\] Config.ini %_Nul1% || goto :checkdone
 for %%# in (
 AddUpdates
 Cleanup
@@ -207,6 +210,7 @@ wim2esd
 wim2swm
 SkipISO
 LCUWinre
+SkipWinRE
 SkipBootFiles
 UpdateOneDrive
 AddEdition
@@ -215,13 +219,13 @@ UseMSU
 ) do (
 call :Readini %%#
 )
-goto :checkupd
+goto :checkdone
 
 :Readini
 findstr /b /i %1 Config.ini %_Nul1% && for /f "tokens=2 delims==" %%# in ('findstr /b /i %1 Config.ini') do set "%1=%%#"
 goto :eof
 
-:checkupd
+:checkdone
 echo.
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "!_work!\%%~#\*.cab" (set /a _ncab+=1&set "_DIR=!_work!\%%~#"&echo %%~#) else if exist "!_work!\%%~#\*.msu" (set /a _ncab+=1&set "_DIR=!_work!\%%~#"&echo %%~#)
 if !_ncab! equ 1 if defined _DIR goto :proceed
@@ -480,7 +484,8 @@ goto :QUIT
 
 :InstallWim
 for /L %%# in (%_nsum%,-1,1) do imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || Dism.exe /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
-
+if %SkipWinRE% equ 1 goto :SkipWinre
+if %uwinpe% neq 1 goto :SkipWinre
 echo.
 echo %line%
 echo 正在将 Winre.wim 添加到 install.wim 中……
@@ -488,10 +493,11 @@ echo %line%
 echo.
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
+:SkipWinre
 if %UpdateOneDrive% equ 1 call :OneDrive
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :skipupdate
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :SkipUpdate
 call :update
-:skipupdate
+:SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
