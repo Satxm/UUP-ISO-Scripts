@@ -426,6 +426,7 @@ for /L %%# in (1, 1,%_nsum%) do (
     wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
     if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 )
+if not exist temp\Winre.wim goto :SkipWinre
 if %SkipWinRE% equ 1 goto :SkipWinre
 echo.
 echo %line%
@@ -437,6 +438,7 @@ for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\in
 :SkipWinre
 if %UpdateOneDrive% equ 1 call :OneDrive
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :SkipUpdate
+if %_SrvESD% equ 1 if not exist "Apps\app*Server.txt" goto :SkipUpdate
 call :update
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
@@ -445,7 +447,7 @@ for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
     wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-if %AddEdition% neq 1 goto :skipexport
+if %AddEdition% neq 1 goto :SkipExport
 for /l %%# in (1,1,%imgs%) do (
     imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
     findstr /i "<EDITIONID>Core</EDITIONID>" temp\newinfo.txt %_Nul3% && set i1=%%#
@@ -461,7 +463,7 @@ for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
     if %ERRORTEMP% neq 0 goto :E_Export
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
-:skipexport
+:SkipExport
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
@@ -481,6 +483,8 @@ for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\ins
 goto :eof
 
 :WinreWim
+if %SkipWinRE% equ 1 goto :%_rtrn%
+if %uwinpe% neq 1 goto :%_rtrn%
 echo.
 echo %line%
 echo 正在创建 Winre.wim 文件……
