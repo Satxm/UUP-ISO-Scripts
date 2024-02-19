@@ -1835,6 +1835,7 @@ if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %
 call :updatewim
 if defined mounterr goto :eof
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
+    set isoupdate=
     xcopy /CDRUY "%_mount%\sources" "ISOFOLDER\sources\" %_Nul3%
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
