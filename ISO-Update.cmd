@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.2.18-100"
+@set "uivr=v24.2-100"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -170,10 +170,13 @@ set uwinpe=0
 set _skpd=0
 set _skpp=0
 set _ndir=0
+set _nsum=0
 set _ncab=0
 set _niso=0
 set _reMSU=0
 set _wimEdge=0
+set _SrvESD=0
+set _Srvr=0
 set "_mount=%_drv%\Mount"
 set "_ntf=NTFS"
 if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
@@ -348,8 +351,9 @@ echo %line%
 echo 正在检查 ISO 文件信息……
 echo %line%
 echo.
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set images=%%#
-for /l %%# in (1,1,%images%) do call :iso_check %%#
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set _nsum=%%#
+if %_nsum% equ 0 goto :E_NotFind
+for /l %%# in (1,1,%_nsum%) do call :mediacheck %%#
 if defined eWIMLIB goto :QUIT
 goto :ISO
 
@@ -363,14 +367,13 @@ if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 set LCUWinre=1
+if %_SrvESD% equ 1 set AddEdition=0
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
 if exist ISOFOLDER\__chunk_data del /f /q ISOFOLDER\__chunk_data %_Nul3%
 if %_build% geq 18890 (
     wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\Boot\Fonts\* --dest-dir=ISOFOLDER\boot\fonts --no-acls --no-attributes %_Nul3%
     xcopy /CRY ISOFOLDER\boot\fonts\* ISOFOLDER\efi\microsoft\boot\fonts\ %_Nul3%
 )
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /L %%# in (%imgcount%,-1,1) do imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || Dism.exe /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
 if not exist "!_cabdir!\" mkdir "!_cabdir!"
 
@@ -476,9 +479,19 @@ echo.
 goto :QUIT
 
 :InstallWim
+for /L %%# in (%_nsum%,-1,1) do imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || Dism.exe /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
+
+echo.
+echo %line%
+echo 正在将 Winre.wim 添加到 install.wim 中……
+echo %line%
+echo.
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
+for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 if %UpdateOneDrive% equ 1 call :OneDrive
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :%_rtrn%
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :skipupdate
 call :update
+:skipupdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -521,7 +534,6 @@ for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\ins
 goto :eof
 
 :WinreWim
-if %uwinpe% neq 1 goto :%_rtrn%
 echo.
 echo %line%
 echo 正在从 install.wim 提取 Winre.wim 文件……
@@ -529,29 +541,15 @@ echo %line%
 echo.
 wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRORTEMP=%ERRORLEVEL%
-if %ERRORTEMP% neq 0 (
-    echo %_err%
-    echo 无法从 install.wim 提取 Winre.wim
-    echo 将跳过更新 Winre.wim
-    echo.
-    goto :%_rtrn%
-)
-call :update temp\Winre.wim
+if %ERRORTEMP% neq 0 goto :E_Export
+if %uwinpe% equ 1 call :update temp\Winre.wim
 wimlib-imagex.exe optimize temp\Winre.wim
-echo.
-echo %line%
-echo 正在将 Winre.wim 添加到 install.wim 中……
-echo %line%
-echo.
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 goto :%_rtrn%
 
 :BootWim
-if %uwinpe% neq 1 goto :%_rtrn%
-call :update ISOFOLDER\sources\boot.wim
+if %uwinpe% equ 1 call :update ISOFOLDER\sources\boot.wim
 if defined pesetup wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 2 sources\setup.exe --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3% && goto :nosetup
-if not defined isoupdate goto :nosetup
+if not defined isoupdate goto :BootDone
 mkdir "temp\du" %_Nul3%
 for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "temp\du" %_Nul1%
 type nul>temp\boot.txt
@@ -562,7 +560,8 @@ if exist "temp\du\%langid%\" for /f %%# in ('dir /b /a-d "temp\du\%langid%" %_Nu
     >>temp\boot.txt echo add 'temp^\du^\%langid%^\%%#' '^\sources^\%langid%^\%%#'
 )
 wimlib-imagex.exe update ISOFOLDER\sources\boot.wim 2 < temp\boot.txt %_Nul3%
-:nosetup
+
+:BootDone
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\boot.wim ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info ISOFOLDER\sources\boot.wim %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -582,9 +581,6 @@ imagex /info "ISOFOLDER\sources\install.wim" 1 >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
 for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch=x86") else if %%# equ 9 (set "arch=x64") else (set "arch=arm64"))
 for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _build=%%#
-set "_wtx=Windows 10"
-find /i "<NAME>" temp\info.txt %_Nul2% | find /i "Windows 11" %_Nul1% && (set "_wtx=Windows 11")
-find /i "<NAME>" temp\info.txt %_Nul2% | find /i "Windows 12" %_Nul1% && (set "_wtx=Windows 12")
 if %_build% geq 22621 if exist "!_DIR!\*Edge*.wim" (
     set _wimEdge=1
     if not exist "!_DIR!\Edge.wim" for /f %%# in ('dir /b /a:-d "!_DIR!\*Edge*.wim"') do rename "!_DIR!\%%#" Edge.wim %_Nul3%
@@ -627,13 +623,15 @@ call :setlabel
 
 :setlabel
 set DVDISO=%_label%.%arch%
+if %_SrvESD% equ 1 set DVDISO=%_label%.%arch%.Server
 for %%# in (A,B,C,D,E,F,G,H,I,J,K,L,M,N,O,P,Q,R,S,T,U,V,W,X,Y,Z) do set langid=!langid:%%#=%%#!
 if /i %arch%==x86 set archl=X86
 if /i %arch%==x64 set archl=X64
 if /i %arch%==arm64 set archl=A64
-set images=0
 set DVDLABEL=CCSA_%archl%FRE_%langid%_DV9
+if %_SrvESD% equ 1 set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&exit /b
 if not exist "ISOFOLDER\sources\install.wim" exit /b
+set images=0
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set images=%%#
 if %images% equ 1 call :isosingle
 if %images% geq 4 set DVDLABEL=CCCOMA_%archl%FRE_%langid%_DV9
@@ -648,7 +646,8 @@ if /i %editionid%==Professional set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&exit /
 if /i %editionid%==ProfessionalEducation set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&exit /b
 if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
 
-:iso_check
+:mediacheck
+set _ESDSrv%1=0
 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %1 %_Nul3%
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% equ 73 (
@@ -664,6 +663,25 @@ if %ERRORTEMP% neq 0 (
     echo.
     set eWIMLIB=1
     exit /b
+)
+imagex /info "ISOFOLDER\sources\install.wim" %1 >temp\info.txt 2>&1
+for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid%1=%%#"
+for /f "tokens=3 delims=<>" %%# in ('find /i "<EDITIONID>" temp\info.txt') do set "edition%1=%%#"
+for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch%1=x86") else if %%# equ 9 (set "arch%1=x64") else (set "arch%1=arm64"))
+for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _obuild%1=%%#
+set "_wtx=Windows 10"
+find /i "<NAME>" temp\info.txt %_Nul2% | find /i "Windows 11" %_Nul1% && (set "_wtx=Windows 11")
+find /i "<NAME>" temp\info.txt %_Nul2% | find /i "Windows 12" %_Nul1% && (set "_wtx=Windows 12")
+echo !edition%1! | findstr /i /b "Server" %_Nul3% && (set _SrvESD=1&set _ESDSrv%1=1)
+set "_wsr=Windows Server 2022"
+if !_ESDSrv%1! equ 1 (
+find /i "<NAME>" temp\info.txt %_Nul2% | find /i " 2025" %_Nul1% && (set "_wsr=Windows Server 2025")
+if !_obuild%1! geq 26010 (set "_wsr=Windows Server 2025")
+)
+if !_ESDSrv%1! equ 1 findstr /i /c:"Server Core" temp\info.txt %_Nul3% && (
+if /i "!edition%1!"=="ServerStandard" set "edition%1=ServerStandardCore"
+if /i "!edition%1!"=="ServerDatacenter" set "edition%1=ServerDatacenterCore"
+if /i "!edition%1!"=="ServerTurbine" set "edition%1=ServerTurbineCore"
 )
 exit /b
 
@@ -723,8 +741,8 @@ goto :msu_dirs
 for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.cab"') do set "_MSUcab=%%#"
 for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.psf"') do set "_MSUpsf=%%#"
 set "_MSUkbf=Windows10.0-%_MSUkbn%-%arch%"
-echo %_MSUcab%| findstr /i "Windows11\." %_Nul1% && set "_MSUkbf=Windows11.0-%_MSUkbn%-%arch%"
-echo %_MSUcab%| findstr /i "Windows12\." %_Nul1% && set "_MSUkbf=Windows12.0-%_MSUkbn%-%arch%"
+echo %_MSUcab% | findstr /i "Windows11\." %_Nul1% && set "_MSUkbf=Windows11.0-%_MSUkbn%-%arch%"
+echo %_MSUcab% | findstr /i "Windows12\." %_Nul1% && set "_MSUkbf=Windows12.0-%_MSUkbn%-%arch%"
 if exist "SSU-*%arch%*.cab" (
 for /f "tokens=2 delims=-" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUtsu=SSU-%%#-%arch%.cab"
 for /f "delims=" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUssu=%%#"
@@ -1360,7 +1378,7 @@ goto :%_gobk%
 set _ec=0
 set "_ic=%~1"
 if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" set _ec=1
-if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
+if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
 goto :eof
 
 :errmount
@@ -1368,7 +1386,7 @@ set mounterr=1
 set "msgerr=Dism.exe 操作失败"
 if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
 echo %msgerr%。正在丢弃当前挂载镜像……
-Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
+Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
 Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
 Dism.exe /Cleanup-Wim %_Nul3%
 goto :eof
@@ -1868,6 +1886,7 @@ if %_build% geq 22000 set "mountver=22000"
 if %_build% geq 22621 set "mountver=22621"
 if %_build% gtr 23000 set "mountver=Dev"
 if %_build% gtr 25000 set "mountver=Can"
+if %_SrvESD% equ 1 set "mountver=!mountver!.Server"
 if not exist "%_mount%\Program Files\WindowsApps\Microsoft.*" goto :donedel
 if not exist Apps\appxdel.!mountver!.MS.txt goto :donedel
 echo.
@@ -1906,16 +1925,7 @@ for /f "eol=# tokens=* delims=" %%i in (Apps\appxadd.!mountver!.txt) do (
 goto :eof
 
 :setedition
-for %%# in (
-    "Core:%_wtx% Home:%_wtx% 家庭版"
-    "CoreSingleLanguage:%_wtx% Home Single Language:%_wtx% 家庭单语言版"
-    "Education:%_wtx% Education:%_wtx% 教育版"
-    "Professional:%_wtx% Pro:%_wtx% 专业版"
-    "ProfessionalEducation:%_wtx% Pro Education:%_wtx% 专业教育版"
-    "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% 专业工作站版"
-) do for /f "tokens=1,2,3 delims=:" %%A in ("%%~#") do (
-    if %nedition%==%%A set "_namea=%%B"&set "_nameb=%%C"
-)
+call :setname
 echo.
 echo 正在处理 !_nameb!
 if exist "%_mount%\Windows\Core.xml" del /f /q "%_mount%\Windows\Core.xml" %_Nul3%
@@ -1936,6 +1946,25 @@ Dism.exe /Commit-Image /MountDir:"%_mount%" /Append
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
 wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 echo.
+goto :eof
+
+:setname
+for %%# in (
+    "Core:%_wtx% Home:%_wtx% 家庭版"
+    "CoreSingleLanguage:%_wtx% Home Single Language:%_wtx% 家庭单语言版"
+    "Education:%_wtx% Education:%_wtx% 教育版"
+    "Professional:%_wtx% Pro:%_wtx% 专业版"
+    "ProfessionalEducation:%_wtx% Pro Education:%_wtx% 专业教育版"
+    "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% 专业工作站版"
+    "ServerStandardCore:%_wsr% SERVERSTANDARDCORE:%_wsr% Standard:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
+    "ServerStandard:%_wsr% SERVERSTANDARD:%_wsr% Standard (桌面体验):此选项将安装的完整的 Windows 图形环境，占用额外的驱动器空间。如果你想要使用 Windows 桌面或需要桌面的应用，则它会很有用。"
+    "ServerDatacenterCore:%_wsr% SERVERDATACENTERCORE:%_wsr% Datacenter:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
+    "ServerDatacenter:%_wsr% SERVERDATACENTER:%_wsr% Datacenter (桌面体验):此选项将安装的完整的 Windows 图形环境，占用额外的驱动器空间。如果你想要使用 Windows 桌面或需要桌面的应用，则它会很有用。"
+    "ServerTurbineCore:%_wsr% SERVERTURBINECORE:%_wsr% Datacenter Azure Edition:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
+    "ServerTurbine:%_wsr% SERVERTURBINE:%_wsr% Datacenter Azure Edition (桌面体验):此选项将安装的完整的 Windows 图形环境，占用额外的驱动器空间。如果你想要使用 Windows 桌面或需要桌面的应用，则它会很有用。"
+) do for /f "tokens=1,2,3,4 delims=:" %%A in ("%%~#") do (
+    if /i %nedition%==%%A set "_namea=%%B"&set "_nameb=%%C"&set "_namec=%%D"
+)
 goto :eof
 
 :cleanup

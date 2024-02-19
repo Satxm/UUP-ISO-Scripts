@@ -39,7 +39,10 @@ echo %line%
 echo 正在检索 UUPID 对应的系统版本……
 echo %line%
 echo.
-for /f "delims=" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuupbuild\:.*';$id = \"%id%\";iex ($f[1]);"') do (set build=%%a)
+for /f "delims=' tokens=*" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuup\:.*';$id = \"%id%\";iex ($f[1]);"') do set info=%%a
+set info=%info:(=%
+set info=%info:)=%
+for /f "tokens=1 delims= " %%b in ('echo %info%') do set build=%%b
 echo 此 UUPID 对应的系统版本为：%build%
 
 :START_PROCESS
@@ -47,8 +50,9 @@ set "files=files.%random%.txt"
 set "Dir=Cabs.%random%"
 if not defined build goto :DOWNLOAD_CABS
 set "files=files.%build%.txt"
-if %build% gtr 22621 (set "Dir=Win11.23H2") else (set "Dir=Win10.22H2")
-
+if %build% gtr 19041 set "Dir=Win10.22H2"
+if %build% gtr 22621 set "Dir=Win11.23H2"
+if %build% gtr 26000 set "Dir=Win11.24H2"
 
 :DOWNLOAD_CABS
 echo.
@@ -61,14 +65,6 @@ if not exist %files% goto :DOWNLOAD_CABS
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
-
-
-:DOWNLOAD_FILES
-echo.
-echo %line%
-echo 正在尝试下载文件……
-echo %line%
-echo.
 if exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
@@ -88,7 +84,10 @@ goto :DOWNLOAD_FILES
 pause
 goto :EOF
 
-:getuupbuild:
+:getuup:
 $url = "https://api.uupdump.net/get.php?id="+$id+"&pack=zh-cn&edition=updateOnly&noLinks=1"
-((Invoke-WebRequest $url).content | ConvertFrom-Json).response.build
-:getuupbuild:
+$json = (Invoke-WebRequest $url).content | ConvertFrom-Json
+$build = $json.response.build
+$name = $json.response.updateName
+Write-Host $build $name
+:getuup:
