@@ -289,7 +289,7 @@ if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 set LCUWinre=1
-if %_SrvESD% equ 1 set AddEdition=0
+if %_SrvESD% equ 1 set AddEdition=0 && set UpdateOneDrive=0
 call :uup_ref
 echo.
 echo %line%
@@ -310,7 +310,7 @@ if %_build% geq 18890 (
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
 if not exist "!_cabdir!\" mkdir "!_cabdir!"
 
-if %AddUpdates% neq 1 goto :noupdate
+if %AddUpdates% neq 1 goto :NoUpdate
 echo.
 echo %line%
 echo 正在检查更新文件……
@@ -326,10 +326,10 @@ if %_reMSU% equ 1 if %UseMSU% equ 1 call :upd_msu
 set directcab=0
 call :extract
 
-:noupdate
+:NoUpdate
 if %_appexist% equ 1 if not exist "!_cabdir!\" mkdir "!_cabdir!"
 if exist bin\ei.cfg copy /y bin\ei.cfg ISOFOLDER\sources\ei.cfg %_Nul3%
-if not defined isoupdate goto :nosetupud
+if not defined isoupdate goto :NoSetupDU
 echo.
 echo %line%
 echo 正在应用 ISO 安装文件更新……
@@ -345,7 +345,7 @@ if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "ISOFOLDER\source
 for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_cabdir%\du\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 if exist "%_cabdir%\du\replacementmanifests\" xcopy /CERY "%_cabdir%\du\replacementmanifests" "ISOFOLDER\sources\replacementmanifests\" %_Nul3%
 rmdir /s /q "%_cabdir%\du\" %_Nul3%
-:nosetupud
+:NoSetupDU
 set _rtrn=WinreRet
 goto :WinreWim
 :WinreRet
@@ -438,7 +438,7 @@ for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\in
 :SkipWinre
 if %UpdateOneDrive% equ 1 call :OneDrive
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :SkipUpdate
-if %_SrvESD% equ 1 if not exist "Apps\app*Server.txt" goto :SkipUpdate
+if %_SrvESD% equ 1 if %AddUpdates% neq 1 if not exist "Apps\app*Server.txt" goto :SkipUpdate
 call :update
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
@@ -484,7 +484,6 @@ goto :eof
 
 :WinreWim
 if %SkipWinRE% equ 1 goto :%_rtrn%
-if %uwinpe% neq 1 goto :%_rtrn%
 echo.
 echo %line%
 echo 正在创建 Winre.wim 文件……
