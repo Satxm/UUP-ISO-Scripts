@@ -15,11 +15,11 @@ set Cleanup=0
 set ResetBase=0
 
 :: 若将 install.wim 转换为 install.esd，请将此参数更改为 1
-set wim2esd=0
+set WIM2ESD=0
 
 :: 若将 install.wim 拆分为 install.swm，请将此参数更改为 1
 :: 注：如果两个选项均为 1，install.esd 将优先执行
-set wim2swm=0
+set WIM2SWM=0
 
 :: 若不需要创建 ISO 文件，保留原始文件夹，请将此参数更改为 1
 set SkipISO=0
@@ -28,13 +28,13 @@ set SkipISO=0
 set SkipWinRE=0
 
 :: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
-set LCUWinre=0
+set LCUWinRE=0
 
 :: 若不更新 ISO 引导文件 bootmgr/bootmgr.efi/efisys.bin，请将此参数更改为 1
-set SkipBootFiles=0
+set UpdtBootFiles=0
 
 :: 更新OneDrive，请将此参数更改为 1
-set UpdateOneDrive=0
+set UpdtOneDrive=0
 
 :: 使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
 set AddEdition=0
@@ -156,7 +156,7 @@ echo 当完成之后，此窗口将会关闭
 
 :Begin
 @cls
-title UUP 生成
+title Windows ISO UUP 生成
 set "_dLog=%SystemRoot%\Logs\DISM"
 
 :precheck
@@ -177,6 +177,8 @@ set _reMSU=0
 set _wimEdge=0
 set _SrvESD=0
 set _Srvr=0
+set _updexist=0
+set _appexist=0
 set "_mount=%_drv%\Mount"
 set "_ntf=NTFS"
 if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
@@ -203,13 +205,13 @@ for %%# in (
 AddUpdates
 Cleanup
 ResetBase
-wim2esd
-wim2swm
+WIM2ESD
+WIM2SWM
 SkipISO
-LCUWinre
+LCUWinRE
 SkipWinRE
-SkipBootFiles
-UpdateOneDrive
+UpdtBootFiles
+UpdtOneDrive
 AddEdition
 AddAppxs
 UseMSU
@@ -224,9 +226,9 @@ goto :eof
 
 :checkdone
 echo.
-if defined _args for %%# in (%*) do if exist "%%~#\*.esd" ( set "_DIR=%%~#"&echo %%~#&goto :proceed)
-for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "!_work!\%%~#\*.esd" (set /a _ndir+=1&set "_DIR=!_work!\%%~#"&echo %%~#)
-if !_ndir! equ 1 if defined _DIR goto :proceed
+if defined _args for %%# in (%*) do if exist "%%~#\*.esd" ( set "_DIR=%%~#"&echo %%~#&goto :checkesd)
+for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _ndir+=1&set "_DIR=%%~#"&echo %%~#)
+if !_ndir! equ 1 if defined _DIR goto :checkesd
 
 :selectuup
 set _DIR=
@@ -243,7 +245,7 @@ if not defined _DIR (
     echo.
     goto :selectuup
 )
-set "_DIR=!_work!\%_DIR:"=%"
+set "_DIR=%_DIR:"=%"
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
 if not exist "%_DIR%\*.esd" (
     echo.
@@ -253,25 +255,19 @@ if not exist "%_DIR%\*.esd" (
     goto :selectuup
 )
 
-:proceed
-set _updexist=0
-set _appexist=0
-if exist "!_DIR!\*Windows1*-KB*.msu" set _updexist=1
-if exist "!_DIR!\*Windows1*-KB*.cab" set _updexist=1
-if exist "!_DIR!\*Edge*.wim" set _updexist=1
-if exist "!_DIR!\SSU-*-*.cab" set _updexist=1
-if exist "!_work!\Apps\app*.txt" set _appexist=1
+:checkesd
+echo %line%
+echo 正在检查 ESD 文件信息……
+echo %line%
 echo.
-if %_updexist% neq 0 echo Updates Exist
-if %_appexist% neq 0 echo Appxs Exist
-
-:findesd
 dir /b /ad "!_DIR!\*Package*" %_Nul3% && set EXPRESS=1
 for %%# in (
-Core,CoreSingleLanguage,CoreCountrySpecific,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
-ServerStandardCore,ServerStandard,ServerDatacenterCore,ServerDatacenter,ServerTurbineCore,ServerTurbine,ServerAzureStackHCICor
+    Core,CoreSingleLanguage,CoreCountrySpecific,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
+    ServerStandardCore,ServerStandard,ServerDatacenterCore,ServerDatacenter,ServerTurbineCore,ServerTurbine,ServerAzureStackHCICor
 ) do (
-if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%) else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%)
+    if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%
+    ) else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%
+    )
 )
 for /f "tokens=3 delims=: " %%# in ('find /v /c "" temp\uups_esd.txt %_Nul6%') do set _nsum=%%#
 if %_nsum% equ 0 goto :E_NotFind
@@ -280,16 +276,34 @@ if defined eWIMLIB goto :QUIT
 goto :ISO
 
 :ISO
-@cls
 if %PREPARED% equ 0 call :PREPARE
+if exist "!_DIR!\*Windows1*-KB*" set _updexist=1
+if exist "Apps\Apps\*.*x*" set _appexist=1
 if %_updexist% equ 0 set AddUpdates=0
 if %_appexist% equ 0 set AddAppxs=0
 if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq 17763 set AddUpdates=0
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %_build% geq 22000 set LCUWinre=1
-if %_SrvESD% equ 1 set AddEdition=0 && set UpdateOneDrive=0
+if %_build% geq 22000 set LCUWinRE=1
+if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
+
+echo.
+echo %line%
+echo 正在列出已配置选项……
+echo %line%
+echo.
+if %_updexist% neq 0 echo Updates Exist
+if %_appexist% neq 0 echo Appxs Exist
+if %AddUpdates% neq 0 echo AddUpdates
+if %Cleanup% neq 0 echo Cleanup
+if %ResetBase% neq 0 echo ResetBase
+if %SkipWinRE% neq 0 echo SkipWinRE
+if %LCUWinRE% neq 0 echo LCUWinRE
+if %UpdtOneDrive% neq 0  echo UpdtOneDrive
+if %AddEdition% neq 0 echo AddEdition
+if %AddAppxs% neq 0 echo AddAppxs
+
 call :uup_ref
 echo.
 echo %line%
@@ -356,9 +370,9 @@ set _rtrn=InstallRet
 goto :InstallWim
 :InstallRet
 for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.wim"') do set "_size=000000%%~z#"
-if "%_size%" lss "0000004194304000" set wim2swm=0
-if %wim2esd% equ 0 if %wim2swm% equ 0 goto :doiso
-if %wim2esd% equ 0 if %wim2swm% equ 1 goto :doswm
+if "%_size%" lss "0000004194304000" set WIM2SWM=0
+if %WIM2ESD% equ 0 if %WIM2SWM% equ 0 goto :doiso
+if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :doswm
 :doesd
 echo.
 echo %line%
@@ -436,7 +450,7 @@ echo.
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
-if %UpdateOneDrive% equ 1 call :OneDrive
+if %UpdtOneDrive% equ 1 if exist "Apps\OneDriveSetup.exe" call :OneDrive
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :SkipUpdate
 if %_SrvESD% equ 1 if %AddUpdates% neq 1 if not exist "Apps\app*Server.txt" goto :SkipUpdate
 call :update
@@ -737,7 +751,7 @@ echo %~1 | find /i "Windows10.0-KB" %_Nul1% && exit /b
 echo %~1 | find /i "Windows11.0-KB" %_Nul1% && exit /b
 echo %~1 | find /i "SSU-" %_Nul1% && exit /b
 set cbsp=%~1
-if exist "!_work!\temp\%cbsp%.esd" exit /b
+if exist "temp\%cbsp%.esd" exit /b
 echo 转换为 ESD 文件：%cbsp%.cab
 rmdir /s /q "!_DIR!\%~1\$dpx$.tmp\" %_Nul3%
 wimlib-imagex.exe capture "!_DIR!\%~1" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
@@ -750,7 +764,7 @@ echo %~1 | find /i "Windows10.0-KB" %_Nul1% && exit /b
 echo %~1 | find /i "Windows11.0-KB" %_Nul1% && exit /b
 echo %~1 | find /i "SSU-" %_Nul1% && exit /b
 set cbsp=%~n1
-if exist "!_work!\temp\%cbsp%.esd" exit /b
+if exist "temp\%cbsp%.esd" exit /b
 echo %cbsp%.cab
 set /a _ref+=1
 set /a _rnd=%random%
@@ -1378,7 +1392,7 @@ if defined servicingstack (
 )
 if not defined overall if not defined mpamfe goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" goto :skipsafeos
-if not defined safeos if %LCUwinre% equ 0 (
+if not defined safeos if %LCUWinRE% equ 0 (
     Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
     goto :%_rtrn%
 )
@@ -1391,7 +1405,7 @@ if defined safeos (
     if !_ec!==1 goto :errmount
     if not defined lcumsu call :cleanup
     if not defined lcumsu if %ResetBase% neq 0 Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
-    if %LCUWinre% equ 0 goto :eof
+    if %LCUWinRE% equ 0 goto :eof
 )
 :skipsafeos
 if not defined cumulative if not defined lcumsu goto :scbt
@@ -1483,7 +1497,7 @@ if defined lcumsu for %%# in (%lcumsu%) do (
 cmd /c exit /b !errorlevel!
 call :chkEC "!=ExitCode!"
 if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinre% equ 1 call :cleanup
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinRE% equ 1 call :cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :%_gobk%
 if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :%_gobk%
 for /f %%# in ('dir /b /a:-d /od "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum"') do set "lcumum=%%#"
@@ -1951,7 +1965,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Do
 if %AddAppxs% equ 1 call :doappx
 if !handle1! equ 0 (
     set handle1=1
-    if %SkipBootFiles% equ 0 (
+    if %UpdtBootFiles% equ 1 (
         for %%i in (efisys.bin,efisys_noprompt.bin) do if exist "%_mount%\Windows\Boot\DVD\EFI\en-US\%%i" ( xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\%%i" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%)
         if /i not %arch%==arm64 (
             xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\bootmgr" "ISOFOLDER\" %_Nul3%
