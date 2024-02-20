@@ -55,8 +55,7 @@ if not defined _args goto :NoProgArgs
 if "%~1"=="" set "_args="&goto :NoProgArgs
 for %%# in (%*) do (
 if /i "%%~#"=="-elevated" (set _elev=1
-) else if /i "%%~#"=="-qedit" (set quedit=1&reg.exe add HKCU\Console /v QuickEdit /t REG_DWORD /d 1 /f >nul
-) else (set "_args=%%~#")
+) else (set "_args=%_args% %%~#")
 )
 
 :NoProgArgs
@@ -227,6 +226,7 @@ goto :eof
 
 :checkdone
 echo.
+if defined _args for %%# in (%*) do if exist "%%~#\*.cab" (set "_DIR=%%~#"&echo %%~#&goto :proceed) else if exist "%%~#\*.msu" (set "_DIR=%%~#"&echo %%~#&goto :proceed)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "!_work!\%%~#\*.cab" (set /a _ncab+=1&set "_DIR=!_work!\%%~#"&echo %%~#) else if exist "!_work!\%%~#\*.msu" (set /a _ncab+=1&set "_DIR=!_work!\%%~#"&echo %%~#)
 if !_ncab! equ 1 if defined _DIR goto :proceed
 if !_ncab! equ 0 if not defined _DIR if exist "!_work!\Apps\appx*.txt" set "_DIR=!_work!"&goto :proceed
@@ -269,6 +269,7 @@ if %_updexist% neq 0 echo Updates Exist
 if %_appexist% neq 0 echo Appxs Exist
 
 :finddir
+if defined _args for %%# in (%*) do if exist "%%~#\sources\install.wim" (set ISOdir=%%~#&echo %%~#&goto :copydir)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\sources\install.wim" set /a _ndir+=1&set ISOdir=%%~#&echo %%~#
 if %_ndir% equ 0 goto :findiso
 if %_ndir% equ 1 goto :copydir
@@ -310,6 +311,7 @@ goto :checkiso
 
 :findiso
 echo.
+if defined _args for %%# in (%*) do if /i "%%~x#"==".iso" (set ISOfile=%%~#&echo %%~#&goto :extraciso)
 if exist "*.iso" for /f "tokens=* delims=" %%# in ('dir /b /a:-d *.iso') do set /a _niso+=1&set ISOfile=%%~#&echo %%~#
 if !_niso! equ 0 goto :E_NotFind
 if !_niso! equ 1 goto :extraciso
@@ -1416,20 +1418,15 @@ if exist "!lcudir!\*cablist.ini" (
     del /f /q "!lcudir!\*cablist.ini" %_Nul3%
     del /f /q "!lcudir!\*.cab" %_Nul3%
 )
-set _sbst=0
-for /f "tokens=2 delims=-" %%V in ('echo %lcupkg%') do set lcuid=%%V
 if exist "!lcudir!\*.psf.cix.xml" (
     if not exist "!lcudir!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!lcudir!\*.psf.cix.xml"') do rename "!lcudir!\%%#" express.psf.cix.xml %_Nul3%
-    subst %_sdr% "!_cabdir!" %_Nul3% && set _sbst=1
-    if !_sbst! equ 1 pushd %_sdr%
-    if not exist "%lcupkg%" (
-        copy /y "!_DIR!\%lcupkg:~0,-4%.*" . %_Nul3%
-        if not exist "%lcupkg:~0,-4%.psf" for /f %%# in ('dir /b /a:-d "!_DIR!\*%lcuid%*%arch%*.psf"') do copy /y "!_DIR!\%%#" %lcupkg:~0,-4%.psf %_Nul3%
+    PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!lcudir!" %_Nul3%
+    if !errorlevel! neq 0 (
+        echo 出现错误：解压 PSF 更新包失败
+        rmdir /s /q "!dest!\" %_Nul3%
+        set psf_%pkgn%=
+        goto :eof
     )
-    if not exist "PSFExtractor.exe" copy /y "!_work!\bin\PSFExtractor.*" . %_Nul3%
-    PSFExtractor.exe %lcupkg% %_Nul3%
-    if !_sbst! equ 1 popd
-    if !_sbst! equ 1 subst %_sdr% /d %_Nul3%
 )
 goto :eof
 

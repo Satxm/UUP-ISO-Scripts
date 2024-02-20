@@ -55,8 +55,7 @@ if not defined _args goto :NoProgArgs
 if "%~1"=="" set "_args="&goto :NoProgArgs
 for %%# in (%*) do (
 if /i "%%~#"=="-elevated" (set _elev=1
-) else if /i "%%~#"=="-qedit" (set quedit=1&reg.exe add HKCU\Console /v QuickEdit /t REG_DWORD /d 1 /f >nul
-) else (set "_args=%%~#")
+) else (set "_args=%_args% %%~#")
 )
 
 :NoProgArgs
@@ -225,6 +224,7 @@ goto :eof
 
 :checkdone
 echo.
+if defined _args for %%# in (%*) do if exist "%%~#\*.esd" ( set "_DIR=%%~#"&echo %%~#&goto :proceed)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "!_work!\%%~#\*.esd" (set /a _ndir+=1&set "_DIR=!_work!\%%~#"&echo %%~#)
 if !_ndir! equ 1 if defined _DIR goto :proceed
 
@@ -1529,20 +1529,15 @@ if exist "!lcudir!\*cablist.ini" (
     del /f /q "!lcudir!\*cablist.ini" %_Nul3%
     del /f /q "!lcudir!\*.cab" %_Nul3%
 )
-set _sbst=0
-for /f "tokens=2 delims=-" %%V in ('echo %lcupkg%') do set lcuid=%%V
 if exist "!lcudir!\*.psf.cix.xml" (
     if not exist "!lcudir!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!lcudir!\*.psf.cix.xml"') do rename "!lcudir!\%%#" express.psf.cix.xml %_Nul3%
-    subst %_sdr% "!_cabdir!" %_Nul3% && set _sbst=1
-    if !_sbst! equ 1 pushd %_sdr%
-    if not exist "%lcupkg%" (
-        copy /y "!_DIR!\%lcupkg:~0,-4%.*" . %_Nul3%
-        if not exist "%lcupkg:~0,-4%.psf" for /f %%# in ('dir /b /a:-d "!_DIR!\*%lcuid%*%arch%*.psf"') do copy /y "!_DIR!\%%#" %lcupkg:~0,-4%.psf %_Nul3%
+    PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!lcudir!" %_Nul3%
+    if !errorlevel! neq 0 (
+        echo 出现错误：解压 PSF 更新包失败
+        rmdir /s /q "!dest!\" %_Nul3%
+        set psf_%pkgn%=
+        goto :eof
     )
-    if not exist "PSFExtractor.exe" copy /y "!_work!\bin\PSFExtractor.*" . %_Nul3%
-    PSFExtractor.exe %lcupkg% %_Nul3%
-    if !_sbst! equ 1 popd
-    if !_sbst! equ 1 subst %_sdr% /d %_Nul3%
 )
 goto :eof
 
