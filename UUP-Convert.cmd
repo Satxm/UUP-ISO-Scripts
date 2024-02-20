@@ -256,6 +256,7 @@ if not exist "%_DIR%\*.esd" (
 )
 
 :checkesd
+echo.
 echo %line%
 echo 正在检查 ESD 文件信息……
 echo %line%

@@ -272,6 +272,7 @@ if !_niso! gtr 1 goto :selectiso
 
 :selectdir
 set ISOdir=
+echo.
 echo %line%
 echo 使用 Tab 键选择或输入包含 install.wim 文件的文件夹
 echo %line%
@@ -300,7 +301,6 @@ echo.
 echo %line%
 echo 正在复制 ISO 文件夹 %ISOdir% ……
 echo %line%
-echo.
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 robocopy "%ISOdir%" "ISOFOLDER" /E /A-:R %_Nul3%
 goto :checkiso
@@ -336,11 +336,11 @@ echo.
 echo %line%
 echo 正在解压 ISO 文件 %ISOfile% ……
 echo %line%
-echo.
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 7z.exe x "%ISOfile%" -oISOFOLDER * -r %_Nul3%
 
 :checkiso
+echo.
 echo %line%
 echo 正在检查 ISO 文件信息……
 echo %line%
