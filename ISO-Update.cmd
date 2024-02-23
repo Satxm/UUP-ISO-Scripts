@@ -48,6 +48,20 @@ set UseMSU=0
 set "_Null=1>nul 2>nul"
 set "FullExit=exit /b"
 
+set "param=%~f0"
+cmd /v:on /c echo(^^!param^^!| findstr /R "[| ` ~ ! @ %% \^ & ( ) \[ \] { } + = ; ' , |]*^"
+if %errorlevel% EQU 0 (
+echo.
+echo ==== 出现错误 ====
+echo 不允许在文件路径名中检测到特殊字符。
+echo 请确保在路径中不包含以下所示的特殊字符
+echo ^` ^~ ^! ^@ %% ^^ ^& ^( ^) [ ] { } ^+ ^= ^; ^' ^,
+echo.
+echo 请按任意键退出脚本。
+pause >nul
+goto :eof
+)
+
 set _elev=
 set "_args="
 set "_args=%~1"
@@ -131,6 +145,8 @@ set "_EsuIdn=Microsoft-Client-Licensing-SupplementalServicing"
 set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
 set "_CedIdn=Microsoft-Windows-EdgeChromium"
 set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
+set _MOifeo=0
+set _IFEO="HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 setlocal EnableDelayedExpansion
 
 if %_Debug% equ 0 (
@@ -363,6 +379,8 @@ if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 set LCUWinRE=1
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
+if %AddUpdates% equ 1 call :DismHostON
+if %AddAppxs% equ 1 call :DismHostON
 
 echo.
 echo %line%
@@ -1304,7 +1322,7 @@ if defined secureboot (
 if defined ldr (
     set idpkg=General
     set callclean=1
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismUpd.log" /Add-Package %ldr%
+    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismUpdt.log" /Add-Package %ldr%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
@@ -1397,7 +1415,7 @@ goto :%_gobk%
 set _ec=0
 set "_ic=%~1"
 if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" set _ec=1
-if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
+if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
 goto :eof
 
 :errmount
@@ -1405,7 +1423,7 @@ set mounterr=1
 set "msgerr=Dism.exe 操作失败"
 if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
 echo %msgerr%。正在丢弃当前挂载镜像……
-Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
+Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
 Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
 Dism.exe /Cleanup-Wim %_Nul3%
 goto :eof
@@ -1825,7 +1843,7 @@ echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
 Dism.exe /ScratchDir:"!_cabdir!" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 if !errorlevel! neq 0 (
-    Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
+    Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
     Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
     Dism.exe /Cleanup-Wim %_Nul3%
     goto :eof
@@ -1843,7 +1861,9 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
+if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :SkipApps
 if %AddAppxs% equ 1 call :doappx
+:SkipApps
 if !handle1! equ 0 (
     set handle1=1
     if %UpdtBootFiles% equ 1 (
@@ -2046,6 +2066,42 @@ for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6
 del /s /f /q "%_mount%\Windows\CbsTemp\*" %_Nul3%
 goto :eof
 
+:DismHostON
+if %winbuild% lss 9200 exit /b
+if %_MOifeo% neq 0 exit /b
+set _MOifeo=1
+reg.exe query %_IFEO% /v MitigationOptions %_Nul3%
+if %errorlevel% neq 0 (
+%_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d 0x220000
+exit /b
+)
+for /f "skip=2 tokens=2*" %%a in ('reg.exe query %_IFEO% /v MitigationOptions') do (
+    if /i "%%a"=="REG_QWORD" (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationUUP /t REG_QWORD /d %%b
+    ) else (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationUUP /t REG_BINARY /d %%b
+    )
+)
+%_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d 0x220000
+exit /b
+
+:DismHostOFF
+if %winbuild% lss 9200 exit /b
+reg.exe query %_IFEO% /v MitigationUUP %_Nul3%
+if %errorlevel% neq 0 (
+%_Nul3% reg.exe delete %_IFEO% /f
+exit /b
+)
+for /f "skip=2 tokens=2*" %%a in ('reg.exe query %_IFEO% /v MitigationUUP') do (
+    if /i "%%a"=="REG_QWORD" (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d %%b
+    ) else (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_BINARY /d %%b
+    )
+)
+%_Nul3% reg.exe delete %_IFEO% /f /v MitigationUUP
+exit /b
+
 :E_NotFind
 echo %_err%
 echo 在指定的路径中未找到所需文件（夹）。
@@ -2095,6 +2151,9 @@ echo.
 goto :QUIT
 
 :QUIT
+if %_MOifeo% neq 0 (
+call :DismHostOFF
+)
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 if exist temp\ rmdir /s /q temp\
 popd

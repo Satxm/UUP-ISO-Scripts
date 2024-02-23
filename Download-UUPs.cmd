@@ -52,22 +52,9 @@ set "files=files.%random%.txt"
 set "Dir=UUPs.%random%"
 if not defined build goto :DOWNLOAD_APPS
 set "files=files.%build%.txt"
+if defined server set "Dir=UUPs.%build%.Server"
 set "Dir=UUPs.%build%"
 set "SecHealthUI=Microsoft.SecHealthUI_1000."%build%".0_x64__8wekyb3d8bbwe.Appx"
-
-:DOWNLOAD_APPS
-echo.
-echo %line%
-echo 正在检索 SecHealthUI 的 aria2 脚本……
-echo %line%
-echo.
-"%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/getfile.php?id=%id%&file=IPA_WindowsSecurity_Microsoft.SecHealthUI_8wekyb3d8bbwe.appx&aria2=2"
-if not exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/getfile.php?id=%id%&file=Microsoft.SecHealthUI_8wekyb3d8bbwe.appx&aria2=2"
-if not exist %files% goto :DOWNLOAD_APPS
-if exist %files% %psc% "(gc %files%) -creplace 'IPA_WindowsSecurity_Microsoft.SecHealthUI_8wekyb3d8bbwe.appx', '%SecHealthUI%' | Out-File %files% -Encoding ASCII"
-if exist %files% %psc% "(gc %files%) -creplace 'Microsoft.SecHealthUI_8wekyb3d8bbwe.appx', '%SecHealthUI%' | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -x10 -s16 -j5 -c -R -d"%DirApp%" -i"%files%"
-if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_UUPS
 echo.
@@ -75,6 +62,7 @@ echo %line%
 echo 正在检索完整 UUPs 的 aria2 脚本……
 echo %line%
 echo.
+if not exist %files% del /f /q %files%
 "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=professional;core&aria2=2"
 if defined server "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=serverdatacenter;serverdatacentercore;serverstandard;serverstandardcore&aria2=2"
 if not exist %files% goto :DOWNLOAD_UUPS
@@ -85,6 +73,21 @@ if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
 if exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
+
+:DOWNLOAD_APPS
+echo.
+echo %line%
+echo 正在检索 SecHealthUI 的 aria2 脚本……
+echo %line%
+echo.
+if not exist %files% del /f /q %files%
+"%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/getfile.php?id=%id%&file=IPA_WindowsSecurity_Microsoft.SecHealthUI_8wekyb3d8bbwe.appx&aria2=2"
+if not exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/getfile.php?id=%id%&file=Microsoft.SecHealthUI_8wekyb3d8bbwe.appx&aria2=2"
+if not exist %files% goto :DOWNLOAD_APPS
+if exist %files% %psc% "(gc %files%) -creplace 'IPA_WindowsSecurity_Microsoft.SecHealthUI_8wekyb3d8bbwe.appx', '%SecHealthUI%' | Out-File %files% -Encoding ASCII"
+if exist %files% %psc% "(gc %files%) -creplace 'Microsoft.SecHealthUI_8wekyb3d8bbwe.appx', '%SecHealthUI%' | Out-File %files% -Encoding ASCII"
+if exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -x10 -s16 -j5 -c -R -d"%DirApp%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_DONE

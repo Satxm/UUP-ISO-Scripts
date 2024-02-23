@@ -48,6 +48,20 @@ set UseMSU=0
 set "_Null=1>nul 2>nul"
 set "FullExit=exit /b"
 
+set "param=%~f0"
+cmd /v:on /c echo(^^!param^^!| findstr /R "[| ` ~ ! @ %% \^ & ( ) \[ \] { } + = ; ' , |]*^"
+if %errorlevel% EQU 0 (
+echo.
+echo ==== 出现错误 ====
+echo 不允许在文件路径名中检测到特殊字符。
+echo 请确保在路径中不包含以下所示的特殊字符
+echo ^` ^~ ^! ^@ %% ^^ ^& ^( ^) [ ] { } ^+ ^= ^; ^' ^,
+echo.
+echo 请按任意键退出脚本。
+pause >nul
+goto :eof
+)
+
 set _elev=
 set "_args="
 set "_args=%~1"
@@ -131,6 +145,8 @@ set "_EsuIdn=Microsoft-Client-Licensing-SupplementalServicing"
 set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
 set "_CedIdn=Microsoft-Windows-EdgeChromium"
 set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
+set _MOifeo=0
+set _IFEO="HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 setlocal EnableDelayedExpansion
 
 if %_Debug% equ 0 (
@@ -288,6 +304,8 @@ if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 set LCUWinRE=1
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
+if %AddUpdates% equ 1 call :DismHostON
+if %AddAppxs% equ 1 call :DismHostON
 
 echo.
 echo %line%
@@ -518,12 +536,7 @@ echo 正在创建 boot.wim 文件……
 echo %line%
 echo.
 wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 temp\boot.wim --compress=LZX --boot
-if exist "WinPE-Setup\*WinPE-Setup*.cab" goto :BootDism
-if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (
-    mkdir "WinPE-Setup"
-    copy /y "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" "WinPE-Setup\" %_Nul3%
-    goto :BootDism
-)
+if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" goto :BootDism
 goto :BootNoDism
 
 :BootDone
@@ -539,7 +552,7 @@ goto :%_rtrn%
 :BootNoDism
 if exist "%_mount%\" rmdir /s /q "%_mount%\"
 if not exist "%_mount%\" mkdir "%_mount%"
-Dism.exe /Mount-Wim /Wimfile:"temp\boot.wim" /Index:1 /MountDir:"%_mount%"
+Dism.exe /ScratchDir:"!_cabdir!" /Mount-Wim /Wimfile:"temp\boot.wim" /Index:1 /MountDir:"%_mount%"
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 (
     Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard %_Nul3%
@@ -548,7 +561,7 @@ if %ERRORTEMP% neq 0 (
 )
 call :BootRemove
 call :cleanup
-Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Commit
+Dism.exe /ScratchDir:"!_cabdir!" /Unmount-Wim /MountDir:"%_mount%" /Commit
 if %uwinpe% equ 1 call :update temp\boot.wim
 
 wimlib-imagex.exe export temp\boot.wim 1 ISOFOLDER\sources\boot.wim "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)" %_Nul3%
@@ -594,7 +607,7 @@ if %_build% lss 22000 wimlib-imagex.exe info ISOFOLDER\sources\boot.wim 1 "Micro
 wimlib-imagex.exe info ISOFOLDER\sources\boot.wim 1 --image-property FLAGS=9 %_Nul3%
 if exist "%_mount%\" rmdir /s /q "%_mount%\"
 if not exist "%_mount%\" mkdir "%_mount%"
-Dism.exe /Mount-Wim /Wimfile:ISOFOLDER\sources\boot.wim /Index:1 /MountDir:"%_mount%"
+Dism.exe /ScratchDir:"!_cabdir!" /Mount-Wim /Wimfile:ISOFOLDER\sources\boot.wim /Index:1 /MountDir:"%_mount%"
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 (
     Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard %_Nul3%
@@ -604,17 +617,17 @@ if %ERRORTEMP% neq 0 (
     goto :BootNoDism
 )
 call :BootRemove
-Dism.exe /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\
+Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismBoot.log" /Set-TargetPath:X:\$Windows.~bt\
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 call :cleanup
-Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Commit
+Dism.exe /ScratchDir:"!_cabdir!" /Unmount-Wim /MountDir:"%_mount%" /Commit
 
 wimlib-imagex.exe export temp\boot.wim 1 ISOFOLDER\sources\boot.wim "Microsoft Windows Setup (%_ss%)" "Microsoft Windows Setup (%_ss%)" --boot %_Nul3%
 if %_build% lss 22000 wimlib-imagex.exe info ISOFOLDER\sources\boot.wim 2 "Microsoft Windows Setup (%arch%)" "Microsoft Windows Setup (%arch%)" %_Nul3%
 wimlib-imagex.exe info ISOFOLDER\sources\boot.wim 2 --image-property FLAGS=2 --boot %_Nul3%
 if exist "%_mount%\" rmdir /s /q "%_mount%\"
 if not exist "%_mount%\" mkdir "%_mount%"
-Dism.exe /Mount-Wim /Wimfile:ISOFOLDER\sources\boot.wim /Index:2 /MountDir:"%_mount%"
+Dism.exe /ScratchDir:"!_cabdir!" /Mount-Wim /Wimfile:ISOFOLDER\sources\boot.wim /Index:2 /MountDir:"%_mount%"
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 (
     Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard %_Nul3%
@@ -625,14 +638,14 @@ if %ERRORTEMP% neq 0 (
 )
 call :BootRemove
 set "cabadd="
-for /f "delims=" %%# in ('dir /b /a:-d "WinPE-Setup\*WinPE-Setup.cab"') do set "cabadd=!cabadd! /PackagePath:WinPE-Setup\%%#"
-for /f "delims=" %%# in ('dir /b /a:-d "WinPE-Setup\*WinPE-Setup_*.cab"') do set "cabadd=!cabadd! /PackagePath:WinPE-Setup\%%#"
-for /f "delims=" %%# in ('dir /b /a:-d "WinPE-Setup\*WinPE-Setup-*.cab"') do set "cabadd=!cabadd! /PackagePath:WinPE-Setup\%%#"
-Dism.exe /Image:"%_mount%" /Add-Package !cabadd!
+for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
+for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup_*.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
+for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup-*.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
+Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismBoot.log" /Add-Package !cabadd!
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 copy ISOFOLDER\sources\lang.ini %_mount%\sources\lang.ini %_Nul3%
 call :cleanup
-Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Commit
+Dism.exe /ScratchDir:"!_cabdir!" /Unmount-Wim /MountDir:"%_mount%" /Commit
 if %uwinpe% equ 1 call :update ISOFOLDER\sources\boot.wim
 goto :BootDone
 
@@ -640,11 +653,11 @@ goto :BootDone
 type nul>temp\winre.txt
 type nul>temp\winpe.txt
 set "remove="
-for /f "tokens=3 delims=: " %%i in ('Dism.exe /English /Image:"%_mount%" /Get-Packages ^| findstr /c:"Package Identity"') do echo %%i>>temp\winre.txt
+for /f "tokens=3 delims=: " %%i in ('Dism.exe /English /Image:"%_mount%" /LogPath:"%_dLog%\DismBoot.log" /Get-Packages ^| findstr /c:"Package Identity"') do echo %%i>>temp\winre.txt
 for /f "eol=W tokens=* delims=" %%# in (bin\winpe.txt) do for /f "tokens=* delims=" %%i in ('type temp\winre.txt ^| findstr /c:"%%#"') do echo %%i>>temp\winpe.txt
 for /f "tokens=* delims=" %%# in (bin\winpe.txt) do for /f "eol=M tokens=* delims=" %%i in ('type temp\winre.txt ^| findstr /c:"%%#"') do echo %%i>>temp\winpe.txt
 for /f "tokens=* delims=" %%i in (temp\winpe.txt) do set "remove=!remove! /PackageName:%%i"
-Dism.exe /Image:"%_mount%" /Remove-Package !remove!
+Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismBoot.log" /Remove-Package !remove!
 goto :eof
 
 :PREPARE
@@ -1424,7 +1437,7 @@ if defined secureboot (
 if defined ldr (
     set idpkg=General
     set callclean=1
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismUpd.log" /Add-Package %ldr%
+    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismUpdt.log" /Add-Package %ldr%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
@@ -1517,7 +1530,7 @@ goto :%_gobk%
 set _ec=0
 set "_ic=%~1"
 if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" set _ec=1
-if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
+if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
 goto :eof
 
 :errmount
@@ -1525,7 +1538,7 @@ set mounterr=1
 set "msgerr=Dism.exe 操作失败"
 if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
 echo %msgerr%。正在丢弃当前挂载镜像……
-Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
+Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
 Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
 Dism.exe /Cleanup-Wim %_Nul3%
 goto :eof
@@ -1945,7 +1958,7 @@ echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
 Dism.exe /ScratchDir:"!_cabdir!" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 if !errorlevel! neq 0 (
-    Dism.exe /Image:"%_mount%" /Get-Packages %_Nul3%
+    Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
     Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
     Dism.exe /Cleanup-Wim %_Nul3%
     goto :eof
@@ -1963,7 +1976,9 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
+if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :SkipApps
 if %AddAppxs% equ 1 call :doappx
+:SkipApps
 if !handle1! equ 0 (
     set handle1=1
     if %UpdtBootFiles% equ 1 (
@@ -2166,6 +2181,42 @@ for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6
 del /s /f /q "%_mount%\Windows\CbsTemp\*" %_Nul3%
 goto :eof
 
+:DismHostON
+if %winbuild% lss 9200 exit /b
+if %_MOifeo% neq 0 exit /b
+set _MOifeo=1
+reg.exe query %_IFEO% /v MitigationOptions %_Nul3%
+if %errorlevel% neq 0 (
+%_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d 0x220000
+exit /b
+)
+for /f "skip=2 tokens=2*" %%a in ('reg.exe query %_IFEO% /v MitigationOptions') do (
+    if /i "%%a"=="REG_QWORD" (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationUUP /t REG_QWORD /d %%b
+    ) else (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationUUP /t REG_BINARY /d %%b
+    )
+)
+%_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d 0x220000
+exit /b
+
+:DismHostOFF
+if %winbuild% lss 9200 exit /b
+reg.exe query %_IFEO% /v MitigationUUP %_Nul3%
+if %errorlevel% neq 0 (
+%_Nul3% reg.exe delete %_IFEO% /f
+exit /b
+)
+for /f "skip=2 tokens=2*" %%a in ('reg.exe query %_IFEO% /v MitigationUUP') do (
+    if /i "%%a"=="REG_QWORD" (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d %%b
+    ) else (
+        %_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_BINARY /d %%b
+    )
+)
+%_Nul3% reg.exe delete %_IFEO% /f /v MitigationUUP
+exit /b
+
 :E_NotFind
 echo %_err%
 echo 在指定的路径中未找到所需文件（夹）。
@@ -2215,6 +2266,9 @@ echo.
 goto :QUIT
 
 :QUIT
+if %_MOifeo% neq 0 (
+call :DismHostOFF
+)
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 if exist temp\ rmdir /s /q temp\
 popd
