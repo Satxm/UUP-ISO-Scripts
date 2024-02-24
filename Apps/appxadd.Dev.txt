@@ -21,7 +21,7 @@ Microsoft.HEVCVideoExtensions_2.1.452.0_neutral_~_8wekyb3d8bbwe.AppxBundle
 Microsoft.LanguageExperiencePackzh-CN_26058.1.1.0_neutral__8wekyb3d8bbwe.Appx
 Microsoft.MicrosoftStickyNotes_6.0.2.0_neutral_~_8wekyb3d8bbwe.Msixbundle
 Microsoft.MPEG2VideoExtension_1.0.61931.0_neutral_~_8wekyb3d8bbwe.AppxBundle
-Microsoft.OutlookForWindows_1.2024.207.0_x64__8wekyb3d8bbwe.Msix
+Microsoft.OutlookForWindows_1.2024.214.0_x64__8wekyb3d8bbwe.Msix
 Microsoft.Paint_11.2401.19.0_neutral_~_8wekyb3d8bbwe.Msixbundle
 Microsoft.RawImageExtension_2.3.171.0_neutral_~_8wekyb3d8bbwe.AppxBundle
 Microsoft.ScreenSketch_2022.2401.32.0_neutral_~_8wekyb3d8bbwe.Msixbundle

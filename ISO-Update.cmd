@@ -174,6 +174,7 @@ echo 当完成之后，此窗口将会关闭
 @cls
 title Windows ISO 添加更新
 set "_dLog=%SystemRoot%\Logs\DISM"
+set "_Dism=Dism.exe /ScratchDir:"!_cabdir!""
 
 :precheck
 set W10UI=0
@@ -511,7 +512,7 @@ goto :QUIT
 :InstallWim
 if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
     imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
-        Dism.exe /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
+        %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
     )
 )
 if not exist temp\Winre.wim goto :SkipWinre
@@ -1283,7 +1284,7 @@ if not defined overall if not defined mpamfe if not defined servicingstack goto 
 if defined servicingstack (
     set idpkg=ServicingStack
     set callclean=1
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismSSU.log" /Add-Package %servicingstack%
+    %_Dism% /LogPath:"%_dLog%\DismSSU.log" /Image:"%_mount%" /Add-Package %servicingstack%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 goto :errmount
@@ -1292,18 +1293,18 @@ if defined servicingstack (
 if not defined overall if not defined mpamfe goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" goto :skipsafeos
 if not defined safeos if %LCUWinRE% equ 0 (
-    Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
+    %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
     goto :%_rtrn%
 )
 if defined safeos (
     set idpkg=SafeOS
     set callclean=1
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismWinPE.log" /Add-Package %safeos%
+    %_Dism% /LogPath:"%_dLog%\DismWinRE.log" /Image:"%_mount%" /Add-Package %safeos%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 goto :errmount
     if not defined lcumsu call :cleanup
-    if not defined lcumsu if %ResetBase% neq 0 Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
+    if not defined lcumsu if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
     if %LCUWinRE% equ 0 goto :eof
 )
 :skipsafeos
@@ -1314,7 +1315,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :up
 if defined secureboot (
     set idpkg=SecureBoot
     set callclean=1
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismSecureBoot.log" /Add-Package %secureboot%
+    %_Dism% /LogPath:"%_dLog%\DismSecureBoot.log" /Image:"%_mount%" /Add-Package %secureboot%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 goto :errmount
@@ -1322,7 +1323,7 @@ if defined secureboot (
 if defined ldr (
     set idpkg=General
     set callclean=1
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismUpdt.log" /Add-Package %ldr%
+    %_Dism% /LogPath:"%_dLog%\DismUpdt.log" /Image:"%_mount%" /Add-Package %ldr%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
@@ -1375,7 +1376,7 @@ if defined mpamfe (
 if not defined edge goto :eof
 if defined edge (
     set idpkg=Edge
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismEdge.log" /Add-Package %edge%
+    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Package %edge%
     cmd /c exit /b !errorlevel!
     call :chkEC "!=ExitCode!"
     if !_ec!==1 goto :errmount
@@ -1384,14 +1385,14 @@ goto :eof
 
 :updtlcu
 set "_DsmLog=DismLCU.log"
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUWinPE.log"
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinRE.log"
 set idpkg=LCU
 set callclean=1
-if defined cumulative Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\%_DsmLog%" /Add-Package %cumulative%
+if defined cumulative %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package %cumulative%
 if defined lcumsu for %%# in (%lcumsu%) do (
     echo.&echo %%#
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\%_DsmLog%" /Add-Package /PackagePath:"!_DIR!\%%#"
+    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:"!_DIR!\%%#
 )
 cmd /c exit /b !errorlevel!
 call :chkEC "!=ExitCode!"
@@ -1415,7 +1416,7 @@ goto :%_gobk%
 set _ec=0
 set "_ic=%~1"
 if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" set _ec=1
-if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
+if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 goto :eof
 
 :errmount
@@ -1423,8 +1424,8 @@ set mounterr=1
 set "msgerr=Dism.exe 操作失败"
 if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
 echo %msgerr%。正在丢弃当前挂载镜像……
-Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
-Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 Dism.exe /Cleanup-Wim %_Nul3%
 goto :eof
 rmdir /s /q "%_mount%\" %_Nul3%
@@ -1655,7 +1656,7 @@ if %_build% neq 18362 (
     call :cXML stage
     echo.
     echo 正在处理 [1/1] - 正在暂存 %cbsn%
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\%_DsmLog%" /Apply-Unattend:"!_cabdir!\stage.xml"
+    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Apply-Unattend:"!_cabdir!\stage.xml /Image:"%_mount%"
     if !errorlevel! neq 0 if !errorlevel! neq 3010 (
         echo 暂存 %cbsn% 失败
         goto :eof
@@ -1669,7 +1670,7 @@ if defined _dualSxS (
     set "_SxsCF=256"
     if %_build% neq 18362 (call :Winner) else (call :Suppress)
 )
-Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\%_DsmLog%" /Add-Package /PackagePath:"!dest!\update.mum"
+%_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Add-Package /PackagePath:"!dest!\update.mum /Image:"%_mount%"
 if !errorlevel! neq 0 echo 安装 %cbsn% 失败
 if %_build% neq 18362 (del /f /q "!_cabdir!\stage.xml" %_Nul3%)
 goto :eof
@@ -1841,10 +1842,10 @@ echo.
 echo %line%
 echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
-Dism.exe /ScratchDir:"!_cabdir!" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
+%_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 if !errorlevel! neq 0 (
-    Dism.exe /Image:"%_mount%" /LogPath:"%_dLog%\DismNUL.log" /Get-Packages %_Nul3%
-    Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
+    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
+    %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
     Dism.exe /Cleanup-Wim %_Nul3%
     goto :eof
 )
@@ -1902,19 +1903,19 @@ echo %line%
 echo 正在转换 Windows 版本……
 echo %line%
 echo.
-for /f "tokens=3 delims=: " %%# in ('Dism.exe /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
+for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=%%i && call :setedition)
 if /i %editionid%==Professional for %%i in (Professional, Education, ProfessionalEducation, ProfessionalWorkstation) do ( set nedition=%%i && call :setedition)
-Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Discard
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 goto :eof
 :Done
-Dism.exe /Unmount-Wim /MountDir:"%_mount%" /Commit
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Commit
 goto :eof
 
 :addedge
 echo.
 echo 正在添加 Microsoft Edge……
-Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismEdge.log" /Add-Edge /SupportPath:"!_DIR!"
+%_Dism% /LogPath:"%_dLog%\DismEdge.log" /Add-Edge /SupportPath:"!_DIR! /Image:"%_mount%"
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
 
@@ -1922,8 +1923,8 @@ goto :eof
 if %_build% geq 19041 set "mountver=19041"
 if %_build% geq 22000 set "mountver=22000"
 if %_build% geq 22621 set "mountver=22621"
-if %_build% gtr 23000 set "mountver=Dev"
-if %_build% gtr 25000 set "mountver=Can"
+if %_build% gtr 23403 set "mountver=Dev"
+if %_build% geq 26063 set "mountver=Can"
 if %_SrvESD% equ 1 set "mountver=!mountver!.Server"
 if not exist "%_mount%\Program Files\WindowsApps\Microsoft.*" goto :donedel
 if not exist Apps\appxdel.!mountver!.MS.txt goto :donedel
@@ -1933,7 +1934,7 @@ echo 正在卸载 Appxs 软件包……
 echo %line%
 echo.
 for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.MS.txt) do (
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /English /LogPath:"%_dLog%\DismAppx.log" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
+    %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
 :donedel
 if not exist Apps\appxdel.!mountver!.txt goto :donereg
@@ -1957,7 +1958,7 @@ echo.
 for /f "eol=# tokens=* delims=" %%i in (Apps\appxadd.!mountver!.txt) do (
     set "license=/SkipLicense"
     for /f "delims=_" %%j in ("%%i") do if exist Apps\Licenses\%%j*.xml for /f "delims=" %%k in ('dir /a /b Apps\Licenses\%%j*.xml') do set "license=/LicensePath:"Apps\Licenses\%%k""
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /English /LogPath:"%_dLog%\DismAppx.log" /Add-ProvisionedAppxPackage /PackagePath:"Apps\Apps\%%i" !license! /Region=all | findstr /i /c:"successfully" %_Nul3% && echo %%i
+    %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"Apps\Apps\%%i" !license! /Region=all | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
 :doneadd
 goto :eof
@@ -1972,7 +1973,7 @@ if exist "%_mount%\Windows\Education.xml" del /f /q "%_mount%\Windows\Education.
 if exist "%_mount%\Windows\Professional.xml" del /f /q "%_mount%\Windows\Professional.xml" %_Nul3%
 if exist "%_mount%\Windows\ProfessionalEducation.xml" del /f /q "%_mount%\Windows\ProfessionalEducation.xml" %_Nul3%
 if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Windows\ProfessionalWorkstation.xml" %_Nul3%
-Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /LogPath:"%_dLog%\DismEdition.log" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismEdition.log" /Image:"%_mount%" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
 if /i not %editionid%==%nedition% goto :dochange
 Dism.exe /Commit-Image /MountDir:"%_mount%"
 wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
@@ -2015,9 +2016,9 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
         reg.exe add HKLM\%ksub%\%_SxsCfg% /v DisableComponentBackups /t REG_DWORD /d 1 /f %_Nul1%
         reg.exe unload HKLM\%ksub% %_Nul1%
     )
-    Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
+    %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
     if %Cleanup% neq 0 (
-        if %ResetBase% neq 0 Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
+        if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
     )
     call :cleanmanual&goto :eof
 )
@@ -2038,8 +2039,8 @@ if /i not %arch%==arm64 (
 ) else (
     %_Nul3% offlinereg.exe "%_mount%\Windows\System32\Config\SOFTWARE" %_SxsCfg% setvalue SupersededActions 3 4
 )
-Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
-if %ResetBase% neq 0 Dism.exe /ScratchDir:"!_cabdir!" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
+if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
 call :cleanmanual&goto :eof
 
 :cleanmanual

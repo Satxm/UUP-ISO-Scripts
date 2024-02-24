@@ -1,0 +1,17 @@
+Microsoft.NET.Native.Framework.2.2_2.2.29512.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.NET.Native.Runtime.2.2_2.2.28604.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.UI.Xaml.2.4_2.42007.9001.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.UI.Xaml.2.7_7.2208.15002.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.UI.Xaml.2.8_8.2310.30001.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.VCLibs.140.00.UWPDesktop_14.0.33519.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.VCLibs.140.00_14.0.33519.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.WindowsAppRuntime.1.3_3000.934.1904.0_x64__8wekyb3d8bbwe.Msix
+Microsoft.WindowsAppRuntime.1.4_4000.1136.2333.0_x64__8wekyb3d8bbwe.Msix
+Microsoft.DesktopAppInstaller_2023.1214.2246.0_neutral_~_8wekyb3d8bbwe.Msixbundle
+Microsoft.LanguageExperiencePackzh-CN_26058.1.1.0_neutral__8wekyb3d8bbwe.Appx
+Microsoft.ScreenSketch_2022.2401.32.0_neutral_~_8wekyb3d8bbwe.Msixbundle
+Microsoft.SecHealthUI_1000.26063.1.0_x64__8wekyb3d8bbwe.appx
+Microsoft.Services.Store.Engagement_10.0.23012.0_x64__8wekyb3d8bbwe.Appx
+Microsoft.WindowsCalculator_2021.2401.0.0_neutral_~_8wekyb3d8bbwe.Msixbundle
+Microsoft.WindowsNotepad_11.2401.25.0_neutral_~_8wekyb3d8bbwe.Msixbundle
+Microsoft.WindowsTerminal_3001.19.10302.0_neutral_~_8wekyb3d8bbwe.Msixbundle

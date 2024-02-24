@@ -19,7 +19,7 @@ Microsoft.HEVCVideoExtensions_2.1.452.0_neutral_~_8wekyb3d8bbwe.AppxBundle
 Microsoft.LanguageExperiencePackzh-CN_22621.41.188.0_neutral__8wekyb3d8bbwe.Appx
 Microsoft.MicrosoftStickyNotes_6.0.2.0_neutral_~_8wekyb3d8bbwe.Msixbundle
 Microsoft.MPEG2VideoExtension_1.0.61931.0_neutral_~_8wekyb3d8bbwe.AppxBundle
-Microsoft.OutlookForWindows_1.2024.207.0_x64__8wekyb3d8bbwe.Msix
+Microsoft.OutlookForWindows_1.2024.214.0_x64__8wekyb3d8bbwe.Msix
 Microsoft.Paint_11.2311.30.0_neutral_~_8wekyb3d8bbwe.Msixbundle
 Microsoft.RawImageExtension_2.3.171.0_neutral_~_8wekyb3d8bbwe.AppxBundle
 Microsoft.ScreenSketch_2022.2312.33.0_neutral_~_8wekyb3d8bbwe.Msixbundle
@@ -44,5 +44,5 @@ Microsoft.XboxGamingOverlay_7.124.2141.0_neutral_~_8wekyb3d8bbwe.AppxBundle
 Microsoft.XboxIdentityProvider_12.95.3001.0_neutral_~_8wekyb3d8bbwe.AppxBundle
 Microsoft.XboxSpeechToTextOverlay_1.21.13002.0_neutral_~_8wekyb3d8bbwe.Appxbundle
 Microsoft.ZuneMusic_11.2401.2.0_neutral_~_8wekyb3d8bbwe.Msixbundle
-MicrosoftCorporationII.QuickAssist_2023.1003.1629.0_neutral_~_8wekyb3d8bbwe.AppxBundle
-MicrosoftWindows.Client.WebExperience_424.1301.140.0_neutral_~_cw5n1h2txyewy.AppxBundle
+MicrosoftCorporationII.QuickAssist_2024.131.33.0_neutral_~_8wekyb3d8bbwe.AppxBundle
+MicrosoftWindows.Client.WebExperience_424.1301.170.0_neutral_~_cw5n1h2txyewy.AppxBundle
