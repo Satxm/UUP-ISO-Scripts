@@ -1977,7 +1977,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
-if %_build% geq 22000 offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
+if %_build% geq 22621 offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :SkipApps
 if %AddAppxs% equ 1 call :doappx
 :SkipApps
