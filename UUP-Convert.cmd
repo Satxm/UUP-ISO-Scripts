@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.2-100"
+@set "uivr=v24.2-101"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -1977,6 +1977,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
+if %_build% geq 22000 offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :SkipApps
 if %AddAppxs% equ 1 call :doappx
 :SkipApps
@@ -2053,16 +2054,18 @@ for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.MS.txt) do (
 )
 :donedel
 if not exist Apps\appxdel.!mountver!.txt goto :donereg
-if %_build% equ 22000 %_Nul3% offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" deletekey Microsoft.ZuneMusic_8wekyb3d8bbwe
+reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+if %_build% equ 22000 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
 if %_build% geq 22000 (
-    %_Nul3% offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore" createkey Deprovisioned
+    reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3%
     for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.txt) do (
-        %_Nul3% offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" createkey %%i
+        reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%i" /f %_Nul3%
     )
 )
-if exist "%_mount%\Program Files\WindowsApps\Microsoft.*" for /f "delims=" %%i in ('offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\AppModel\StubPreference" enumkeys') do (
-    %_Nul3% offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "Microsoft\Windows\CurrentVersion\AppModel\StubPreference" deletekey %%i
+if exist "%_mount%\Program Files\WindowsApps\Microsoft.*" for /f "tokens=8 delims=\" %%# in ('reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference"') do (
+    reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference\%%#" /f %_Nul3%
 )
+reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 :donereg
 if not exist Apps\appxadd.!mountver!.txt goto :doneadd
 echo.
