@@ -50,9 +50,9 @@ set "files=files.%random%.txt"
 set "Dir=Cabs.%random%"
 if not defined build goto :DOWNLOAD_CABS
 set "files=files.%build%.txt"
-if %build% gtr 19041 set "Dir=Win10.22H2"
-if %build% gtr 22621 set "Dir=Win11.23H2"
-if %build% gtr 26000 set "Dir=Win11.24H2"
+if %build% gtr 19041 set "Dir=Win10.19041"
+if %build% gtr 22621 set "Dir=Win11.22621"
+if %build% gtr 26000 set "Dir=Win11.26058"
 
 :DOWNLOAD_CABS
 echo.

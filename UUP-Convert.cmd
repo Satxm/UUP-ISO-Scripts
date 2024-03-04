@@ -69,7 +69,7 @@ if not defined _args goto :NoProgArgs
 if "%~1"=="" set "_args="&goto :NoProgArgs
 for %%# in (%*) do (
 if /i "%%~#"=="-elevated" (set _elev=1
-) else (set "_args=%_args% %%~#")
+) else if /i not "%%~#"=="%~1" (set "_args=%_args% %%~#")
 )
 
 :NoProgArgs
@@ -243,7 +243,7 @@ goto :eof
 
 :checkdone
 echo.
-if defined _args for %%# in (%*) do if exist "%%~#\*.esd" ( set "_DIR=%%~#"&echo %%~#&goto :checkesd)
+if defined _args for %%# in (%*) do if exist "%%~#\*.esd" (set "_DIR=%%~#"&echo %%~#&goto :checkesd)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _ndir+=1&set "_DIR=%%~#"&echo %%~#)
 if !_ndir! equ 1 if defined _DIR goto :checkesd
 
@@ -654,7 +654,7 @@ goto :BootDone
 type nul>temp\winre.txt
 type nul>temp\winpe.txt
 set "remove="
-for /f "tokens=3 delims=: " %%i in ('%Dism% /English /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Get-Packages ^| findstr /c:"Package Identity"') do echo %%i>>temp\winre.txt
+for /f "tokens=3 delims=: " %%i in ('%_Dism% /LogPath:"%_dLog%\DismBoot.log" /English /Image:"%_mount%" /Get-Packages ^| findstr /c:"Package Identity"') do echo %%i>>temp\winre.txt
 for /f "eol=W tokens=* delims=" %%# in (bin\winpe.txt) do for /f "tokens=* delims=" %%i in ('type temp\winre.txt ^| findstr /c:"%%#"') do echo %%i>>temp\winpe.txt
 for /f "tokens=* delims=" %%# in (bin\winpe.txt) do for /f "eol=M tokens=* delims=" %%i in ('type temp\winre.txt ^| findstr /c:"%%#"') do echo %%i>>temp\winpe.txt
 for /f "tokens=* delims=" %%i in (temp\winpe.txt) do set "remove=!remove! /PackageName:%%i"
@@ -2031,7 +2031,7 @@ goto :eof
 :addedge
 echo.
 echo 正在添加 Microsoft Edge……
-%_Dism% /LogPath:"%_dLog%\DismEdge.log" /Add-Edge /SupportPath:"!_DIR! /Image:"%_mount%"
+%_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
 

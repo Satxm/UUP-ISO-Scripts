@@ -69,7 +69,7 @@ if not defined _args goto :NoProgArgs
 if "%~1"=="" set "_args="&goto :NoProgArgs
 for %%# in (%*) do (
 if /i "%%~#"=="-elevated" (set _elev=1
-) else (set "_args=%_args% %%~#")
+) else if /i not "%%~#"=="%~1" (set "_args=%_args% %%~#")
 )
 
 :NoProgArgs
@@ -1916,7 +1916,7 @@ goto :eof
 :addedge
 echo.
 echo 正在添加 Microsoft Edge……
-%_Dism% /LogPath:"%_dLog%\DismEdge.log" /Add-Edge /SupportPath:"!_DIR! /Image:"%_mount%"
+%_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
 

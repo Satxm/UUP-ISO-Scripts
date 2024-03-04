@@ -52,8 +52,9 @@ set "files=files.%random%.txt"
 set "Dir=UUPs.%random%"
 if not defined build goto :DOWNLOAD_APPS
 set "files=files.%build%.txt"
-if defined server set "Dir=UUPs.%build%.Server"
+if defined server set "files=files.%build%.Server.txt"
 set "Dir=UUPs.%build%"
+if defined server set "Dir=UUPs.%build%.Server"
 set "SecHealthUI=Microsoft.SecHealthUI_1000."%build%".0_x64__8wekyb3d8bbwe.Appx"
 
 :DOWNLOAD_UUPS
@@ -68,6 +69,7 @@ if defined server "%aria2%" --no-conf --log-level=info --log="aria2_download.log
 if not exist %files% goto :DOWNLOAD_UUPS
 if exist %files% %psc% "(gc %files%) -creplace 'cabs_', '' | Out-File %files%"
 if exist %files% %psc% "(gc %files%) -creplace 'MetadataESD_', '' | Out-File %files% -Encoding ASCII"
+if exist %files% %psc% "(gc %files%) -creplace 'Wim_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '.ESD', '.esd' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
