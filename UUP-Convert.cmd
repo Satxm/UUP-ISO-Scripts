@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.2-101"
+@set "uivr=v24.3-101"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -780,7 +780,7 @@ echo %~1 | find /i "Windows11.0-KB" %_Nul1% && exit /b
 echo %~1 | find /i "SSU-" %_Nul1% && exit /b
 set cbsp=%~n1
 if exist "temp\%cbsp%.esd" exit /b
-echo %cbsp%.cab
+echo %cbsp%
 set /a _ref+=1
 set /a _rnd=%random%
 set _dst=%_drv%\_tmp%_ref%
@@ -1085,7 +1085,6 @@ if defined cab_%pkgn% goto :eof
 if exist "!dest!\" rmdir /s /q "!dest!\"
 mkdir "!dest!"
 set /a count+=1
-if %count% equ 1 echo.
 7z.exe e "!_DIR!\%package%" -o"!dest!" update.mum -aoa %_Nul3%
 if not exist "!dest!\update.mum" (
     expand.exe -f:*defender*.xml "!_DIR!\%package%" "!dest!" %_Nul3%
@@ -2076,7 +2075,7 @@ echo.
 for /f "eol=# tokens=* delims=" %%i in (Apps\appxadd.!mountver!.txt) do (
     set "license=/SkipLicense"
     for /f "delims=_" %%j in ("%%i") do if exist Apps\Licenses\%%j*.xml for /f "delims=" %%k in ('dir /a /b Apps\Licenses\%%j*.xml') do set "license=/LicensePath:"Apps\Licenses\%%k""
-    %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"Apps\Apps\%%i" !license! /Region=all | findstr /i /c:"successfully" %_Nul3% && echo %%i
+    %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"Apps\Apps\%%i" !license! /Region=all | findstr /i /c:"successfully" %_Nul3% && echo %%~ni
 )
 :doneadd
 goto :eof
