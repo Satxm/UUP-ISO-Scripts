@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.3-101"
+@set "uivr=v24.3-102"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -145,8 +145,8 @@ set "_EsuIdn=Microsoft-Client-Licensing-SupplementalServicing"
 set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
 set "_CedIdn=Microsoft-Windows-EdgeChromium"
 set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
+set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 set _MOifeo=0
-set _IFEO="HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 setlocal EnableDelayedExpansion
 
 if %_Debug% equ 0 (
@@ -1134,26 +1134,28 @@ if exist "!dest!\toc.xml" (
 )
 set _extsafe=0
 set "_type="
-if %_build% geq 17763 findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
+if not defined _type (
+    findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
+)
+if not defined _type if %_build% geq 17763 findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
     %_Nul3% findstr /i /m "Edition\"" "!dest!\update.mum"
     if errorlevel 1 (set "_type=[WinPE]"&set _extsafe=1&set uwinpe=1)
 )
-if not defined _type set _extsafe=1
-if %_extsafe% equ 1 (
-7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-sysreset_*.manifest -aoa %_Nul3%
-if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
+if not defined _type (
+    7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-sysreset_*.manifest -aoa %_Nul3%
+    if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
 )
-if %_extsafe% equ 1 if not defined _type (
-7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-winpe_tools_*.manifest -aoa %_Nul3%
-if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
+if not defined _type (
+    7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-winpe_tools_*.manifest -aoa %_Nul3%
+    if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
 )
-if %_extsafe% equ 1 if not defined _type (
-7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-winre-tools_*.manifest -aoa %_Nul3%
-if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
+if not defined _type (
+    7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-winre-tools_*.manifest -aoa %_Nul3%
+    if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
 )
-if %_extsafe% equ 1 if not defined _type (
-7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-i..dsetup-rejuvenation_*.manifest -aoa %_Nul3%
-if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
+if not defined _type (
+    7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-i..dsetup-rejuvenation_*.manifest -aoa %_Nul3%
+    if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
 )
 if not defined _type (
     findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && (set "_type=[累积更新]"&set uwinpe=1)
@@ -1235,10 +1237,20 @@ set msuwim=0
 expand.exe -d -f:*Windows*.psf "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% || (
 wimlib-imagex.exe dir "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set msuwim=1) || (goto :eof)
 )
+mkdir "!_cabdir!\lcu" %_Nul3%
+if %msuwim% equ 1 (
+wimlib-imagex.exe extract "!_UUP!\%package%" 1 *.AggregatedMetadata*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
+for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Null%)
+)
+if exist "!_cabdir!\lcu\HotpatchCompDB*.cab" (
+if %count% equ 0 echo.
+echo 不支持的更新：%package% [HotPatchUpdate]
+rmdir /s /q "!_cabdir!\lcu\" %_Nul3%
+goto :eof
+)
 set /a count+=1
 if %count% equ 1 echo.
 echo [%count%/%_cab%] %package% [组合累积更新]
-mkdir "!_cabdir!\lcu" %_Nul3%
 if %msuwim% equ 0 (
 expand.exe -f:*Windows*.cab "!_DIR!\%package%" "!_cabdir!\lcu" %_Nul3%
 expand.exe -f:SSU-*%arch%*.cab "!_DIR!\%package%" "!_cabdir!\lcu" %_Nul3%
@@ -1641,6 +1653,10 @@ if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
 )
+if exist "!dest!\update.mum" findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
+)
 if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
     if not exist "!mumtarget!\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
@@ -2028,6 +2044,7 @@ goto :eof
 goto :eof
 
 :addedge
+if exist "%_mount%\Program Files (x86)\Microsoft\Edge" goto :eof
 echo.
 echo 正在添加 Microsoft Edge……
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
@@ -2188,36 +2205,33 @@ goto :eof
 if %winbuild% lss 9200 exit /b
 if %_MOifeo% neq 0 exit /b
 set _MOifeo=1
-reg.exe query %_IFEO% /v MitigationOptions %_Nul3%
-if %errorlevel% neq 0 (
-%_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d 0x220000
-exit /b
+(
+    echo Windows Registry Editor Version 5.00
+    echo.
+    echo [%_IFEO%]
+    echo "MitigationOptions"=hex^(b^):00,00,22,00,00,00,00,00
+)>temp\DismAdd.reg
+reg.exe query "%_IFEO%" /v MitigationOptions %_Nul3%
+if %errorlevel% equ 0 (
+    reg.exe export "%_IFEO%" temp\DismOrg.reg %_Nul3%
 )
-for /f "skip=2 tokens=2*" %%a in ('reg.exe query %_IFEO% /v MitigationOptions') do (
-    if /i "%%a"=="REG_QWORD" (
-        %_Nul1% reg.exe add %_IFEO% /f /v MitigationUUP /t REG_QWORD /d %%b
-    ) else (
-        %_Nul1% reg.exe add %_IFEO% /f /v MitigationUUP /t REG_BINARY /d %%b
-    )
-)
-%_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d 0x220000
+reg.exe import temp\DismAdd.reg %_Nul3%
 exit /b
 
 :DismHostOFF
 if %winbuild% lss 9200 exit /b
-reg.exe query %_IFEO% /v MitigationUUP %_Nul3%
-if %errorlevel% neq 0 (
-%_Nul3% reg.exe delete %_IFEO% /f
-exit /b
+if %_MOifeo% equ 0 exit /b
+(
+    echo Windows Registry Editor Version 5.00
+    echo.
+    echo [-%_IFEO%]
+)>temp\DismRem.reg
+if exist "temp\DismOrg.reg" (
+    reg.exe import temp\DismOrg.reg %_Nul3%
+) else (
+    reg.exe import temp\DismRem.reg %_Nul3%
 )
-for /f "skip=2 tokens=2*" %%a in ('reg.exe query %_IFEO% /v MitigationUUP') do (
-    if /i "%%a"=="REG_QWORD" (
-        %_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_QWORD /d %%b
-    ) else (
-        %_Nul1% reg.exe add %_IFEO% /f /v MitigationOptions /t REG_BINARY /d %%b
-    )
-)
-%_Nul3% reg.exe delete %_IFEO% /f /v MitigationUUP
+del /f /q temp\Dism*.reg %_Nul3%
 exit /b
 
 :E_NotFind
