@@ -305,24 +305,27 @@ if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 set LCUWinRE=1
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
-if %AddUpdates% equ 1 call :DismHostON
-if %AddAppxs% equ 1 call :DismHostON
+
+if %AddUpdates% equ 1 set _dismhost=1
+if %AddAppxs% equ 1 set _dismhost=1
+if defined _dismhost call :DismHostON
 
 echo.
 echo %line%
 echo 正在列出已配置选项……
 echo %line%
 echo.
-if %_updexist% neq 0 echo Updates Exist
-if %_appexist% neq 0 echo Appxs Exist
-if %AddUpdates% neq 0 echo AddUpdates
-if %Cleanup% neq 0 echo Cleanup
-if %ResetBase% neq 0 echo ResetBase
-if %SkipWinRE% neq 0 echo SkipWinRE
-if %LCUWinRE% neq 0 echo LCUWinRE
-if %UpdtOneDrive% neq 0  echo UpdtOneDrive
-if %AddEdition% neq 0 echo AddEdition
-if %AddAppxs% neq 0 echo AddAppxs
+if %_updexist% neq 0 echo 存在更新文件
+if %_appexist% neq 0 echo 存在 Appxs
+if %_wimEdge% equ 1 echo 存在 Edge.wim
+if %AddUpdates% neq 0 echo 添加更新
+if %Cleanup% neq 0 echo 清理更新文件
+if %ResetBase% neq 0 echo 清理旧更新文件
+if %SkipWinRE% neq 0 echo 跳过 WinRE.wim
+if %LCUWinRE% neq 0 echo 使用 累积更新 更新 WinRE.wim
+if %UpdtOneDrive% neq 0  echo 更新 OneDrive
+if %AddAppxs% neq 0 echo 添加 Appxs
+if %AddEdition% neq 0 echo 转换 Windows 版本
 
 call :uup_ref
 echo.
