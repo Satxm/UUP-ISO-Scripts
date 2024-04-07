@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.3-102"
+@set "uivr=v24.4-102"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -130,7 +130,7 @@ if %_cwmi% equ 1 for /f "tokens=2 delims==:" %%# in ('"wmic path Win32_Volume wh
 if %_cwmi% equ 1 for /f "tokens=2 delims==:" %%# in ('"wmic path Win32_LogicalDisk where (DeviceID is not NULL) get DeviceID /value" ^| findstr ^=') do (
     if defined _adr%%# set "_adr%%#="
 )
-if %_cwmi% equ 0 for /f "tokens=1 delims=:" %%# in ('powershell -nop -c "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter is not NULL').Get()).DriveLetter; (([WMISEARCHER]'Select * from Win32_LogicalDisk where DeviceID is not NULL').Get()).DeviceID"') do (
+if %_cwmi% equ 0 for /f "tokens=1 delims=:" %%# in ('%_psc% "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter is not NULL').Get()).DriveLetter; (([WMISEARCHER]'Select * from Win32_LogicalDisk where DeviceID is not NULL').Get()).DeviceID"') do (
     if defined _adr%%# set "_adr%%#="
 )
 for %%# in (E F G H I J K L M N O P Q R S T U V W X Y Z) do (
@@ -200,7 +200,7 @@ set _appexist=0
 set "_mount=%_drv%\Mount"
 set "_ntf=NTFS"
 if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
-if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 0 for /f %%# in ('powershell -nop -c "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter=\"%_drv%\"').Get()).FileSystem"') do set "_ntf=%%#"
+if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 0 for /f %%# in ('%_psc% "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter=\"%_drv%\"').Get()).FileSystem"') do set "_ntf=%%#"
 if /i not "%_ntf%"=="NTFS" (
     set "_mount=%SystemDrive%\Mount"
 )
@@ -497,7 +497,7 @@ echo %line%
 echo 正在创建 ISO ……
 echo %line%
 for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.*"') do set wimfile=%%~fi
-for /f %%a in ('powershell -nop -c "(dir %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
+for /f %%a in ('%_psc% "(dir %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
 if /i not %arch%==arm64 (
     oscdimg.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -m -u2 -udfver102 -t%isotime% -l%DVDLABEL% ISOFOLDER %DVDISO%.iso
 ) else (
@@ -539,23 +539,7 @@ for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
     wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-if %AddEdition% neq 1 goto :SkipExport
-for /l %%# in (1,1,%imgs%) do (
-    imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
-    findstr /i "<EDITIONID>Core</EDITIONID>" temp\newinfo.txt %_Nul3% && set i1=%%#
-    findstr /i "<EDITIONID>CoreSingleLanguage</EDITIONID>" temp\newinfo.txt %_Nul3% && set i2=%%#
-    findstr /i "<EDITIONID>Education</EDITIONID>" temp\newinfo.txt %_Nul3% && set i3=%%#
-    findstr /i "<EDITIONID>Professional</EDITIONID>" temp\newinfo.txt %_Nul3% && set i4=%%#
-    findstr /i "<EDITIONID>ProfessionalEducation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i5=%%#
-    findstr /i "<EDITIONID>ProfessionalWorkstation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i6=%%#
-)
-for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
-    wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
-    set ERRORTEMP=%ERRORLEVEL%
-    if %ERRORTEMP% neq 0 goto :E_Export
-)
-if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
-:SkipExport
+if %AddEdition% equ 1 call :ExportWim
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
@@ -574,12 +558,31 @@ if exist "Apps\OneDrive.ico" >>temp\OneDrive.txt echo add 'Apps\OneDrive.ico' '^
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\install.wim %%# < temp\OneDrive.txt %_Nul3%
 goto :eof
 
+:ExportWim
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
+for /l %%# in (1,1,%imgs%) do (
+    imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
+    findstr /i "<EDITIONID>Core</EDITIONID>" temp\newinfo.txt %_Nul3% && set i1=%%#
+    findstr /i "<EDITIONID>CoreSingleLanguage</EDITIONID>" temp\newinfo.txt %_Nul3% && set i2=%%#
+    findstr /i "<EDITIONID>Education</EDITIONID>" temp\newinfo.txt %_Nul3% && set i3=%%#
+    findstr /i "<EDITIONID>Professional</EDITIONID>" temp\newinfo.txt %_Nul3% && set i4=%%#
+    findstr /i "<EDITIONID>ProfessionalEducation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i5=%%#
+    findstr /i "<EDITIONID>ProfessionalWorkstation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i6=%%#
+)
+for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
+    wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
+    set ERRORTEMP=%ERRORLEVEL%
+    if %ERRORTEMP% neq 0 goto :E_Export
+)
+if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
+goto :eof
+
 :WinreWim
 if %uwinpe% equ 0 goto :%_rtrn%
 if %SkipWinRE% equ 1 goto :%_rtrn%
 echo.
 echo %line%
-echo 正在提取 Winre.wim 文件……
+echo 正在导出 Winre.wim 文件……
 echo %line%
 echo.
 wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
@@ -1129,7 +1132,7 @@ wimlib-imagex.exe dir "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3
 )
 mkdir "!_cabdir!\lcu" %_Nul3%
 if %msuwim% equ 1 (
-wimlib-imagex.exe extract "!_UUP!\%package%" 1 *.AggregatedMetadata*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
+wimlib-imagex.exe extract "!_DIR!\%package%" 1 *.AggregatedMetadata*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
 for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Null%)
 )
 if exist "!_cabdir!\lcu\HotpatchCompDB*.cab" (
@@ -1538,17 +1541,17 @@ if exist "!dest!\*_%_EdgCmp%_*.manifest" findstr /i /m "Package_for_RollupFix" "
     if not exist "!dest!\*enablement-package*.mum" set "edge=!edge! /PackagePath:!dest!\update.mum"
     goto :eof
 )
+if exist "!dest!\update.mum" findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
+)
 if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
     if not exist "%_mount%\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
 )
-if exist "!dest!\update.mum" findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (
-set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-goto :eof
-)
 if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-    if not exist "!mumtarget!\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
+    if not exist "%_mount%\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
 )
@@ -1634,12 +1637,12 @@ set "cfil1=!_fil1:\=\\!"
 set "cfil2=!_fil2:\=\\!"
 if %_skpd% equ 0 if exist "!_fil1!" (
     if %_cwmi% equ 1 for /f "tokens=3,4 delims==." %%a in ('wmic datafile where "name='!cfil1!'" get Version /value ^| find "="') do set "_ver1j=%%a"&set "_ver1n=%%b"
-    if %_cwmi% equ 0 for /f "tokens=2,3 delims=." %%a in ('powershell -nop -c "([WMI]'CIM_DataFile.Name=''!cfil1!\''').Version"') do set "_ver1j=%%a"&set "_ver1n=%%b"
+    if %_cwmi% equ 0 for /f "tokens=2,3 delims=." %%a in ('%_psc% "([WMI]'CIM_DataFile.Name=''!cfil1!\''').Version"') do set "_ver1j=%%a"&set "_ver1n=%%b"
     expand.exe -i -f:mpavdlta.vdm "!_DIR!\%package%" "!_cabdir!" %_Nul3%
 )
 if exist "!_fil2!" (
     if %_cwmi% equ 1 for /f "tokens=3,4 delims==." %%a in ('wmic datafile where "name='!cfil2!'" get Version /value ^| find "="') do set "_ver2j=%%a"&set "_ver2n=%%b"
-    if %_cwmi% equ 0 for /f "tokens=2,3 delims=." %%a in ('powershell -nop -c "([WMI]'CIM_DataFile.Name=''!cfil2!''').Version"') do set "_ver2j=%%a"&set "_ver2n=%%b"
+    if %_cwmi% equ 0 for /f "tokens=2,3 delims=." %%a in ('%_psc% "([WMI]'CIM_DataFile.Name=''!cfil2!''').Version"') do set "_ver2j=%%a"&set "_ver2n=%%b"
 )
 if %_ver1j% gtr %_ver2j% set _skpd=1
 if %_ver1j% equ %_ver2j% if %_ver1n% geq %_ver2n% set _skpd=1
@@ -1676,7 +1679,7 @@ if %_build% neq 18362 (
     call :cXML stage
     echo.
     echo 正在处理 [1/1] - 正在暂存 %cbsn%
-    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Apply-Unattend:"!_cabdir!\stage.xml /Image:"%_mount%"
+    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Apply-Unattend:"!_cabdir!\stage.xml
     if !errorlevel! neq 0 if !errorlevel! neq 3010 (
         echo 暂存 %cbsn% 失败
         goto :eof
@@ -1690,7 +1693,7 @@ if defined _dualSxS (
     set "_SxsCF=256"
     if %_build% neq 18362 (call :Winner) else (call :Suppress)
 )
-%_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Add-Package /PackagePath:"!dest!\update.mum /Image:"%_mount%"
+%_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:"!dest!\update.mum
 if !errorlevel! neq 0 echo 安装 %cbsn% 失败
 if %_build% neq 18362 (del /f /q "!_cabdir!\stage.xml" %_Nul3%)
 goto :eof
@@ -1733,7 +1736,7 @@ reg.exe query "%_Cmp%\%_SxsCom%" %_Nul3% && goto :Winner
 for /f "skip=1 tokens=* delims=" %%# in ('certutil -hashfile "!dest!\%_SxsCom%.manifest" SHA256^|findstr /i /v CertUtil') do set "_SxsSha=%%#"
 set "_SxsSha=%_SxsSha: =%"
 set "_psin=%_SxsIdn%, Culture=neutral, Version=%_SxsVer%, PublicKeyToken=%_Pkt%, ProcessorArchitecture=%xBT%, versionScope=NonSxS"
-for /f "tokens=* delims=" %%# in ('powershell -nop -c "$str = '%_psin%'; [BitConverter]::ToString([Text.Encoding]::ASCII.GetBytes($str))-replace'-'" %_Nul6%') do set "_SxsHsh=%%#"
+for /f "tokens=* delims=" %%# in ('%_psc% "$str = '%_psin%'; [BitConverter]::ToString([Text.Encoding]::ASCII.GetBytes($str)) -replace '-'" %_Nul6%') do set "_SxsHsh=%%#"
 %_Nul3% reg.exe add "%_Cmp%\%_SxsCom%" /f /v "c^!%_Fnd%" /t REG_BINARY /d ""
 %_Nul3% reg.exe add "%_Cmp%\%_SxsCom%" /f /v identity /t REG_BINARY /d "%_SxsHsh%"
 %_Nul3% reg.exe add "%_Cmp%\%_SxsCom%" /f /v S256H /t REG_BINARY /d "%_SxsSha%"
