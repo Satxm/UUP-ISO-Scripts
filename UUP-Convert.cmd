@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.4-102"
+@set "uivr=v24.4-103"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -138,12 +138,15 @@ for %%# in (E F G H I J K L M N O P Q R S T U V W X Y Z) do (
 )
 if not defined _sdr set psfnet=0
 set "_Pkt=31bf3856ad364e35"
-set "_EsuCmp=microsoft-client-li..pplementalservicing"
+set "_OurVer=25.10.0.0"
+set "_SupCmp=microsoft-client-li..pplementalservicing"
 set "_EdgCmp=microsoft-windows-e..-firsttimeinstaller"
 set "_CedCmp=microsoft-windows-edgechromium"
-set "_EsuIdn=Microsoft-Client-Licensing-SupplementalServicing"
+set "_EsuCmp=microsoft-windows-s..edsecurityupdatesai"
+set "_SupIdn=Microsoft-Client-Licensing-SupplementalServicing"
 set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
 set "_CedIdn=Microsoft-Windows-EdgeChromium"
+set "_EsuIdn=Microsoft-Windows-SLC-Component-ExtendedSecurityUpdatesAI"
 set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
 set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 set _MOifeo=0
@@ -765,14 +768,10 @@ if exist "!_DIR!\Metadata\*.xml.cab" copy /y "!_DIR!\Metadata\*.xml.cab" "!_DIR!
 exit /b
 
 :uup_dir
-if /i "%~1"=="Metadata" exit /b
-echo %~1 | find /i "RetailDemo" %_Nul1% && exit /b
-echo %~1 | find /i "Holographic-Desktop-FOD" %_Nul1% && exit /b
-echo %~1 | find /i "Windows10.0-KB" %_Nul1% && exit /b
-echo %~1 | find /i "Windows11.0-KB" %_Nul1% && exit /b
-echo %~1 | find /i "SSU-" %_Nul1% && exit /b
 set cbsp=%~1
 if exist "temp\%cbsp%.esd" exit /b
+echo %cbsp% | findstr /i /r "Windows.*-KB SSU-.* RetailDemo Holographic-Desktop-FOD" %_Nul1% && exit /b
+if /i "%cbsp%"=="Metadata" exit /b
 echo 转换为 ESD 文件：%cbsp%.cab
 rmdir /s /q "!_DIR!\%~1\$dpx$.tmp\" %_Nul3%
 wimlib-imagex.exe capture "!_DIR!\%~1" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
@@ -1351,21 +1350,35 @@ set COMPONENTS=uiCOMPONENTS
 set "_Wnn=HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide\Winners"
 set "_Cmp=HKLM\%COMPONENTS%\DerivedData\Components"
 if exist "%_mount%\Windows\Servicing\Packages\*~arm64~~*.mum" (
-set "xBT=arm64"
-set "_EsuKey=%_Wnn%\arm64_%_EsuCmp%_%_Pkt%_none_0a035f900ca87ee9"
-set "_EdgKey=%_Wnn%\arm64_%_EdgCmp%_%_Pkt%_none_1e5e2b2c8adcf701"
-set "_CedKey=%_Wnn%\arm64_%_CedCmp%_%_Pkt%_none_df3eefecc502346d"
+    set "xBT=arm64"
+    set "_EsuCom=arm64_%_EsuCmp%_%_Pkt%_%_OurVer%_none_e55ca6c027a999a2"
+    set "_SupCom=arm64_%_SupCmp%_%_Pkt%_%_OurVer%_none_8b15303df56a09af"
+    set "_CedCom=arm64_%_CedCmp%_%_Pkt%_%_OurVer%_none_7cb088037a42a80b"
+    set "_EsuKey=%_Wnn%\arm64_%_EsuCmp%_%_Pkt%_none_0e8b3f09ce2fa7ce"
+    set "_SupKey=%_Wnn%\arm64_%_SupCmp%_%_Pkt%_none_0a035f900ca87ee9"
+    set "_EdgKey=%_Wnn%\arm64_%_EdgCmp%_%_Pkt%_none_1e5e2b2c8adcf701"
+    set "_CedKey=%_Wnn%\arm64_%_CedCmp%_%_Pkt%_none_df3eefecc502346d"
 ) else if exist "%_mount%\Windows\Servicing\Packages\*~amd64~~*.mum" (
-set "xBT=amd64"
-set "_EsuKey=%_Wnn%\amd64_%_EsuCmp%_%_Pkt%_none_0a0357560ca88a4d"
-set "_EdgKey=%_Wnn%\amd64_%_EdgCmp%_%_Pkt%_none_1e5e22f28add0265"
-set "_CedKey=%_Wnn%\amd64_%_CedCmp%_%_Pkt%_none_df3ee7b2c5023fd1"
+    set "xBT=amd64"
+    set "_EsuCom=amd64_%_EsuCmp%_%_Pkt%_%_OurVer%_none_e55c9e8627a9a506"
+    set "_SupCom=amd64_%_SupCmp%_%_Pkt%_%_OurVer%_none_8b152803f56a1513"
+    set "_CedCom=amd64_%_CedCmp%_%_Pkt%_%_OurVer%_none_7cb07fc97a42b36f"
+    set "_EsuKey=%_Wnn%\amd64_%_EsuCmp%_%_Pkt%_none_0e8b36cfce2fb332"
+    set "_SupKey=%_Wnn%\amd64_%_SupCmp%_%_Pkt%_none_0a0357560ca88a4d"
+    set "_EdgKey=%_Wnn%\amd64_%_EdgCmp%_%_Pkt%_none_1e5e22f28add0265"
+    set "_CedKey=%_Wnn%\amd64_%_CedCmp%_%_Pkt%_none_df3ee7b2c5023fd1"
 ) else (
-set "xBT=x86"
-set "_EsuKey=%_Wnn%\x86_%_EsuCmp%_%_Pkt%_none_ade4bbd2544b1917"
-set "_EdgKey=%_Wnn%\x86_%_EdgCmp%_%_Pkt%_none_c23f876ed27f912f"
-set "_CedKey=%_Wnn%\x86_%_CedCmp%_%_Pkt%_none_83204c2f0ca4ce9b"
+    set "xBT=x86"
+    set "_EsuCom=x86_%_EsuCmp%_%_Pkt%_%_OurVer%_none_893e03026f4c33d0"
+    set "_SupCom=x86_%_SupCmp%_%_Pkt%_%_OurVer%_none_2ef68c803d0ca3dd"
+    set "_CedCom=x86_%_CedCmp%_%_Pkt%_%_OurVer%_none_2091e445c1e54239"
+    set "_EsuKey=%_Wnn%\x86_%_EsuCmp%_%_Pkt%_none_b26c9b4c15d241fc"
+    set "_SupKey=%_Wnn%\x86_%_SupCmp%_%_Pkt%_none_ade4bbd2544b1917"
+    set "_EdgKey=%_Wnn%\x86_%_EdgCmp%_%_Pkt%_none_c23f876ed27f912f"
+    set "_CedKey=%_Wnn%\x86_%_CedCmp%_%_Pkt%_none_83204c2f0ca4ce9b"
 )
+if %_build% geq 14393 if %_build% lss 19041 if not exist "%_mount%\Windows\WinSxS\Manifests\%_SupCom%.manifest" call :Latent _Sup %_Nul3%
+if %_build% geq 17763 if %_build% lss 20348 if not exist "%_mount%\Windows\WinSxS\Manifests\%_EsuCom%.manifest" call :Latent _Esu %_Nul3%
 for /f "tokens=4,5,6 delims=_" %%H in ('dir /b "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-foundation_*.manifest"') do set "_Fnd=microsoft-w..-foundation_%_Pkt%_%%H_%%~nJ"
 set lcumsu=
 set mpamfe=
@@ -1469,11 +1482,11 @@ if defined fupdt (
     for %%# in (%fupdt%) do (set "cbsn=%%~n#"&set "dest=!_cabdir!\%%~n#"&call :pXML)
 )
 if defined supdt (
-    set "_SxsKey=%_EsuKey%"
-    set "_SxsCmp=%_EsuCmp%"
-    set "_SxsIdn=%_EsuIdn%"
+    set "_SxsKey=%_SupKey%"
+    set "_SxsCmp=%_SupCmp%"
+    set "_SxsIdn=%_SupIdn%"
     set "_SxsCF=64"
-    set "_DsmLog=DismLCUs.log"
+    set "_DsmLog=DismSupSvc.log"
     for %%# in (%supdt%) do (set "cbsn=%%~n#"&set "dest=!_cabdir!\%%~n#"&call :pXML)
 )
 if defined cupdt (
@@ -1487,9 +1500,9 @@ if defined cupdt (
 set _dualSxS=
 if defined dupdt (
     set _dualSxS=1
-    set "_SxsKey=%_EsuKey%"
-    set "_SxsCmp=%_EsuCmp%"
-    set "_SxsIdn=%_EsuIdn%"
+    set "_SxsKey=%_SupKey%"
+    set "_SxsCmp=%_SupCmp%"
+    set "_SxsIdn=%_SupIdn%"
     set "_SxsCF=64"
     set "_DsmLog=DismLCUs.log"
     for %%# in (%dupdt%) do (set "cbsn=%%~n#"&set "dest=!_cabdir!\%%~n#"&call :pXML)
@@ -1651,6 +1664,7 @@ if exist "!dest!\*_%_EdgCmp%_*.manifest" findstr /i /m "Package_for_RollupFix" "
         for /f %%# in ('dir /b /a:-d "!dest!\*enablement-package~*.mum"') do set "ldr=!ldr! /PackagePath:!dest!\%%#"
         set "edge=!edge! /PackagePath:!dest!\update.mum"
     )
+    if exist "!dest!\*enablement-package*.mum" (set "fupdt=!fupdt! %package%")
     if not exist "!dest!\*enablement-package*.mum" set "edge=!edge! /PackagePath:!dest!\update.mum"
     goto :eof
 )
@@ -1663,12 +1677,16 @@ if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
 )
-if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
+if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
+    set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+    goto :eof
+)
+if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" if not exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
     if not exist "%_mount%\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
 )
-if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" if not exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
+if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" if not exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" if not exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
     if not exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" goto :eof
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
@@ -1714,13 +1732,11 @@ if exist "!dest!\update.mum" findstr /i /m "Package_for_RollupFix" "!dest!\updat
     )
     if %xmsu% equ 1 (
         set "lcumsu=!lcumsu! %package%"
-        set "netmsu=!netmsu! %package%"
+        set "netmsu=%package%"
         goto :eof
     ) else (
         set "netlcu=!netlcu! /PackagePath:!dest!\update.mum"
     )
-    if exist "!dest!\*_%_EsuCmp%_*.manifest" if not exist "!dest!\*_%_CedCmp%_*.manifest" set "supdt=!supdt! %package%"&goto :eof
-    if exist "!dest!\*_%_EsuCmp%_*.manifest" if exist "!dest!\*_%_CedCmp%_*.manifest" set "supdt=!supdt! %package%"&goto :eof
     set "cumulative=!cumulative! /PackagePath:!dest!\update.mum"
     goto :eof
 )
@@ -1728,7 +1744,6 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
     set "ldr=!ldr! /PackagePath:!dest!\update.mum"
     goto :eof
 )
-if exist "!dest!\*_%_EsuCmp%_*.manifest" set "supdt=!supdt! %package%"&goto :eof
 set "ldr=!ldr! /PackagePath:!dest!\update.mum"
 goto :eof
 
@@ -1831,6 +1846,44 @@ findstr /i Package_for_RollupFix "!dest!\update.mum" %_Nul3% || (
     echo.^</unattend^>
 )>>"!_cabdir!\%1.xml"
 goto :eof
+
+:Latent
+set "_InCom=!%1Com!"
+set "_InKey=!%1Key!"
+set "_InIdn=!%1Idn!"
+if not exist "!_CabDir!\" mkdir "!_CabDir!"
+if not exist "!_CabDir!\%_InCom%.manifest" (
+(echo ^<?xml version="1.0" encoding="UTF-8" standalone="yes"?^>
+echo ^<assembly xmlns="urn:schemas-microsoft-com:asm.v3" manifestVersion="1.0" copyright="Copyright (c) Microsoft Corporation. All Rights Reserved."^>
+echo   ^<assemblyIdentity name="%_InIdn%" version="%_OurVer%" processorArchitecture="%xBT%" language="neutral" buildType="release" publicKeyToken="%_Pkt%" versionScope="nonSxS" /^>
+echo ^</assembly^>)>"!_CabDir!\%_InCom%.manifest"
+)
+set "_InIdt="
+set "_psin=%_InIdn%, Culture=neutral, Version=%_OurVer%, PublicKeyToken=%_Pkt%, ProcessorArchitecture=%xBT%, versionScope=NonSxS"
+for /f "tokens=* delims=" %%# in ('%_psc% "[BitConverter]::ToString([Text.Encoding]::ASCII.GetBytes($env:_psin)) -replace '-'"') do set "_InIdt=%%#"
+if not defined _InIdt exit /b
+set "_InHsh="
+for /f "tokens=* delims=" %%# in ('%_psc% "[BitConverter]::ToString([Security.Cryptography.SHA256]::Create().ComputeHash(([IO.StreamReader]'!_CabDir!\%_InCom%.manifest').BaseStream)) -replace '-'"') do set "_InHsh=%%#"
+if not defined _InHsh exit /b
+icacls "%_mount%\Windows\WinSxS\Manifests" /save "!_CabDir!\acl.txt"
+takeown /f "%_mount%\Windows\WinSxS\Manifests" /A
+icacls "%_mount%\Windows\WinSxS\Manifests" /grant:r "*S-1-5-32-544:(OI)(CI)(F)"
+copy /y "!_CabDir!\%_InCom%.manifest" "%_mount%\Windows\WinSxS\Manifests\"
+icacls "%_mount%\Windows\WinSxS\Manifests" /setowner *S-1-5-80-956008885-3418522649-1831038044-1853292631-2271478464
+icacls "%_mount%\Windows\WinSxS" /restore "!_CabDir!\acl.txt"
+del /f /q "!_CabDir!\acl.txt"
+reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE"
+reg.exe query HKLM\%COMPONENTS% %_Null% || reg.exe load HKLM\%COMPONENTS% "%_mount%\Windows\System32\Config\COMPONENTS"
+reg.exe delete "%_Cmp%\%_InCom%" /f %_Null%
+reg.exe add "%_Cmp%\%_InCom%" /f /v "c^!%_Fnd%" /t REG_BINARY /d ""
+reg.exe add "%_Cmp%\%_InCom%" /f /v identity /t REG_BINARY /d "%_InIdt%"
+reg.exe add "%_Cmp%\%_InCom%" /f /v S256H /t REG_BINARY /d "%_InHsh%"
+reg.exe add "%_Cmp%\%_InCom%" /f /v CF /t REG_DWORD /d "64"
+reg.exe add "%_InKey%" /f /ve /d %_OurVer:~0,5%
+reg.exe add "%_InKey%\%_OurVer:~0,5%" /f /ve /d %_OurVer%
+reg.exe add "%_InKey%\%_OurVer:~0,5%" /f /v %_OurVer% /t REG_BINARY /d 01
+for /f "tokens=* delims=" %%# in ('reg.exe query HKLM\%COMPONENTS%\DerivedData\VersionedIndex %_Nul6% ^| findstr /i VersionedIndex') do reg.exe delete "%%#" /f
+goto :EndChk
 
 :Suppress
 for /f %%# in ('dir /b /a:-d "!dest!\%xBT%_%_SxsCmp%_*.manifest"') do set "_SxsCom=%%~n#"
