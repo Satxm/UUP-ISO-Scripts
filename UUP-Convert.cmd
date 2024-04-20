@@ -283,7 +283,7 @@ echo %line%
 echo.
 dir /b /ad "!_DIR!\*Package*" %_Nul3% && set EXPRESS=1
 for %%# in (
-    Core,CoreSingleLanguage,CoreCountrySpecific,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
+    Core,CoreSingleLanguage,CoreCountrySpecific,Professional,ProfessionalSingleLanguage,ProfessionalCountrySpecific,Education,ProfessionalEducation,ProfessionalWorkstation
     ServerStandardCore,ServerStandard,ServerDatacenterCore,ServerDatacenter,ServerTurbineCore,ServerTurbine,ServerAzureStackHCICor
 ) do (
     if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%
@@ -2114,8 +2114,8 @@ goto :eof
 if %_build% geq 19041 set "mountver=19041"
 if %_build% geq 22000 set "mountver=22000"
 if %_build% geq 22621 set "mountver=22621"
-if %_build% gtr 23403 set "mountver=Dev"
-if %_build% geq 26063 set "mountver=Can"
+if %_build% geq 26100 set "mountver=Dev"
+if %_build% geq 26200 set "mountver=Can"
 if %_SrvESD% equ 1 set "mountver=!mountver!.Server"
 if not exist "%_mount%\Program Files\WindowsApps\Microsoft.*" goto :donedel
 if not exist Apps\appxdel.!mountver!.MS.txt goto :donedel
@@ -2162,8 +2162,11 @@ echo.
 echo 正在处理 !_nameb!
 if exist "%_mount%\Windows\Core.xml" del /f /q "%_mount%\Windows\Core.xml" %_Nul3%
 if exist "%_mount%\Windows\CoreSingleLanguage.xml" del /f /q "%_mount%\Windows\CoreSingleLanguage.xml" %_Nul3%
+if exist "%_mount%\Windows\CoreCountrySpecific.xml" del /f /q "%_mount%\Windows\CoreCountrySpecific.xml" %_Nul3%
 if exist "%_mount%\Windows\Education.xml" del /f /q "%_mount%\Windows\Education.xml" %_Nul3%
 if exist "%_mount%\Windows\Professional.xml" del /f /q "%_mount%\Windows\Professional.xml" %_Nul3%
+if exist "%_mount%\Windows\ProfessionalSingleLanguage.xml" del /f /q "%_mount%\Windows\ProfessionalSingleLanguage.xml" %_Nul3%
+if exist "%_mount%\Windows\ProfessionalCountrySpecific.xml" del /f /q "%_mount%\Windows\ProfessionalCountrySpecific.xml" %_Nul3%
 if exist "%_mount%\Windows\ProfessionalEducation.xml" del /f /q "%_mount%\Windows\ProfessionalEducation.xml" %_Nul3%
 if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Windows\ProfessionalWorkstation.xml" %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismEdition.log" /Image:"%_mount%" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
@@ -2184,8 +2187,11 @@ goto :eof
 for %%# in (
     "Core:%_wtx% Home:%_wtx% 家庭版"
     "CoreSingleLanguage:%_wtx% Home Single Language:%_wtx% 家庭单语言版"
+    "CoreCountrySpecific:%_wtx% Home China:%_wtx% 家庭中文版"
     "Education:%_wtx% Education:%_wtx% 教育版"
     "Professional:%_wtx% Pro:%_wtx% 专业版"
+    "ProfessionalSingleLanguage:%_wtx% Pro Single Language:%_wtx% 专业单语言版"
+    "ProfessionalCountrySpecific:%_wtx% Pro China:%_wtx% 专业中文版"
     "ProfessionalEducation:%_wtx% Pro Education:%_wtx% 专业教育版"
     "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% 专业工作站版"
     "ServerStandardCore:%_wsr% SERVERSTANDARDCORE:%_wsr% Standard:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
