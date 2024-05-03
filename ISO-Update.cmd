@@ -211,7 +211,7 @@ set "line============================================================="
 
 :check
 pushd "!_work!"
-set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg*.dll,wimlib-imagex.exe,PSFExtractor.exe)
+set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg64.dll,wimlib-imagex.exe,PSFExtractor.exe)
 for %%# in %_fils% do (
     if not exist "bin\%%#" (set _bin=%%#&goto :E_BinMiss)
 )
@@ -264,7 +264,7 @@ if not defined _DIR (
     echo %_err%
     echo 未指定文件夹
     echo.
-    goto :selectudp
+    goto :selectupd
 )
 set "_DIR=%_DIR:"=%"
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
@@ -273,7 +273,7 @@ if not exist "%_DIR%\*Windows1*-KB*" (
     echo %_err%
     echo 指定的文件夹内无更新文件
     echo.
-    goto :selectudp
+    goto :selectupd
 )
 
 :finddir
@@ -669,6 +669,7 @@ if %isomin% lss %revmin% set isover=%revver%
 if %isomaj% lss %revmaj% set isover=%revver%
 set _label=%isover%
 call :setlabel
+exit /b
 
 :setlabel
 set DVDISO=%_label%.%arch%
@@ -1136,7 +1137,7 @@ wimlib-imagex.exe dir "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3
 mkdir "!_cabdir!\lcu" %_Nul3%
 if %msuwim% equ 1 (
 wimlib-imagex.exe extract "!_DIR!\%package%" 1 *.AggregatedMetadata*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
-for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Null%)
+for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Nul3%)
 )
 if exist "!_cabdir!\lcu\HotpatchCompDB*.cab" (
 if %count% equ 0 echo.
@@ -1764,8 +1765,8 @@ icacls "%_mount%\Windows\WinSxS\Manifests" /setowner *S-1-5-80-956008885-3418522
 icacls "%_mount%\Windows\WinSxS" /restore "!_CabDir!\acl.txt"
 del /f /q "!_CabDir!\acl.txt"
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE"
-reg.exe query HKLM\%COMPONENTS% %_Null% || reg.exe load HKLM\%COMPONENTS% "%_mount%\Windows\System32\Config\COMPONENTS"
-reg.exe delete "%_Cmp%\%_InCom%" /f %_Null%
+reg.exe query HKLM\%COMPONENTS% %_Nul3% || reg.exe load HKLM\%COMPONENTS% "%_mount%\Windows\System32\Config\COMPONENTS"
+reg.exe delete "%_Cmp%\%_InCom%" /f %_Nul3%
 reg.exe add "%_Cmp%\%_InCom%" /f /v "c^!%_Fnd%" /t REG_BINARY /d ""
 reg.exe add "%_Cmp%\%_InCom%" /f /v identity /t REG_BINARY /d "%_InIdt%"
 reg.exe add "%_Cmp%\%_InCom%" /f /v S256H /t REG_BINARY /d "%_InHsh%"
@@ -2022,6 +2023,7 @@ for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.MS.txt) do (
 if not exist Apps\appxdel.!mountver!.txt goto :donereg
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 if %_build% equ 22000 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
+if %_build% equ 22621 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
 if %_build% geq 22000 (
     reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
     for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.txt) do (
@@ -2071,6 +2073,7 @@ goto :eof
 Dism.exe /Commit-Image /MountDir:"%_mount%" /Append
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
 wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
+if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 echo.
 goto :eof
 

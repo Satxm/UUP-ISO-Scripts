@@ -1,0 +1,54 @@
+@exit /b
+
+:embed:
+$cwd = (Get-Location -PSProvider FileSystem).ProviderPath
+$doc = [xml](Get-Content .\CompDB_App.xml)
+ForEach ($a in $doc.CompDB.Features.Feature) {
+    If ($null -eq $a.CustomInformation) {continue}
+    $p = 'Apps\' + $a.FeatureID
+    $t = $p + '\License.xml'
+    If (Test-Path $t) {continue}
+    $d = $null
+    ForEach ($c in $a.CustomInformation.CustomInfo) {If ($c.Key -eq 'licensedata') {$d = $c.InnerText} }
+    If ($null -eq $d) {continue}
+    $null = [IO.Directory]::CreateDirectory($p)
+    [IO.File]::WriteAllText($t,$d,[System.Text.Encoding]::ASCII)
+}
+$packs = @{}
+ForEach ($a in $doc.CompDB.Packages.Package) {
+    $packs[$($a.ID)] = $a.Payload.PayloadItem.Path -replace '(.*\\IPA\\)(.*)','IPA\$2'
+}
+ForEach ($a in $doc.CompDB.Features.Feature) {
+ForEach ($b in $a.Packages.Package) {
+    $null = $packs[$($b.ID)] -match '.*\\'
+    $prefix = $matches[0].Replace('\','_')
+    $suffix = $packs[$($b.ID)] -replace '(.*?)\\(.*?)\\(.*)', '$3'
+    If ($a.Type -eq 'MSIXFramework') {$fnpath = 'Apps\MSIXFramework\' + $suffix}
+    Else {$fnpath = 'Apps\' + $a.FeatureID + '\' + $suffix}
+    If (Test-Path $fnpath) {continue}
+    $flname = [IO.Path]::GetFileName($fnpath)
+    $drname = [IO.Path]::GetDirectoryName($fnpath)
+    If (Test-Path $flname) {$source = $flname}
+    ElseIf (Test-Path ($prefix + $flname)) {$source = $prefix + $flname}
+    Else {continue}
+    [bool]$pathlong = (($cwd + '\' + $fnpath).Length -gt 255) -or (($cwd + '\' + $drname).Length -gt 248)
+    If (!$pathlong) {
+        $null = [IO.Directory]::CreateDirectory($drname)
+        Move-Item -Path $source -Destination $fnpath -Force
+        continue
+    }
+    Start-Process robocopy.exe -NoNewWindow -Wait -ArgumentList ('"' + $cwd + '"' + ' ' + '"' + $cwd + '\' + $drname + '"' + ' ' + $source + ' /MOV /R:1 /W:1 /NS /NC /NFL /NDL /NP /NJH /NJS')
+}
+}
+:embed:
+$x = [xml](Get-Content .\CompDB_App.xml)
+ForEach ($a in $x.CompDB.Features.Feature) {
+    If ($a.FeatureID -eq $id + '_' + $lang) {
+        ForEach ($k in $a.Dependencies.Feature) {
+            If ($k.Group -eq 'PreinstalledApps') {
+                echo $k.FeatureID | Out-File -Encoding ASCII -Append .\Apps_$id.txt 
+            }
+        }
+    }
+}
+:embed: 

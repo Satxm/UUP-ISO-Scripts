@@ -210,7 +210,7 @@ set "line============================================================="
 
 :check
 pushd "!_work!"
-set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg*.dll,wimlib-imagex.exe,PSFExtractor.exe)
+set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg64.dll,wimlib-imagex.exe,PSFExtractor.exe)
 for %%# in %_fils% do (
     if not exist "bin\%%#" (set _bin=%%#&goto :E_BinMiss)
 )
@@ -299,6 +299,8 @@ goto :ISO
 :ISO
 if %PREPARED% equ 0 call :PREPARE
 if exist "!_DIR!\*Windows1*-KB*" set _updexist=1
+if exist "!_DIR!\*.*x*" set _appexist=1
+if exist "!_DIR!\Apps\*.*x*" set _appexist=1
 if exist "Apps\Apps\*.*x*" set _appexist=1
 if %_updexist% equ 0 set AddUpdates=0
 if %_appexist% equ 0 set AddAppxs=0
@@ -329,6 +331,8 @@ if %LCUWinRE% neq 0 echo 使用 累积更新 更新 WinRE.wim
 if %UpdtOneDrive% neq 0  echo 更新 OneDrive
 if %AddAppxs% neq 0 echo 添加 Appxs
 if %AddEdition% neq 0 echo 转换 Windows 版本
+
+if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort)
 
 call :uup_ref
 echo.
@@ -465,6 +469,11 @@ for /L %%# in (1, 1,%_nsum%) do (
     set nedition=!edition%%#! && call :setname
     wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
     if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
+)
+if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
+    imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
+        %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
+    )
 )
 if not exist temp\Winre.wim goto :SkipWinre
 if %SkipWinRE% equ 1 goto :SkipWinre
@@ -720,6 +729,7 @@ if %uupmin% lss %revmin% set uupver=%revver%
 if %uupmaj% lss %revmaj% set uupver=%revver%
 set _label=%uupver%
 call :setlabel
+exit /b
 
 :setlabel
 set DVDISO=%_label%.%arch%
@@ -1245,7 +1255,7 @@ wimlib-imagex.exe dir "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3
 mkdir "!_cabdir!\lcu" %_Nul3%
 if %msuwim% equ 1 (
 wimlib-imagex.exe extract "!_DIR!\%package%" 1 *.AggregatedMetadata*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
-for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Null%)
+for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Nul3%)
 )
 if exist "!_cabdir!\lcu\HotpatchCompDB*.cab" (
 if %count% equ 0 echo.
@@ -1873,8 +1883,8 @@ icacls "%_mount%\Windows\WinSxS\Manifests" /setowner *S-1-5-80-956008885-3418522
 icacls "%_mount%\Windows\WinSxS" /restore "!_CabDir!\acl.txt"
 del /f /q "!_CabDir!\acl.txt"
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE"
-reg.exe query HKLM\%COMPONENTS% %_Null% || reg.exe load HKLM\%COMPONENTS% "%_mount%\Windows\System32\Config\COMPONENTS"
-reg.exe delete "%_Cmp%\%_InCom%" /f %_Null%
+reg.exe query HKLM\%COMPONENTS% %_Nul3% || reg.exe load HKLM\%COMPONENTS% "%_mount%\Windows\System32\Config\COMPONENTS"
+reg.exe delete "%_Cmp%\%_InCom%" /f %_Nul3%
 reg.exe add "%_Cmp%\%_InCom%" /f /v "c^!%_Fnd%" /t REG_BINARY /d ""
 reg.exe add "%_Cmp%\%_InCom%" /f /v identity /t REG_BINARY /d "%_InIdt%"
 reg.exe add "%_Cmp%\%_InCom%" /f /v S256H /t REG_BINARY /d "%_InHsh%"
@@ -2052,9 +2062,9 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %_build% geq 22621 offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
-if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :SkipApps
-if %AddAppxs% equ 1 call :doappx
-:SkipApps
+if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
+if %AddAppxs% equ 1 if exist "!_DIR!\Apps\Apps_*.txt" ( call :addappx ) else ( call :doappx )
+:DoneApps
 if !handle1! equ 0 (
     set handle1=1
     if %UpdtBootFiles% equ 1 (
@@ -2110,6 +2120,85 @@ echo 正在添加 Microsoft Edge……
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
 
+:appx_sort
+echo.
+echo %line%
+echo 正在解析应用 CompDB 信息……
+echo %line%
+echo.
+if %_pwsh% equ 0 (
+echo.
+echo 未检测到 Windows PowerShell，将跳过操作。
+goto :eof
+)
+pushd "!_DIR!"
+for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do set "_mdf=%%#"
+if exist "_tmpMD\" rmdir /s /q "_tmpMD\" %_Nul3%
+mkdir "_tmpMD"
+expand.exe -f:*TargetCompDB_* "%_mdf%" _tmpMD %_Null%
+expand.exe -r -f:*.xml "_tmpMD\*%langid%*.cab" _tmpMD %_Null%
+expand.exe -r -f:*.xml "_tmpMD\*TargetCompDB_App_*.cab" _tmpMD %_Null%
+if not exist "_tmpMD\*TargetCompDB_App_*.xml" (
+echo.
+echo 由于 CompDB_App.xml 文件没有找到，将跳过操作。
+rmdir /s /q "_tmpMD\" %_Nul3%
+popd
+goto :eof
+)
+copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
+for %%# in (CoreCountrySpecific, Core, PPIPro, ProfessionalCountrySpecific, Professional) do (
+    if exist _tmpMD\*CompDB_%%#_*%langid%*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*CompDB_%%#_*%langid%*.xml"') do (
+        copy /y _tmpMD\%%i .\CompDB_App.xml %_Nul1%
+        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
+    )
+    if exist _tmpMD\*TargetCompDB_App_Moment_*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_Moment_*.xml"') do (
+        copy /y _tmpMD\%%i .\CompDB_App.xml %_Nul1%
+        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
+    )
+)
+for /f "delims=" %%# in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_*.xml" %_Nul6%') do (
+copy /y _tmpMD\%%# .\CompDB_App.xml %_Nul1%
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; iex ($f[1])"
+)
+if exist "Apps\*_8wekyb3d8bbwe" move /y Apps_*.txt Apps\ %_Nul1%
+del /f /q CompDB_App.* %_Nul3%
+rmdir /s /q "_tmpMD\" %_Nul3%
+popd
+goto :eof
+
+:addappx
+echo.
+echo %line%
+echo 正在安装 Appxs 软件包……
+echo %line%
+echo.
+pushd "!_DIR!\Apps"
+call :AddFramework
+for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
+if not exist Apps_%editionid%.txt goto :eof
+for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
+popd
+goto :eof
+
+:AddFramework
+if exist "MSIXFramework\*" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "MSIXFramework\*.*x"') do %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"MSIXFramework\%%#" /SkipLicense | findstr /i /c:"successfully" %_Nul3% && echo %%~n#
+goto :eof
+
+:AddAppxs
+set "_pfn=%~1"
+if not exist "%_pfn%\License.xml" goto :eof
+if not exist "%_pfn%\*.appx*" if not exist "%_pfn%\*.msix*" goto :eof
+set "_main="
+if not defined _main if exist "%_pfn%\*.msixbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msixbundle"') do set "_main=%%#"
+if not defined _main if exist "%_pfn%\*.appxbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appxbundle"') do set "_main=%%#"
+if not defined _main if exist "%_pfn%\*.appx" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appx"') do set "_main=%%#"
+if not defined _main if exist "%_pfn%\*.msix" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msix"') do set "_main=%%#"
+if not defined _main goto :eof
+set "_stub="
+if exist "%_pfn%\AppxMetadata\Stub\*.*x" set "_stub=/StubPackageOption:InstallStub"
+%_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_pfn%
+goto :eof
+
 :doappx
 if %_build% geq 19041 set "mountver=19041"
 if %_build% geq 22000 set "mountver=22000"
@@ -2131,6 +2220,7 @@ for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.MS.txt) do (
 if not exist Apps\appxdel.!mountver!.txt goto :donereg
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 if %_build% equ 22000 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
+if %_build% equ 22621 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
 if %_build% geq 22000 (
     reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
     for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.txt) do (
@@ -2180,6 +2270,7 @@ goto :eof
 Dism.exe /Commit-Image /MountDir:"%_mount%" /Append
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
 wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
+if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 echo.
 goto :eof
 
