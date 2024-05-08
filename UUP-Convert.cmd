@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.4-103"
+@set "uivr=v24.5-104"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -45,6 +45,9 @@ set AddAppxs=0
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
 
+:: 添加 智能应用控制 VerifiedAndReputablePolicyState = 0、移除 DevHomeUpdate 注册表，请将此参数更改为 1
+set AddRegs=0
+
 set "_Null=1>nul 2>nul"
 set "FullExit=exit /b"
 
@@ -79,10 +82,10 @@ if /i "%PROCESSOR_ARCHITECTURE%"=="x86" if "%PROCESSOR_ARCHITEW6432%"=="" set "x
 if /i "%PROCESSOR_ARCHITEW6432%"=="amd64" set "xOS=amd64"
 if /i "%PROCESSOR_ARCHITEW6432%"=="arm64" set "xOS=arm64"
 set "SysPath=%SystemRoot%\System32"
-set "Path=temp;bin;%SysPath%;%SystemRoot%;%SysPath%\Wbem;%SysPath%\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\"
+set "Path=%~dp0bin;%~dp0temp;%SysPath%;%SystemRoot%;%SysPath%\Wbem;%SysPath%\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\"
 if exist "%SystemRoot%\Sysnative\reg.exe" (
     set "SysPath=%SystemRoot%\Sysnative"
-    set "Path=temp;bin;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
+    set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
 set "_err========== 错误 ========="
 set "_psc=powershell -nop -c"
@@ -234,6 +237,7 @@ UpdtBootFiles
 UpdtOneDrive
 AddEdition
 AddAppxs
+AddRegs
 UseMSU
 ) do (
 call :Readini %%#
@@ -310,10 +314,10 @@ if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 set LCUWinRE=1
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
-
-if %AddUpdates% equ 1 set _dismhost=1
-if %AddAppxs% equ 1 set _dismhost=1
-if defined _dismhost call :DismHostON
+if %_build% lss 21382 set UseMSU=0
+if %AddUpdates% equ 1 set _DismHost=1
+if %AddAppxs% equ 1 set _DismHost=1
+if defined _DismHost call :DismHostON
 
 echo.
 echo %line%
@@ -330,6 +334,8 @@ if %SkipWinRE% neq 0 echo 跳过 WinRE.wim
 if %LCUWinRE% neq 0 echo 使用 累积更新 更新 WinRE.wim
 if %UpdtOneDrive% neq 0  echo 更新 OneDrive
 if %AddAppxs% neq 0 echo 添加 Appxs
+if %AddRegs% neq 0 echo 修改注册表
+if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
 if %AddEdition% neq 0 echo 转换 Windows 版本
 
 if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort)
@@ -360,9 +366,7 @@ echo %line%
 echo 正在检查更新文件……
 echo %line%
 echo.
-if %_build% lss 21382 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
-if %_build% geq 21382 if %UseMSU% neq 1 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
-if %_build% geq 21382 if exist "!_DIR!\*.AggregatedMetadata*.cab" if exist "!_DIR!\*Windows1*-KB*.cab" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
+if %UseMSU% neq 1 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
 del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
 if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :uups_dpx
@@ -689,6 +693,13 @@ imagex /info "!_DIR!\%uups_esd1%" 3 >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
 for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch=x86") else if %%# equ 9 (set "arch=x64") else (set "arch=arm64"))
 for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _build=%%#
+if %_build% geq 21382 if exist "!_DIR!\*.AggregatedMetadata*.cab" if exist "!_DIR!\*Windows1*-KB*.cab" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
+if %_build% geq 25336 if exist "!_DIR!\*.AggregatedMetadata*.cab" if exist "!_DIR!\*Windows1*-KB*.wim" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
+if %_build% geq 22563 if exist "!_DIR!\*.AggregatedMetadata*.cab" (
+if exist "!_DIR!\*.*xbundle" set _IPA=1
+if exist "!_DIR!\*.appx" set _IPA=1
+if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set _IPA=1
+)
 if %_build% geq 22621 if exist "!_DIR!\*Edge*.wim" (
     set _wimEdge=1
     if not exist "!_DIR!\Edge.wim" for /f %%# in ('dir /b /a:-d "!_DIR!\*Edge*.wim"') do rename "!_DIR!\%%#" Edge.wim %_Nul3%
@@ -879,34 +890,48 @@ set "_MSUdll=dpx.dll ReserveManager.dll TurboStack.dll UpdateAgent.dll UpdateCom
 set "_MSUonf=onepackage.AggregatedMetadata.cab"
 set "_MSUssu="
 set IncludeSSU=1
+set xmf=cab
 set _mcfail=0
 for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do set "_MSUmeta=%%#"
 if exist "_tMSU\" rmdir /s /q "_tMSU\" %_Nul3%
 mkdir "_tMSU"
+if %_build% lss 25336 (
 expand.exe -f:LCUCompDB*.xml.cab "%_MSUmeta%" "_tMSU" %_Nul3%
-if not exist "_tMSU\LCUCompDB*.xml.cab" (
-echo.
-echo AggregatedMetadata 文件中 LCUCompDB 文件丢失，跳过操作。
-goto :msu_dirs
+if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
+)
+if %_build% geq 25336 (
+expand.exe -f:*.AggregatedMetadata*.cab "%_MSUmeta%" "_tMSU" %_Null%
+if not exist "_tMSU\*.AggregatedMetadata*.cab" goto :msu_dirs
+for /f %%# in ('dir /b /a:-d "_tMSU\*.AggregatedMetadata*.cab"') do expand.exe -f:*.xml "_tMSU\%%#" "_tMSU" %_Null%
+if not exist "_tMSU\LCUCompDB*.xml" goto :msu_dirs
+for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml"') do (
+%_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
+)
+if exist "_tMSU\SSUCompDB*.xml" for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml"') do (
+%_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
+)
+if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
+del /f /q "_tMSU\*.xml" %_Nul3%
+set xmf=wim
 )
 for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml.cab"') do set "_MSUcdb=%%#"
 for /f "tokens=2 delims=_." %%# in ('echo %_MSUcdb%') do set "_MSUkbn=%%#"
 if exist "*Windows1*%_MSUkbn%*%arch%*.msu" (
 echo.
-echo 累积更新 %_MSUkbn% 的 msu 文件已经存在，跳过操作。
+echo 累积更新 %_MSUkbn% 的 msu 文件已经存在，将跳过操作。
 goto :msu_dirs
 )
-if not exist "*Windows1*%_MSUkbn%*%arch%*.cab" (
+if not exist "*Windows1*%_MSUkbn%*%arch%*.%xmf%" (
 echo.
-echo 累积更新 %_MSUkbn% 的 cab 文件丢失，跳过操作。
+echo 累积更新 %_MSUkbn% 的 %xmf% 文件丢失，将跳过操作。
 goto :msu_dirs
 )
 if not exist "*Windows1*%_MSUkbn%*%arch%*.psf" (
 echo.
-echo 累积更新 %_MSUkbn% 的 psf 文件丢失，跳过操作。
+echo 累积更新 %_MSUkbn% 的 psf 文件丢失，将跳过操作。
 goto :msu_dirs
 )
-for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.cab"') do set "_MSUcab=%%#"
+for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.%xmf%"') do set "_MSUcab=%%#"
 for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.psf"') do set "_MSUpsf=%%#"
 set "_MSUkbf=Windows10.0-%_MSUkbn%-%arch%"
 echo %_MSUcab% | findstr /i "Windows11\." %_Nul1% && set "_MSUkbf=Windows11.0-%_MSUkbn%-%arch%"
@@ -914,13 +939,14 @@ echo %_MSUcab% | findstr /i "Windows12\." %_Nul1% && set "_MSUkbf=Windows12.0-%_
 if exist "SSU-*%arch%*.cab" (
 for /f "tokens=2 delims=-" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUtsu=SSU-%%#-%arch%.cab"
 for /f "delims=" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUssu=%%#"
-expand.exe -f:SSUCompDB*.xml.cab "%_MSUmeta%" "_tMSU" %_Nul3%
-if exist "_tMSU\SSU*-express.xml.cab" del /f /q "_tMSU\SSU*-express.xml.cab"
-if not exist "_tMSU\SSUCompDB*.xml.cab" set IncludeSSU=0
 ) else (
 set IncludeSSU=0
 )
-if %IncludeSSU% equ 1 for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml.cab"') do set "_MSUsdb=%%#"
+if %IncludeSSU% equ 1 if not exist "_tMSU\SSUCompDB*.xml.cab" (
+expand.exe -f:SSUCompDB*.xml.cab "%_MSUmeta%" "_tMSU" %_Null%
+if exist "_tMSU\SSU*-express.xml.cab" del /f /q "_tMSU\SSU*-express.xml.cab"
+)
+if exist "_tMSU\SSUCompDB*.xml.cab" (for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml.cab"') do set "_MSUsdb=%%#") else (set IncludeSSU=0)
 set "_MSUddd=DesktopDeployment_x86.cab"
 if exist "*DesktopDeployment*.cab" (
 for /f "delims=" %%# in ('dir /b /a:-d "*DesktopDeployment*.cab" ^|find /i /v "%_MSUddd%"') do set "_MSUddc=%%#"
@@ -941,9 +967,10 @@ if %IncludeSSU% equ 1 echo "_tMSU\%_MSUsdb%" "%_MSUsdb%"
 )>>zzz.ddf
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-    echo makecab.exe %_MSUonf% 操作失败，跳过该操作。
+    echo 由于 makecab.exe 对 %_MSUonf% 操作失败，将跳过操作。
     goto :msu_dirs
 )
+if %_build% geq 25336 goto :msu_wim
 call :crDDF %_MSUkbf%.msu
 (echo "%_MSUddc%" "DesktopDeployment.cab"
 if /i not %arch%==x86 echo "%_MSUddd%" "DesktopDeployment_x86.cab"
@@ -954,12 +981,31 @@ echo "%_MSUpsf%" "%_MSUkbf%.psf"
 )>>zzz.ddf
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=OFF
 if %ERRORLEVEL% neq 0 (
-    echo makecab.exe %_MSUkbf%.msu  操作失败，跳过该操作。
+    echo 由于 makecab.exe 对 %_MSUkbf%.msu 操作失败，将跳过操作。
     goto :msu_dirs
+)
+goto :msu_dirs
+
+:msu_wim
+echo.
+echo 正在创建：%_MSUkbf%.msu
+if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
+mkdir "_tWIM"
+copy /y "%_MSUddc%" "_tWIM\DesktopDeployment.cab" %_Nul3%
+if /i not %arch%==x86 copy /y "%_MSUddd%" "_tWIM\DesktopDeployment_x86.cab" %_Nul3%
+copy /y "_tMSU\%_MSUonf%" "_tWIM\%_MSUonf%" %_Nul3%
+if %IncludeSSU% equ 1 copy /y "%_MSUssu%" "_tWIM\%_MSUtsu%" %_Nul3%
+copy /y "%_MSUcab%" "_tWIM\%_MSUkbf%.wim" %_Nul3%
+copy /y "%_MSUpsf%" "_tWIM\%_MSUkbf%.psf" %_Nul3%
+wimlib-imagex.exe capture _tWIM\ %_MSUkbf%.msu content --compress=none --nocheck --no-acls %_Nul3%
+if %ERRORLEVEL% neq 0 (
+call :dk_color1 %Red% "由于捕获 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
+(echo.&echo 捕获 %_MSUkbf%.msu 操作失败)>>"!logerr!"
 )
 
 :msu_dirs
 if exist "zzz.ddf" del /f /q "zzz.ddf"
+if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
 if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
 rmdir /s /q "_tMSU\" %_Nul3%
 popd
@@ -988,7 +1034,7 @@ call :crDDF %_MSUddc%
 call :apDDF _tSSU\000
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-    echo makecab.exe %_MSUddc% 操作失败，跳过该操作。
+    echo 由于 makecab.exe 对 %_MSUddc% 操作失败，将跳过操作。
     set _mcfail=1
     exit /b
 )
@@ -1019,7 +1065,7 @@ call :crDDF %_MSUddd%
 call :apDDF _tSSU\111
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-    echo makecab.exe %_MSUddd% 操作失败，跳过该操作。
+    echo 由于 makecab.exe 对 %_MSUddd% 操作失败，将跳过操作。
     set _mcfail=1
     exit /b
 )
@@ -1028,7 +1074,7 @@ exit /b
 
 :crDDF
 echo.
-echo 正在生成：%~nx1
+echo 正在创建：%~nx1
 (echo .Set DiskDirectoryTemplate="."
 echo .Set CabinetNameTemplate="%1"
 echo .Set MaxCabinetSize=0
@@ -1355,6 +1401,7 @@ if exist "temp\DesktopDeployment.cab" (expand.exe -f:UpdateCompression.dll "temp
 exit /b
 
 :updatewim
+set SYSTEM=uiSYSTEM
 set SOFTWARE=uiSOFTWARE
 set COMPONENTS=uiCOMPONENTS
 set "_Wnn=HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide\Winners"
@@ -1709,6 +1756,7 @@ if exist "!dest!\*_microsoft-windows-s..boot-firmwareupdate_*.manifest" findstr 
 )
 if exist "!dest!\update.mum" if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
     findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% || (findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (goto :eof))
+    findstr /i /m "WinPE-AppxDeployment" "!dest!\update.mum" %_Nul3% && (if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-AppxDeployment*.mum" goto :eof)
     findstr /i /m "WinPE-NetFx-Package" "!dest!\update.mum" %_Nul3% && (findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (goto :eof))
 )
 if exist "!dest!\*_adobe-flash-for-windows_*.manifest" if not exist "!dest!\*enablement-package*.mum" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
@@ -2061,7 +2109,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
-if %_build% geq 22621 offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
+if %AddRegs% equ 1 if %_build% geq 22621 call :doreg
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if %AddAppxs% equ 1 if exist "!_DIR!\Apps\Apps_*.txt" ( call :addappx ) else ( call :doappx )
 :DoneApps
@@ -2112,6 +2160,17 @@ goto :eof
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Commit
 goto :eof
 
+:doreg
+reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
+::reg.exe add "HKLM\%SYSTEM%\CurrentControlSet\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
+reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
+reg.exe unload HKLM\%SYSTEM% %_Nul3%
+reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
+reg.exe unload HKLM\%SOFTWARE% %_Nul3%
+::offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
+goto :eof
+
 :addedge
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" goto :eof
 echo.
@@ -2119,6 +2178,7 @@ echo 正在添加 Microsoft Edge……
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
+
 
 :appx_sort
 echo.
