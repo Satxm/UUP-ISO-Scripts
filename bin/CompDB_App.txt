@@ -51,4 +51,5 @@ ForEach ($a in $x.CompDB.Features.Feature) {
         }
     }
 }
+Get-Content .\Apps_$id.txt | Sort-object | Select-Object -unique | Set-content .\Apps_$id.txt 
 :embed: 

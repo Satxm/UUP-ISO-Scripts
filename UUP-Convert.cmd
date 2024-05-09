@@ -45,7 +45,7 @@ set AddAppxs=0
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
 
-:: 添加 智能应用控制 VerifiedAndReputablePolicyState = 0、移除 DevHomeUpdate 注册表，请将此参数更改为 1
+:: 添加 智能应用控制 VerifiedAndReputablePolicyState = 0（解决应用启动慢）、移除 DevHomeUpdate（不自动安装 DevHome） 注册表，请将此参数更改为 1
 set AddRegs=0
 
 set "_Null=1>nul 2>nul"
@@ -305,7 +305,6 @@ if %PREPARED% equ 0 call :PREPARE
 if exist "!_DIR!\*Windows1*-KB*" set _updexist=1
 if exist "!_DIR!\*.*x*" set _appexist=1
 if exist "!_DIR!\Apps\*.*x*" set _appexist=1
-if exist "Apps\Apps\*.*x*" set _appexist=1
 if %_updexist% equ 0 set AddUpdates=0
 if %_appexist% equ 0 set AddAppxs=0
 if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq 17763 set AddUpdates=0
@@ -328,8 +327,8 @@ if %_updexist% neq 0 echo 存在更新文件
 if %_appexist% neq 0 echo 存在 Appxs
 if %_wimEdge% equ 1 echo 存在 Edge.wim
 if %AddUpdates% neq 0 echo 添加更新
-if %Cleanup% neq 0 echo 清理更新文件
-if %ResetBase% neq 0 echo 清理旧更新文件
+if %Cleanup% neq 0 echo 增量压缩已取代的组件以节约镜像大小
+if %ResetBase% neq 0 echo 重置操作系统映像并移除已被更新取代的组件
 if %SkipWinRE% neq 0 echo 跳过 WinRE.wim
 if %LCUWinRE% neq 0 echo 使用 累积更新 更新 WinRE.wim
 if %UpdtOneDrive% neq 0  echo 更新 OneDrive
@@ -338,7 +337,8 @@ if %AddRegs% neq 0 echo 修改注册表
 if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
 if %AddEdition% neq 0 echo 转换 Windows 版本
 
-if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort)
+if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt"  call :appx_sort
+if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
 
 call :uup_ref
 echo.
@@ -1178,7 +1178,7 @@ if exist "!dest!\*.psf.cix.xml" (
     )
     if !_psf! equ 1 (
         for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:UpdateCompression.dll "!_DIR!\%%#" .\temp %_Nul3%
-        if exist "temp\UpdateCompression.dll" copy /y "bin\PSFExtractor.exe" "temp\" %_Nul3%&ren "temp\UpdateCompression.dll" "MSDelta.dll" %_Nul3%
+        if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
     )
     if %_build% geq 25330 if not exist "bin\MSDelta.dll" if not exist "temp\MSDelta.dll" call :uups_psf
 )
@@ -1280,6 +1280,7 @@ if exist "!dest!\*cablist.ini" (
 )
 if defined psf_%pkgn% (
     if not exist "!dest!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!dest!\*.psf.cix.xml"') do rename "!dest!\%%#" express.psf.cix.xml %_Nul3%
+    if not exist "bin\MSDelta.dll" copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
     PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
     if !errorlevel! neq 0 (
         echo 出现错误：解压 PSF 更新包失败
@@ -1287,6 +1288,7 @@ if defined psf_%pkgn% (
         set psf_%pkgn%=
         goto :eof
     )
+    if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 )
 goto :eof
 
@@ -1392,11 +1394,11 @@ if %_nat% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment.
 )
 if %_wow% equ 1 (
 if exist "temp\DesktopDeployment_x86.cab" (expand.exe -f:UpdateCompression.dll "temp\DesktopDeployment_x86.cab" .\temp %_Nul3%) else (wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\SysWOW64\UpdateCompression.dll --dest-dir=.\temp --no-acls --no-attributes %_Nul3%)
-    if exist "temp\UpdateCompression.dll" copy /y "bin\PSFExtractor.*" "temp\" %_Nul3%&ren "temp\UpdateCompression.dll" "MSDelta.dll" %_Nul3%
+    if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
 )
 if %_nat% equ 1 (
 if exist "temp\DesktopDeployment.cab" (expand.exe -f:UpdateCompression.dll "temp\DesktopDeployment.cab" .\temp %_Nul3%) else (wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\System32\UpdateCompression.dll --dest-dir=.\temp --no-acls --no-attributes %_Nul3%)
-    if exist "temp\UpdateCompression.dll" copy /y "bin\PSFExtractor.*" "temp\" %_Nul3%&ren "temp\UpdateCompression.dll" "MSDelta.dll" %_Nul3%
+    if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
 )
 exit /b
 
@@ -1647,6 +1649,7 @@ if exist "!lcudir!\*cablist.ini" (
 )
 if exist "!lcudir!\*.psf.cix.xml" (
     if not exist "!lcudir!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!lcudir!\*.psf.cix.xml"') do rename "!lcudir!\%%#" express.psf.cix.xml %_Nul3%
+    if not exist "bin\MSDelta.dll" copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
     PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!lcudir!" %_Nul3%
     if !errorlevel! neq 0 (
         echo 出现错误：解压 PSF 更新包失败
@@ -1654,6 +1657,7 @@ if exist "!lcudir!\*.psf.cix.xml" (
         set psf_%pkgn%=
         goto :eof
     )
+    if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 )
 goto :eof
 
@@ -2111,7 +2115,9 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddRegs% equ 1 if %_build% geq 22621 call :doreg
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
-if %AddAppxs% equ 1 if exist "!_DIR!\Apps\Apps_*.txt" ( call :addappx ) else ( call :doappx )
+if %AddAppxs% equ 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :removeappx
+if %AddAppxs% equ 1 call :regappx
+if %AddAppxs% equ 1 if exist "!_DIR!\Apps\MSIXFramework" call :addappx
 :DoneApps
 if !handle1! equ 0 (
     set handle1=1
@@ -2179,7 +2185,6 @@ echo 正在添加 Microsoft Edge……
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
 
-
 :appx_sort
 echo.
 echo %line%
@@ -2220,7 +2225,7 @@ for /f "delims=" %%# in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_*.xml" %_Nul6%'
 copy /y _tmpMD\%%# .\CompDB_App.xml %_Nul1%
 %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; iex ($f[1])"
 )
-if exist "Apps\*_8wekyb3d8bbwe" move /y Apps_*.txt Apps\ %_Nul1%
+if exist Apps_*.txt if exist "Apps\*_8wekyb3d8bbwe" move /y Apps_*.txt Apps\ %_Nul1%
 del /f /q CompDB_App.* %_Nul3%
 rmdir /s /q "_tmpMD\" %_Nul3%
 popd
@@ -2234,9 +2239,10 @@ echo %line%
 echo.
 pushd "!_DIR!\Apps"
 call :AddFramework
-for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
-if not exist Apps_%editionid%.txt goto :eof
-for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
+if exist Custom_Appxs.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs.txt) do call :AddAppxs "%%i"
+for /f "tokens=3 delims=: " %%# in ('%_Dism% /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
+if not exist Custom_Appxs.txt if exist Apps_%editionid%.txt for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
+if not exist Custom_Appxs.txt if not exist Apps_*.txt for /f %%i in ('dir /b *') do if /i not "%%i"=="MSIXFramework" call :AddAppxs "%%i"
 popd
 goto :eof
 
@@ -2259,51 +2265,33 @@ if exist "%_pfn%\AppxMetadata\Stub\*.*x" set "_stub=/StubPackageOption:InstallSt
 %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_pfn%
 goto :eof
 
-:doappx
-if %_build% geq 19041 set "mountver=19041"
-if %_build% geq 22000 set "mountver=22000"
-if %_build% geq 22621 set "mountver=22621"
-if %_build% geq 26100 set "mountver=Dev"
-if %_build% geq 26200 set "mountver=Can"
-if %_SrvESD% equ 1 set "mountver=!mountver!.Server"
-if not exist "%_mount%\Program Files\WindowsApps\Microsoft.*" goto :donedel
-if not exist Apps\appxdel.!mountver!.MS.txt goto :donedel
+:removeappx
 echo.
 echo %line%
 echo 正在卸载 Appxs 软件包……
 echo %line%
 echo.
-for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.MS.txt) do (
+pushd "!_DIR!\Apps\"
+for /f "eol=# tokens=* delims=" %%i in (Remove_Appxs.txt) do (
     %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
-:donedel
-if not exist Apps\appxdel.!mountver!.txt goto :donereg
+popd
+goto :eof
+
+:regappx
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 if %_build% equ 22000 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
 if %_build% equ 22621 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
-if %_build% geq 22000 (
-    reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
-    for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.txt) do (
-        reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%i" /f %_Nul3%
-    )
-)
+::if %_build% geq 22000 (
+::    reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
+::    for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.txt) do (
+::        reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%i" /f %_Nul3%
+::    )
+::)
 if exist "%_mount%\Program Files\WindowsApps\Microsoft.*" for /f "tokens=8 delims=\" %%# in ('reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference"') do (
     reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference\%%#" /f %_Nul3%
 )
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
-:donereg
-if not exist Apps\appxadd.!mountver!.txt goto :doneadd
-echo.
-echo %line%
-echo 正在安装 Appxs 软件包……
-echo %line%
-echo.
-for /f "eol=# tokens=* delims=" %%i in (Apps\appxadd.!mountver!.txt) do (
-    set "license=/SkipLicense"
-    for /f "delims=_" %%j in ("%%i") do if exist Apps\Licenses\%%j*.xml for /f "delims=" %%k in ('dir /a /b Apps\Licenses\%%j*.xml') do set "license=/LicensePath:"Apps\Licenses\%%k""
-    %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"Apps\Apps\%%i" !license! /Region=all | findstr /i /c:"successfully" %_Nul3% && echo %%~ni
-)
-:doneadd
 goto :eof
 
 :setedition
@@ -2515,6 +2503,7 @@ if exist "!_cabdir!\" (
     )
     rmdir /s /q "!_cabdir!\" %_Nul3%
 )
+if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 if exist "!_cabdir!\" (
     mkdir %_drv%\_del286 %_Nul3%
     robocopy %_drv%\_del286 "!_cabdir!" /MIR /R:1 /W:1 /NFL /NDL /NP /NJH /NJS %_Nul3%
