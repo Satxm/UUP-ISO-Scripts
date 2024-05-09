@@ -1760,7 +1760,7 @@ if exist "!dest!\*_microsoft-windows-s..boot-firmwareupdate_*.manifest" findstr 
 )
 if exist "!dest!\update.mum" if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
     findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% || (findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (goto :eof))
-    findstr /i /m "WinPE-AppxDeployment" "!dest!\update.mum" %_Nul3% && (if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-AppxDeployment*.mum" goto :eof)
+    findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (findstr /i /m "WinPE-AppxDeployment" "!dest!\update.mum" %_Nul3% && (if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-AppxDeployment*.mum" goto :eof))n
     findstr /i /m "WinPE-NetFx-Package" "!dest!\update.mum" %_Nul3% && (findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (goto :eof))
 )
 if exist "!dest!\*_adobe-flash-for-windows_*.manifest" if not exist "!dest!\*enablement-package*.mum" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
