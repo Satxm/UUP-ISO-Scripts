@@ -9,12 +9,12 @@ set "line============================================================="
 
 cd /d "%~dp0"
 if NOT "%cd%"=="%cd: =%" (
-    echo %_err%
-    echo 当前目录的路径中含有空格或者括号。
-    echo 请将此目录移动到或重命名为不含空格或括号的目录。
-    echo.
-    pause
-    goto :EOF
+echo %_err%
+echo 当前目录的路径中含有空格或者括号。
+echo 请将此目录移动到或重命名为不含空格或括号的目录。
+echo.
+pause
+goto :EOF
 )
 
 :setid
@@ -52,7 +52,9 @@ if not defined build goto :DOWNLOAD_CABS
 set "files=files.%build%.txt"
 if %build% gtr 19041 set "Dir=Win10.19041"
 if %build% gtr 22621 set "Dir=Win11.22621"
-if %build% gtr 26000 set "Dir=Win11.26080"
+if %build% gtr 26100 set "Dir=Win11.26100"
+if %build% gtr 26200 set "Dir=Win11.Dev"
+if %build% gtr 26200 set "Dir=Win11.Can"
 
 :DOWNLOAD_CABS
 echo.
@@ -60,12 +62,12 @@ echo %line%
 echo 正在检索 Cabs 更新包的 aria2 脚本……
 echo %line%
 echo.
-"%aria2%" --no-conf --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=updateOnly&aria2=2"
+"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=updateOnly&aria2=2"
 if not exist %files% goto :DOWNLOAD_CABS
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_DONE

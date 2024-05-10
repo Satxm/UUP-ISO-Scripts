@@ -539,7 +539,7 @@ echo.
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
-if %UpdtOneDrive% equ 1 if exist "Apps\OneDriveSetup.exe" call :OneDrive
+if %UpdtOneDrive% equ 1 call :OneDrive
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :SkipUpdate
 if %_SrvESD% equ 1 if %AddUpdates% neq 1 if not exist "Apps\app*Server.txt" goto :SkipUpdate
 call :update
@@ -560,12 +560,16 @@ echo %line%
 echo 正在更新 OneDrive 安装文件……
 echo %line%
 echo.
+if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
+if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
+aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false  -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
+if not exist "temp\OneDriveSetup.exe" goto :eof
 type nul>temp\OneDrive.txt
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\install.wim ^| findstr /c:"Image Count"') do set imgcount=%%#
 set sysdir=System32
 if %_build% lss 22563 set sysdir=SysWOW64
-if exist "Apps\OneDriveSetup.exe" >>temp\OneDrive.txt echo add 'Apps\OneDriveSetup.exe' '^\Windows^\%sysdir%^\OneDriveSetup.exe'
-if exist "Apps\OneDrive.ico" >>temp\OneDrive.txt echo add 'Apps\OneDrive.ico' '^\Windows^\%sysdir%^\OneDrive.ico'
+if exist "temp\OneDriveSetup.exe" >>temp\OneDrive.txt echo add 'temp\OneDriveSetup.exe' '^\Windows^\%sysdir%^\OneDriveSetup.exe'
+if exist "temp\OneDrive.ico" >>temp\OneDrive.txt echo add 'temp\OneDrive.ico' '^\Windows^\%sysdir%^\OneDrive.ico'
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\install.wim ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\install.wim %%# < temp\OneDrive.txt %_Nul3%
 goto :eof
 
