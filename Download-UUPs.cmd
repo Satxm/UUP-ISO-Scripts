@@ -68,7 +68,7 @@ if not exist %files% goto :DOWNLOAD_UUPS
 if exist %files% %psc% "(gc %files%) -creplace 'cabs_', '' | Out-File %files%"
 if exist %files% %psc% "(gc %files%) -creplace 'MetadataESD_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'Wim_', '' | Out-File %files% -Encoding ASCII"
-if exist %files% %psc% "(gc %files%) -creplace '.ESD', '.esd' | Out-File %files% -Encoding ASCII"
+if exist %files% %psc% "(gc %files%) -creplace '\.ESD', '\.esd' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"

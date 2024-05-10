@@ -340,7 +340,7 @@ if %AddEdition% neq 0 echo 转换 Windows 版本
 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt"  call :appx_sort
 if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
 
-call :uup_ref
+call :uups_ref
 echo.
 echo %line%
 echo 正在部署 ISO 安装文件……
@@ -513,7 +513,10 @@ echo.
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
 if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
 aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false  -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
-if not exist "temp\OneDriveSetup.exe" goto :eof
+if %ERRORLEVEL% GTR 0 (
+    echo OneDriveSetup.exe 下载失败，将跳过操作
+    goto :eof
+)
 type nul>temp\OneDrive.txt
 set sysdir=System32
 if %_build% lss 22563 set sysdir=SysWOW64
@@ -771,7 +774,7 @@ if /i %editionid%==Professional set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&exit /
 if /i %editionid%==ProfessionalEducation set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&exit /b
 if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
 
-:uup_ref
+:uups_ref
 echo.
 echo %line%
 echo 正在将 .cab 转换为 .esd 文件……
@@ -783,16 +786,16 @@ if exist "!_DIR!\*.cab" (
     for /f "tokens=* delims=" %%# in ('dir /b /a:-d "!_DIR!\*.cab"') do (
         del /f /q temp\update.mum %_Nul3%
         expand.exe -f:update.mum "!_DIR!\%%#" temp %_Nul3%
-        if exist "temp\update.mum" call :uup_cab "%%#"
+        if exist "temp\update.mum" call :uups_cab "%%#"
     )
 )
 if %EXPRESS% equ 1 (
-    for /f "tokens=* delims=" %%# in ('dir /b /a:d /o:-n "!_DIR!\"') do call :uup_dir "%%#"
+    for /f "tokens=* delims=" %%# in ('dir /b /a:d /o:-n "!_DIR!\"') do call :uups_dir "%%#"
 )
 if exist "!_DIR!\Metadata\*.xml.cab" copy /y "!_DIR!\Metadata\*.xml.cab" "!_DIR!\" %_Nul3%
 exit /b
 
-:uup_dir
+:uups_dir
 set cbsp=%~1
 if exist "temp\%cbsp%.esd" exit /b
 echo %cbsp% | findstr /i /r "Windows.*-KB SSU-.* RetailDemo Holographic-Desktop-FOD" %_Nul1% && exit /b
@@ -802,14 +805,10 @@ rmdir /s /q "!_DIR!\%~1\$dpx$.tmp\" %_Nul3%
 wimlib-imagex.exe capture "!_DIR!\%~1" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
 exit /b
 
-:uup_cab
-echo %~1 | find /i "RetailDemo" %_Nul1% && exit /b
-echo %~1 | find /i "Holographic-Desktop-FOD" %_Nul1% && exit /b
-echo %~1 | find /i "Windows10.0-KB" %_Nul1% && exit /b
-echo %~1 | find /i "Windows11.0-KB" %_Nul1% && exit /b
-echo %~1 | find /i "SSU-" %_Nul1% && exit /b
+:uups_cab
 set cbsp=%~n1
 if exist "temp\%cbsp%.esd" exit /b
+echo %cbsp% | findstr /i /r "Windows.*-KB SSU-.* RetailDemo Holographic-Desktop-FOD" %_Nul1% && exit /b
 echo %cbsp%
 set /a _ref+=1
 set /a _rnd=%random%
@@ -2176,9 +2175,10 @@ reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\CrossDeviceUpdate" /f %_Nul3%
 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
+::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
-::offlinereg.exe "%_mount%\Windows\System32\config\SYSTEM" "CurrentControlSet\Control\CI\Policy" setvalue VerifiedAndReputablePolicyState 0 4 %_Nul3%
 goto :eof
 
 :addedge
@@ -2275,26 +2275,18 @@ echo %line%
 echo 正在卸载 Appxs 软件包……
 echo %line%
 echo.
-pushd "!_DIR!\Apps\"
-for /f "eol=# tokens=* delims=" %%i in (Remove_Appxs.txt) do (
+for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') do (
     %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
-popd
 goto :eof
 
 :regappx
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
-if %_build% equ 22000 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
-if %_build% equ 22621 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
-::if %_build% geq 22000 (
-::    reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
-::    for /f "eol=# tokens=* delims=" %%i in (Apps\appxdel.!mountver!.txt) do (
-::        reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%i" /f %_Nul3%
-::    )
-::)
-if exist "%_mount%\Program Files\WindowsApps\Microsoft.*" for /f "tokens=8 delims=\" %%# in ('reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference"') do (
-    reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference\%%#" /f %_Nul3%
-)
+reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
+reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
+for /f "tokens=* delims=" %%# in ('reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference"') do reg.exe delete "%%#" /f %_Nul3%
+reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
+for /f "tokens=* delims=" %%a in ('type "!_DIR!\Apps\Custom_Appxs.txt"') do for /f "tokens=1 delims=#" %%b in ('echo %%a ^| findstr /i "#"') do reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%b" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 goto :eof
 
