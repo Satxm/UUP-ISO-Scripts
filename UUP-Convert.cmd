@@ -490,8 +490,8 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\i
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
 if %UpdtOneDrive% equ 1 call :OneDrive
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 goto :SkipUpdate
-if %_SrvESD% equ 1 if %AddUpdates% neq 1 if not exist "Apps\app*Server.txt" goto :SkipUpdate
+if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 goto :SkipUpdate
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 if %_wimEdge% neq 1 goto :SkipUpdate
 call :update
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
@@ -512,7 +512,7 @@ echo %line%
 echo.
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
 if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
-aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false  -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
+aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
 if %ERRORLEVEL% GTR 0 (
     echo OneDriveSetup.exe 下载失败，将跳过操作
     goto :eof
@@ -1198,12 +1198,12 @@ if exist "!dest!\toc.xml" (
 )
 set _extsafe=0
 set "_type="
-if not defined _type (
-    findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
-)
 if not defined _type if %_build% geq 17763 findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
     %_Nul3% findstr /i /m "Edition\"" "!dest!\update.mum"
     if errorlevel 1 (set "_type=[WinPE]"&set _extsafe=1&set uwinpe=1)
+)
+if not defined _type (
+    findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
 )
 if not defined _type (
     7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-sysreset_*.manifest -aoa %_Nul3%
@@ -2120,7 +2120,7 @@ if %AddRegs% equ 1 if %_build% geq 22621 call :doreg
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if %AddAppxs% equ 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :removeappx
 if %AddAppxs% equ 1 call :regappx
-if %AddAppxs% equ 1 if exist "!_DIR!\Apps\MSIXFramework" call :addappx
+if %AddAppxs% equ 1 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" call :addappx
 :DoneApps
 if !handle1! equ 0 (
     set handle1=1
@@ -2258,15 +2258,15 @@ goto :eof
 set "_pfn=%~1"
 if not exist "%_pfn%\License.xml" goto :eof
 if not exist "%_pfn%\*.appx*" if not exist "%_pfn%\*.msix*" goto :eof
-set "_main="
-if not defined _main if exist "%_pfn%\*.msixbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msixbundle"') do set "_main=%%#"
-if not defined _main if exist "%_pfn%\*.appxbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appxbundle"') do set "_main=%%#"
-if not defined _main if exist "%_pfn%\*.appx" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appx"') do set "_main=%%#"
-if not defined _main if exist "%_pfn%\*.msix" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msix"') do set "_main=%%#"
+set "_main=" & set "_mainn=" 
+if not defined _main if exist "%_pfn%\*.msixbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msixbundle"') do set "_main=%%#" & set "_mainn=%%~n#"
+if not defined _main if exist "%_pfn%\*.appxbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appxbundle"') do set "_main=%%#" & set "_mainn=%%~n#"
+if not defined _main if exist "%_pfn%\*.appx" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appx"') do set "_main=%%#" & set "_mainn=%%~n#"
+if not defined _main if exist "%_pfn%\*.msix" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msix"') do set "_main=%%#" & set "_mainn=%%~n#"
 if not defined _main goto :eof
 set "_stub="
 if exist "%_pfn%\AppxMetadata\Stub\*.*x" set "_stub=/StubPackageOption:InstallStub"
-%_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_pfn%
+%_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_mainn%
 goto :eof
 
 :removeappx

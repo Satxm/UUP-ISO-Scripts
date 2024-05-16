@@ -68,7 +68,7 @@ if not exist %files% goto :DOWNLOAD_UUPS
 if exist %files% %psc% "(gc %files%) -creplace 'cabs_', '' | Out-File %files%"
 if exist %files% %psc% "(gc %files%) -creplace 'MetadataESD_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'Wim_', '' | Out-File %files% -Encoding ASCII"
-if exist %files% %psc% "(gc %files%) -creplace '\.ESD', '\.esd' | Out-File %files% -Encoding ASCII"
+if exist %files% %psc% "(gc %files%) -creplace '\.ESD', '.esd' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
@@ -83,7 +83,6 @@ echo %line%
 echo.
 if exist %files% del /f /q %files%
 "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=neutral&edition=app&aria2=2"
-if exist %files% %psc% "(gc %files%) -creplace 'IPA_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 

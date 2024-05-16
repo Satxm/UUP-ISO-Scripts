@@ -67,7 +67,7 @@ if not exist %files% goto :DOWNLOAD_CABS
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_DONE
