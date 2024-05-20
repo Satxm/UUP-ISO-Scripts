@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.5-104"
+@set "uivr=v24.5-105"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -27,7 +27,7 @@ set SkipISO=0
 :: 若不添加 Winre.wim 到 install.wim，请将此参数更改为 1
 set SkipWinRE=0
 
-:: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
+:: 若在即使检测到 SafeOS 更新的情况下，也强制使用【累积更新】来更新 winre.wim，请将此参数更改为 1
 set LCUWinRE=0
 
 :: 若不更新 ISO 引导文件 bootmgr/bootmgr.efi/efisys.bin，请将此参数更改为 1
@@ -45,7 +45,7 @@ set AddAppxs=0
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
 
-:: 添加 智能应用控制 VerifiedAndReputablePolicyState = 0（解决应用启动慢）、移除 DevHomeUpdate（不自动安装 DevHome） 注册表，请将此参数更改为 1
+:: 添加 智能应用控制 VerifiedAndReputablePolicyState = 0（解决应用启动慢）、移除 DevHomeUpdate、PCManagerUpdate 注册表，请将此参数更改为 1
 set AddRegs=0
 
 set "_Null=1>nul 2>nul"
@@ -327,10 +327,10 @@ if %_updexist% neq 0 echo 存在更新文件
 if %_appexist% neq 0 echo 存在 Appxs
 if %_wimEdge% equ 1 echo 存在 Edge.wim
 if %AddUpdates% neq 0 echo 添加更新
-if %Cleanup% neq 0 echo 增量压缩已取代的组件以节约镜像大小
-if %ResetBase% neq 0 echo 重置操作系统映像并移除已被更新取代的组件
+if %Cleanup% neq 0 echo 增量压缩已取代的组件
+if %ResetBase% neq 0 echo 移除已被更新取代的组件
 if %SkipWinRE% neq 0 echo 跳过 WinRE.wim
-if %LCUWinRE% neq 0 echo 使用 累积更新 更新 WinRE.wim
+if %LCUWinRE% neq 0 echo 使用【累积更新】更新 WinRE.wim
 if %UpdtOneDrive% neq 0  echo 更新 OneDrive
 if %AddAppxs% neq 0 echo 添加 Appxs
 if %AddRegs% neq 0 echo 修改注册表
@@ -1198,12 +1198,12 @@ if exist "!dest!\toc.xml" (
 )
 set _extsafe=0
 set "_type="
+if not defined _type (
+    findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
+)
 if not defined _type if %_build% geq 17763 findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
     %_Nul3% findstr /i /m "Edition\"" "!dest!\update.mum"
     if errorlevel 1 (set "_type=[WinPE]"&set _extsafe=1&set uwinpe=1)
-)
-if not defined _type (
-    findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS 动态更新]"&set uwinpe=1)
 )
 if not defined _type (
     7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-sysreset_*.manifest -aoa %_Nul3%
@@ -1733,8 +1733,9 @@ if exist "!dest!\*_%_EdgCmp%_*.manifest" findstr /i /m "Package_for_RollupFix" "
     goto :eof
 )
 if exist "!dest!\update.mum" findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (
-set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-goto :eof
+    if not exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" goto :eof
+    set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+    goto :eof
 )
 if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
     if not exist "%_mount%\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
@@ -1742,6 +1743,7 @@ if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package
     goto :eof
 )
 if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
+    if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
     set "safeos=!safeos! /PackagePath:!dest!\update.mum"
     goto :eof
 )
@@ -2178,6 +2180,7 @@ reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 ::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\CrossDeviceUpdate" /f %_Nul3%
 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
 ::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
+reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 goto :eof
 
