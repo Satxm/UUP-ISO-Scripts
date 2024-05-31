@@ -413,6 +413,11 @@ if %AddRegs% neq 0 echo 修改注册表
 if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
 if %AddEdition% neq 0 echo 转换 Windows 版本
 
+if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
+if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
+if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
+if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
+
 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt"  call :appx_sort
 if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
 
@@ -422,8 +427,6 @@ if %_build% geq 18890 (
     wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\Boot\Fonts\* --dest-dir=ISOFOLDER\boot\fonts --no-acls --no-attributes %_Nul3%
     xcopy /CRY ISOFOLDER\boot\fonts\* ISOFOLDER\efi\microsoft\boot\fonts\ %_Nul3%
 )
-if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
-if not exist "!_cabdir!\" mkdir "!_cabdir!"
 
 if %AddUpdates% neq 1 goto :NoUpdate
 echo.
@@ -432,15 +435,12 @@ echo 正在检查更新文件……
 echo %line%
 echo.
 if %UseMSU% neq 1 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
-del /f /q %_dLog%\* %_Nul3%
-if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
 if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :uups_dpx
 if %_reMSU% equ 1 if %UseMSU% equ 1 call :upd_msu
 set directcab=0
 call :extract
 
 :NoUpdate
-if %_appexist% equ 1 if not exist "!_cabdir!\" mkdir "!_cabdir!"
 if exist bin\ei.cfg copy /y bin\ei.cfg ISOFOLDER\sources\ei.cfg %_Nul3%
 if not defined isoupdate goto :NoSetupDU
 echo.
@@ -468,33 +468,9 @@ goto :BootWim
 set _rtrn=InstallRet
 goto :InstallWim
 :InstallRet
-for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.wim"') do set "_size=000000%%~z#"
-if "%_size%" lss "0000004194304000" set WIM2SWM=0
-if %WIM2ESD% equ 0 if %WIM2SWM% equ 0 goto :doiso
-if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :doswm
-:doesd
-echo.
-echo %line%
-echo 正在将 install.wim 转换为 install.esd……
-echo %line%
-echo.
-wimlib-imagex.exe export ISOFOLDER\sources\install.wim all ISOFOLDER\sources\install.esd --compress=LZMS --solid
-call set ERRORTEMP=!ERRORLEVEL!
-if !ERRORTEMP! neq 0 (echo.&echo 在导出映像的时候出现错误。正在丢弃 install.esd&del /f /q ISOFOLDER\sources\install.esd %_Nul3%)
-if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim
-goto :doiso
-:doswm
-echo.
-echo %line%
-echo 正在将 install.wim 拆分为多个 install*.swm……
-echo %line%
-echo.
-wimlib-imagex.exe split ISOFOLDER\sources\install.wim ISOFOLDER\sources\install.swm 3500
-call set ERRORTEMP=!ERRORLEVEL!
-if !ERRORTEMP! neq 0 (echo.&echo 在拆分映像的时候出现错误。正在丢弃 install.swm&del /f /q ISOFOLDER\sources\install*.swm %_Nul3%)
-if exist ISOFOLDER\sources\install*.swm del /f /q ISOFOLDER\sources\install.wim
-goto :doiso
-:doiso
+set _rtrn=IsoRet
+goto :doesdswm
+:IsoRet
 if %SkipISO% neq 0 (
     ren ISOFOLDER %DVDISO%
     echo.
@@ -595,6 +571,42 @@ for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
 goto :eof
+
+:doesdswm
+for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.wim"') do set "_size=000000%%~z#"
+if "%_size%" lss "0000004194304000" set WIM2SWM=0
+if %WIM2ESD% equ 0 if %WIM2SWM% equ 0 goto :%_rtrn%
+if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :doswm
+
+:doesd
+echo.
+echo %line%
+echo 正在将 install.wim 转换为 install.esd……
+echo %line%
+echo.
+wimlib-imagex.exe export ISOFOLDER\sources\install.wim all ISOFOLDER\sources\install.esd --compress=LZMS --solid
+call set ERRORTEMP=!ERRORLEVEL!
+if !ERRORTEMP! neq 0 (
+    echo.&echo 在导出映像的时候出现错误。正在丢弃 install.esd
+    del /f /q ISOFOLDER\sources\install.esd %_Nul3%
+)
+if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim
+goto :%_rtrn%
+
+:doswm
+echo.
+echo %line%
+echo 正在将 install.wim 拆分为多个 install*.swm……
+echo %line%
+echo.
+wimlib-imagex.exe split ISOFOLDER\sources\install.wim ISOFOLDER\sources\install.swm 3500
+call set ERRORTEMP=!ERRORLEVEL!
+if !ERRORTEMP! neq 0 (
+    echo.&echo 在拆分映像的时候出现错误。正在丢弃 install.swm
+    del /f /q ISOFOLDER\sources\install*.swm %_Nul3%
+)
+if exist ISOFOLDER\sources\install*.swm del /f /q ISOFOLDER\sources\install.wim
+goto :%_rtrn%
 
 :WinreWim
 if %uwinpe% equ 0 goto :%_rtrn%
@@ -2180,7 +2192,7 @@ reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUser
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
 for /f "tokens=* delims=" %%# in ('reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference"') do reg.exe delete "%%#" /f %_Nul3%
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
-for /f "tokens=* delims=" %%a in ('type "!_DIR!\Apps\Custom_Appxs.txt"') do for /f "tokens=1 delims=#" %%b in ('echo %%a ^| findstr /i "#"') do reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%b" /f %_Nul3%
+if exise "!_DIR!\Apps\Custom_Appxs.txt" for /f "tokens=* delims=" %%a in ('type "!_DIR!\Apps\Custom_Appxs.txt"') do for /f "tokens=1 delims=#" %%b in ('echo %%a ^| findstr /i "#"') do reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%b" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 goto :eof
 
