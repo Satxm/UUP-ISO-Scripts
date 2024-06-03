@@ -2188,6 +2188,7 @@ reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 ::reg.exe add "HKLM\%SYSTEM%\CurrentControlSet\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
+if !_ESDSrv%%#! equ 1 goto :eof
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 ::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\CrossDeviceUpdate" /f %_Nul3%
 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
@@ -2301,7 +2302,7 @@ reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUser
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
 for /f "tokens=* delims=" %%# in ('reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\AppModel\StubPreference"') do reg.exe delete "%%#" /f %_Nul3%
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" %_Nul3% || reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned" /f %_Nul3%
-if exise "!_DIR!\Apps\Custom_Appxs.txt" for /f "tokens=* delims=" %%a in ('type "!_DIR!\Apps\Custom_Appxs.txt"') do for /f "tokens=1 delims=#" %%b in ('echo %%a ^| findstr /i "#"') do reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%b" /f %_Nul3%
+if exist "!_DIR!\Apps\Custom_Appxs.txt" for /f "tokens=* delims=" %%a in ('type "!_DIR!\Apps\Custom_Appxs.txt"') do for /f "tokens=1 delims=#" %%b in ('echo %%a ^| findstr /i "#"') do reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\%%b" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 goto :eof
 

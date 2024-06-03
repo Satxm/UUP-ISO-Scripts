@@ -40,9 +40,8 @@ echo 正在检索 UUPID 对应的系统版本……
 echo %line%
 echo.
 for /f "delims=' tokens=*" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuup\:.*';$id = \"%id%\";iex ($f[1]);"') do set info=%%a
-set info=%info:(=%
-set info=%info:)=%
-for /f "tokens=1 delims= " %%b in ('echo %info%') do set build=%%b
+for /f "tokens=1 delims=. " %%b in ("%info%") do set build=%%b
+echo %info% | find /i "Server" 1>nul 2>nul && set server=1
 echo 此 UUPID 对应的系统版本为：%build%
 
 :START_PROCESS
@@ -50,11 +49,10 @@ set "files=files.%random%.txt"
 set "Dir=Cabs.%random%"
 if not defined build goto :DOWNLOAD_CABS
 set "files=files.%build%.txt"
-if %build% gtr 19041 set "Dir=Win10.19041"
-if %build% gtr 22621 set "Dir=Win11.22621"
-if %build% gtr 26100 set "Dir=Win11.26100"
-if %build% gtr 26200 set "Dir=Win11.Dev"
-if %build% gtr 26200 set "Dir=Win11.Can"
+if defined server set "files=%files%.Server.txt"
+if %build% lss 22000 set "Dir=Win10.%build%"
+if %build% gtr 22000 set "Dir=Win11.%build%"
+if defined server set "Dir=%Dir%.Server"
 
 :DOWNLOAD_CABS
 echo.
@@ -87,9 +85,9 @@ pause
 goto :EOF
 
 :getuup:
-$url = "https://api.uupdump.net/get.php?id="+$id+"&pack=zh-cn&edition=updateOnly&noLinks=1"
+$url = "https://api.uupdump.net/listlangs.php?id="+$id
 $json = (Invoke-WebRequest $url).content | ConvertFrom-Json
-$build = $json.response.build
-$name = $json.response.updateName
+$build = $json.response.updateInfo.build
+$name = $json.response.updateInfo.title
 Write-Host $build $name
 :getuup:

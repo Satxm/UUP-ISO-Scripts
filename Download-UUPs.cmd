@@ -40,9 +40,7 @@ echo 正在检索 UUPID 对应的系统版本……
 echo %line%
 echo.
 for /f "delims=' tokens=*" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuup\:.*';$id = \"%id%\";iex ($f[1]);"') do set info=%%a
-set info=%info:(=%
-set info=%info:)=%
-for /f "tokens=1 delims= " %%b in ('echo %info%') do set build=%%b
+for /f "tokens=1 delims=. " %%b in ("%info%") do set build=%%b
 echo %info% | find /i "Server" 1>nul 2>nul && set server=1
 echo 此 UUPID 对应的系统版本为：%build%
 
@@ -51,9 +49,9 @@ set "files=files.%random%.txt"
 set "Dir=UUPs.%random%"
 if not defined build goto :DOWNLOAD_APPS
 set "files=files.%build%.txt"
-if defined server set "files=files.%build%.Server.txt"
+if defined server set "files=%files%.Server.txt"
 set "Dir=UUPs.%build%"
-if defined server set "Dir=UUPs.%build%.Server"
+if defined server set "Dir=%Dir%.Server"
 
 :DOWNLOAD_UUPS
 echo.
@@ -72,7 +70,7 @@ if exist %files% %psc% "(gc %files%) -creplace '\.ESD', '.esd' | Out-File %files
 if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_APPS
@@ -83,7 +81,7 @@ echo %line%
 echo.
 if exist %files% del /f /q %files%
 "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=neutral&edition=app&aria2=2"
-if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_DONE
@@ -103,9 +101,9 @@ pause
 goto :EOF
 
 :getuup:
-$url = "https://api.uupdump.net/get.php?id="+$id+"&pack=zh-cn&edition=updateOnly&noLinks=1"
+$url = "https://api.uupdump.net/listlangs.php?id="+$id
 $json = (Invoke-WebRequest $url).content | ConvertFrom-Json
-$build = $json.response.build
-$name = $json.response.updateName
+$build = $json.response.updateInfo.build
+$name = $json.response.updateInfo.title
 Write-Host $build $name
 :getuup:
