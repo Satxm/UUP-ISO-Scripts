@@ -514,7 +514,7 @@ if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
         %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
     )
 )
-call :update
+call :update "ISOFOLDER\sources\install.wim"
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -629,7 +629,7 @@ echo.
 wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 1 call :update temp\Winre.wim
+if %uwinpe% equ 1 call :update "temp\Winre.wim"
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
 if exist "temp\Winrenew.wim" del /f /q "temp\Winre.wim"&ren "temp\Winrenew.wim" Winre.wim %_Nul3%
 goto :%_rtrn%
@@ -637,17 +637,6 @@ goto :%_rtrn%
 :BootWim
 if %uwinpe% equ 0 goto :%_rtrn%
 if %uwinpe% equ 1 call :update "ISOFOLDER\sources\boot.wim"
-if not defined isoupdate goto :BootDone
-mkdir "temp\du" %_Nul3%
-for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "temp\du" %_Nul1%
-type nul>temp\boot.txt
-for /f %%# in ('dir /b /a-d "temp\du" %_Nul6%') do (
-    >>temp\boot.txt echo add 'temp^\du^\%%#' '^\sources^\%%#'
-)
-if exist "temp\du\%langid%\" for /f %%# in ('dir /b /a-d "temp\du\%langid%" %_Nul6%') do (
-    >>temp\boot.txt echo add 'temp^\du^\%langid%^\%%#' '^\sources^\%langid%^\%%#'
-)
-wimlib-imagex.exe update "ISOFOLDER\sources\boot.wim" 2 < temp\boot.txt %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -1979,15 +1968,7 @@ if %W10UI% equ 0 exit /b
 set directcab=0
 set wim=0
 set dvd=0
-set _tgt=
-set _tgt=%1
-if defined _tgt (
-    set wim=1
-    set _target=%1
-) else (
-    set dvd=1
-    set _target=ISOFOLDER\sources\install.wim
-)
+set _target=%~1
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_target%" ^| findstr /c:"Image Count"') do set imgcount=%%#
 if not exist "%SystemRoot%\temp\" mkdir "%SystemRoot%\temp" %_Nul3%
 if exist "%SystemRoot%\temp\UpdateAgent.dll" del /f /q "%SystemRoot%\temp\UpdateAgent.dll" %_Nul3%
@@ -2002,7 +1983,7 @@ if %_build% geq 19041 if %winbuild% lss 17133 if exist "%SysPath%\ext-ms-win-sec
     if /i not %xOS%==x86 del /f /q %SystemRoot%\SysWOW64\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
 )
 echo.
-if %wim% equ 1 exit /b
+echo %_target% | findstr "install" %_Nul3% || exit /b
 if %isomin% lss %revmin% set isover=%revver%
 if %isomaj% lss %revmaj% set isover=%revver%
 set _label=%isover%
@@ -2034,6 +2015,14 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     set isoupdate=
     xcopy /CDRUY "%_mount%\sources" "ISOFOLDER\sources\" %_Nul3%
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
+)
+if exist "%_mount%\sources\setup.exe" if defined isoupdate (
+    mkdir "%_cabdir%\du" %_Nul3%
+    for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "%_cabdir%\du" %_Nul1%
+    xcopy /CDRUY "%_cabdir%\du" "%_mount%\sources\" %_Nul3%
+    if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "%_mount%\sources\" %_Nul3%
+    for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "%_mount%\sources\%%#\*.mui" copy /y "%_cabdir%\du\%%#\*" "%_mount%\sources\%%#\" %_Nul3%
+    rmdir /s /q "%_cabdir%\du\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %UpdtOneDrive% equ 1 call :OneDrive
