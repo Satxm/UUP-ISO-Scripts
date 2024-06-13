@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.5-105"
+@set "uivr=v24.6-105"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -27,7 +27,8 @@ set SkipISO=0
 :: 若不添加 Winre.wim 到 install.wim，请将此参数更改为 1
 set SkipWinRE=0
 
-:: 若在即使检测到 SafeOS 更新的情况下，也强制使用【累积更新】来更新 winre.wim，请将此参数更改为 1
+:: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 Winre.wim，请将此参数更改为 1
+:: 仅在 Build 22000-26050 中启用，请将此参数更改为 2
 set LCUWinRE=0
 
 :: 若不更新 ISO 引导文件 bootmgr/bootmgr.efi/efisys.bin，请将此参数更改为 1
@@ -45,8 +46,11 @@ set AddAppxs=0
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
 
-:: 添加 智能应用控制 VerifiedAndReputablePolicyState = 0（解决应用启动慢）、移除 DevHomeUpdate、PCManagerUpdate 注册表，请将此参数更改为 1
+:: 添加智能应用控制（解决软件打开慢）及阻止微软推送软件自动安装的注册表，请将此参数更改为 1
 set AddRegs=0
+
+:: 若在完成时退出进程而不提示，请将此参数更改为 1
+set AutoExit=0
 
 set "_Null=1>nul 2>nul"
 set "FullExit=exit /b"
@@ -229,17 +233,18 @@ for %%# in (
 AddUpdates
 Cleanup
 ResetBase
-WIM2ESD
-WIM2SWM
 SkipISO
-LCUWinRE
 SkipWinRE
+LCUWinRE
 UpdtBootFiles
 UpdtOneDrive
 AddEdition
 AddAppxs
 AddRegs
+AutoExit
 UseMSU
+WIM2ESD
+WIM2SWM
 ) do (
 call :Readini %%#
 )
@@ -284,7 +289,7 @@ if not exist "%_DIR%\*Windows1*-KB*" (
 echo.
 if defined _args for %%# in (%*) do (
     if exist "%%~#\sources\install.wim" (set ISOdir=%%~#&echo %%#&goto :copydir)
-    if /i "%%~x#"==".iso" if  exist "%%~#" (set ISOfile=%%~#&echo %%~#&goto :extraciso)
+    if /i "%%~x#"==".iso" if exist "%%~#" (set ISOfile=%%~#&echo %%~#&goto :extraciso)
 )
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\sources\install.wim" set /a _ndir+=1&set ISOdir=%%~#&echo %%~#
 if !_ndir! equ 1 if defined ISOdir goto :copydir
@@ -379,15 +384,17 @@ goto :ISO
 :ISO
 if %PREPARED% equ 0 call :PREPARE
 if exist "!_DIR!\*Windows1*-KB*" set _updexist=1
-if exist "!_DIR!\*.*x*" set _appexist=1
-if exist "!_DIR!\Apps\*.*x*" set _appexist=1
+if exist "!_DIR!\*.*xbundle" set _appexist=1
+if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set _appexist=1
 if %_updexist% equ 0 set AddUpdates=0
 if %_appexist% equ 0 set AddAppxs=0
 if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq 17763 set AddUpdates=0
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %_build% geq 22000 set LCUWinRE=1
+if %LCUWinRE% equ 2 (
+    if %_build% geq 22000 if %_build% lss 26052 (set LCUWinRE=1) else (set LCUWinRE=0)
+)
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
 if %AddUpdates% equ 1 set _DismHost=1
@@ -406,19 +413,20 @@ if %AddUpdates% neq 0 echo 添加更新
 if %Cleanup% neq 0 echo 增量压缩已取代的组件
 if %ResetBase% neq 0 echo 移除已被更新取代的组件
 if %SkipWinRE% neq 0 echo 跳过 WinRE.wim
-if %LCUWinRE% neq 0 echo 使用【累积更新】更新 WinRE.wim
-if %UpdtOneDrive% neq 0  echo 更新 OneDrive
+if %LCUWinRE% neq 0 echo 使用累积更新更新 WinRE
+if %UpdtOneDrive% neq 0 echo 更新 OneDrive
 if %AddAppxs% neq 0 echo 添加 Appxs
 if %AddRegs% neq 0 echo 修改注册表
 if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
 if %AddEdition% neq 0 echo 转换 Windows 版本
+if %AutoExit% neq 0 echo 任务结束自动退出
 
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
 
-if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt"  call :appx_sort
+if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt" call :appx_sort
 if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
 
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
@@ -2413,6 +2421,7 @@ if exist "!_cabdir!\" (
     rmdir /s /q %_drv%\_del286\ %_Nul3%
     rmdir /s /q "!_cabdir!\" %_Nul3%
 )
+if %AutoExit% neq 0 exit /b
 if %_Debug% neq 0 %FullExit%
 echo 请按数字 0 键退出脚本。
 choice /c 0 /n
