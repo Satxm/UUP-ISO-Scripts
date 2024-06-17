@@ -522,7 +522,7 @@ echo 正在将 Winre.wim 添加到 install.wim 中……
 echo %line%
 echo.
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add '"temp\Winre.wim"' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
+for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
 if %UpdtOneDrive% equ 1 call :OneDrive
 if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 goto :SkipUpdate
