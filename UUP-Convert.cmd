@@ -481,7 +481,7 @@ for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\in
 if %UpdtOneDrive% equ 1 call :OneDrive
 if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 goto :SkipUpdate
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 if %_wimEdge% neq 1 goto :SkipUpdate
-call :update
+call :update "ISOFOLDER\sources\install.wim"
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
@@ -590,10 +590,10 @@ echo %line%
 echo 正在创建 boot.wim 文件……
 echo %line%
 echo.
-wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "ISOFOLDER\sources\boot.wim" "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)" %_Nul3%
+wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "ISOFOLDER\sources\boot.wim" "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)"
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%arch%)" "Microsoft Windows PE (%arch%)" %_Nul3%
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 --image-property FLAGS=9 %_Nul3%
-wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "ISOFOLDER\sources\boot.wim" "Microsoft Windows Setup (%_ss%)" "Microsoft Windows Setup (%_ss%)" --boot %_Nul3%
+wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "ISOFOLDER\sources\boot.wim" "Microsoft Windows Setup (%_ss%)" "Microsoft Windows Setup (%_ss%)" --boot
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 2 "Microsoft Windows Setup (%arch%)" "Microsoft Windows Setup (%arch%)" %_Nul3%
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 2 --image-property FLAGS=2 --boot %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
