@@ -177,7 +177,7 @@ echo 正在调试模式下运行……
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
-@call :Begin >"!_log!.Debug.log" 2>&1
+@call :Begin >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
 @exit /b
 
 :Begin
@@ -289,7 +289,7 @@ if not exist "%_DIR%\*Windows1*-KB*" (
 echo.
 if defined _args for %%# in (%*) do (
     if exist "%%~#\sources\install.wim" (set ISOdir=%%~#&echo %%#&goto :copydir)
-    if /i "%%~x#"==".iso" if  exist "%%~#" (set ISOfile=%%~#&echo %%~#&goto :extraciso)
+    if /i "%%~x#"==".iso" if exist "%%~#" (set ISOfile=%%~#&echo %%~#&goto :extraciso)
 )
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\sources\install.wim" set /a _ndir+=1&set ISOdir=%%~#&echo %%~#
 if !_ndir! equ 1 if defined ISOdir goto :copydir
@@ -1540,9 +1540,10 @@ if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
 echo %msgerr%。正在丢弃当前挂载镜像……
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
-Dism.exe /Cleanup-Wim %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 goto :eof
-rmdir /s /q "%_mount%\" %_Nul3%
 set AddUpdates=0
 set FullExit=exit
 goto :%_rtrn%
@@ -1966,18 +1967,16 @@ goto :eof
 :update
 if %W10UI% equ 0 exit /b
 set directcab=0
-set wim=0
-set dvd=0
 set _target=%~1
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_target%" ^| findstr /c:"Image Count"') do set imgcount=%%#
 if not exist "%SystemRoot%\temp\" mkdir "%SystemRoot%\temp" %_Nul3%
 if exist "%SystemRoot%\temp\UpdateAgent.dll" del /f /q "%SystemRoot%\temp\UpdateAgent.dll" %_Nul3%
 if exist "%SystemRoot%\temp\Facilitator.dll" del /f /q "%SystemRoot%\temp\Facilitator.dll" %_Nul3%
-if exist "%_mount%\" rmdir /s /q "%_mount%\"
-if not exist "%_mount%\" mkdir "%_mount%"
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
+if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 for %%# in (handle1,handle2,handle3) do set %%#=0
-for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :mount "%_target%"
-if exist "%_mount%\" rmdir /s /q "%_mount%\"
+for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :DoMount "%_target%"&call :DoWork&call :DoUnmount
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if %_build% geq 19041 if %winbuild% lss 17133 if exist "%SysPath%\ext-ms-win-security-slc-l1-1-0.dll" (
     del /f /q %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
     if /i not %xOS%==x86 del /f /q %SystemRoot%\SysWOW64\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
@@ -1990,7 +1989,7 @@ set _label=%isover%
 call :setlabel
 exit /b
 
-:mount
+:DoMount
 set _www=%~1
 set _nnn=%~nx1
 echo.
@@ -1998,16 +1997,25 @@ echo %line%
 echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
 %_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
-if !errorlevel! neq 0 (
-    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
-    %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
-    Dism.exe /Cleanup-Wim %_Nul3%
-    goto :eof
-)
-call :dowork
+set ERRORTEMP=%ERRORLEVEL%
+if %ERRORTEMP% neq 0 call :Discard
 goto :eof
 
-:dowork
+:DoUnmount
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
+set ERRORTEMP=%ERRORLEVEL%
+if %ERRORTEMP% neq 0 call :Discard
+goto :eof
+
+:Discard
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
+if exist "%_mount%\" rmdir /s /q "%_mount%\"
+goto :eof
+
+:DoWork
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
 if defined mounterr goto :eof
@@ -2074,10 +2082,9 @@ echo.
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=%%i && call :setedition)
 if /i %editionid%==Professional for %%i in (Professional, Education, ProfessionalEducation, ProfessionalWorkstation) do ( set nedition=%%i && call :setedition)
-%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 goto :eof
 :Done
-%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Commit
+%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 goto :eof
 
 :DoReg
@@ -2149,7 +2156,7 @@ popd
 goto :eof
 
 :AddWinre
-if not exist temp\Winre.wim goto :eof
+if not exist "temp\Winre.wim" goto :eof
 if %SkipWinRE% equ 1 goto :eof
 echo.
 echo %line%
@@ -2234,13 +2241,13 @@ if exist "%_mount%\Windows\ProfessionalEducation.xml" del /f /q "%_mount%\Window
 if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Windows\ProfessionalWorkstation.xml" %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismEdition.log" /Image:"%_mount%" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
 if /i not %editionid%==%nedition% goto :dochange
-Dism.exe /Commit-Image /MountDir:"%_mount%"
+%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 echo.
 goto :eof
 
 :dochange
-Dism.exe /Commit-Image /MountDir:"%_mount%" /Append
+%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%" /Append
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
 wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%

@@ -177,7 +177,7 @@ echo 正在调试模式下运行……
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
-@call :Begin >"!_log!.Debug.log" 2>&1
+@call :Begin >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
 @exit /b
 
 :Begin
@@ -514,7 +514,7 @@ if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
         %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
     )
 )
-if not exist temp\Winre.wim goto :SkipWinre
+if not exist "temp\Winre.wim" goto :SkipWinre
 if %SkipWinRE% equ 1 goto :SkipWinre
 echo.
 echo %line%
@@ -522,7 +522,7 @@ echo 正在将 Winre.wim 添加到 install.wim 中……
 echo %line%
 echo.
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
+for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add '"temp\Winre.wim"' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
 if %UpdtOneDrive% equ 1 call :OneDrive
 if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 goto :SkipUpdate
@@ -627,13 +627,13 @@ echo.
 wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 1 call :update temp\Winre.wim
-wimlib-imagex.exe optimize temp\Winre.wim
+if %uwinpe% equ 1 call :update "temp\Winre.wim"
+wimlib-imagex.exe optimize "temp\Winre.wim"
 goto :%_rtrn%
 
 :BootWim
 if %uwinpe% equ 0 goto :%_rtrn%
-if %uwinpe% equ 1 call :update ISOFOLDER\sources\boot.wim
+if %uwinpe% equ 1 call :update "ISOFOLDER\sources\boot.wim"
 if not defined isoupdate goto :BootDone
 mkdir "temp\du" %_Nul3%
 for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "temp\du" %_Nul1%
@@ -644,16 +644,16 @@ for /f %%# in ('dir /b /a-d "temp\du" %_Nul6%') do (
 if exist "temp\du\%langid%\" for /f %%# in ('dir /b /a-d "temp\du\%langid%" %_Nul6%') do (
     >>temp\boot.txt echo add 'temp^\du^\%langid%^\%%#' '^\sources^\%langid%^\%%#'
 )
-wimlib-imagex.exe update ISOFOLDER\sources\boot.wim 2 < temp\boot.txt %_Nul3%
+wimlib-imagex.exe update "ISOFOLDER\sources\boot.wim" 2 < temp\boot.txt %_Nul3%
 
 :BootDone
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\boot.wim ^| findstr /c:"Image Count"') do set imgs=%%#
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
-    for /f "tokens=3 delims=<>" %%A in ('imagex /info ISOFOLDER\sources\boot.wim %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
-    for /f "tokens=3 delims=<>" %%A in ('imagex /info ISOFOLDER\sources\boot.wim %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
-    wimlib-imagex.exe info ISOFOLDER\sources\boot.wim %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
+    for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
+    for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
+    wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-wimlib-imagex.exe optimize ISOFOLDER\sources\boot.wim
+wimlib-imagex.exe optimize "ISOFOLDER\sources\boot.wim"
 goto :%_rtrn%
 
 :PREPARE
@@ -1544,9 +1544,10 @@ if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
 echo %msgerr%。正在丢弃当前挂载镜像……
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
-Dism.exe /Cleanup-Wim %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 goto :eof
-rmdir /s /q "%_mount%\" %_Nul3%
 set AddUpdates=0
 set FullExit=exit
 goto :%_rtrn%
@@ -1970,32 +1971,22 @@ goto :eof
 :update
 if %W10UI% equ 0 exit /b
 set directcab=0
-set wim=0
-set dvd=0
-set _tgt=
-set _tgt=%1
-if defined _tgt (
-    set wim=1
-    set _target=%1
-) else (
-    set dvd=1
-    set _target=ISOFOLDER\sources\install.wim
-)
+set _target=%~1
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_target%" ^| findstr /c:"Image Count"') do set imgcount=%%#
 if not exist "%SystemRoot%\temp\" mkdir "%SystemRoot%\temp" %_Nul3%
 if exist "%SystemRoot%\temp\UpdateAgent.dll" del /f /q "%SystemRoot%\temp\UpdateAgent.dll" %_Nul3%
 if exist "%SystemRoot%\temp\Facilitator.dll" del /f /q "%SystemRoot%\temp\Facilitator.dll" %_Nul3%
-if exist "%_mount%\" rmdir /s /q "%_mount%\"
-if not exist "%_mount%\" mkdir "%_mount%"
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
+if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 for %%# in (handle1,handle2) do set %%#=0
-for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :mount "%_target%"
-if exist "%_mount%\" rmdir /s /q "%_mount%\"
+for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :mount "%_target%"&call :DoWork
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if %_build% geq 19041 if %winbuild% lss 17133 if exist "%SysPath%\ext-ms-win-security-slc-l1-1-0.dll" (
     del /f /q %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
     if /i not %xOS%==x86 del /f /q %SystemRoot%\SysWOW64\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
 )
 echo.
-if %wim% equ 1 exit /b
+echo %_target% | findstr "install" %_Nul3% || exit /b
 if %isomin% lss %revmin% set isover=%revver%
 if %isomaj% lss %revmaj% set isover=%revver%
 set _label=%isover%
@@ -2010,17 +2001,19 @@ echo %line%
 echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
 %_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
-if !errorlevel! neq 0 (
+set ERRORTEMP=%ERRORLEVEL%
+if %ERRORTEMP% neq 0 (
     %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
     %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
-    Dism.exe /Cleanup-Wim %_Nul3%
+    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
+    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
+    if exist "%_mount%\" rmdir /s /q "%_mount%\"
     goto :eof
 )
-call :dowork
 goto :eof
 
-:dowork
-if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :addedge
+:DoWork
+if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
 if defined mounterr goto :eof
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
@@ -2029,11 +2022,11 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
-if %AddRegs% equ 1 if %_build% geq 22621 call :doreg
+if %AddRegs% equ 1 if %_build% geq 22621 call :DoReg
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
-if %AddAppxs% equ 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :removeappx
-if %AddAppxs% equ 1 call :regappx
-if %AddAppxs% equ 1 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" call :addappx
+if %AddAppxs% equ 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
+if %AddAppxs% equ 1 call :RegAppx
+if %AddAppxs% equ 1 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" call :AddAppx
 :DoneApps
 if !handle1! equ 0 (
     set handle1=1
@@ -2082,7 +2075,7 @@ goto :eof
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Commit
 goto :eof
 
-:doreg
+:DoReg
 reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
@@ -2096,7 +2089,7 @@ reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 goto :eof
 
-:addedge
+:AddEdge
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" goto :eof
 echo.
 echo 正在添加 Microsoft Edge……
@@ -2150,7 +2143,7 @@ rmdir /s /q "_tmpMD\" %_Nul3%
 popd
 goto :eof
 
-:addappx
+:AddAppx
 echo.
 echo %line%
 echo 正在安装 Appxs 软件包……
@@ -2184,7 +2177,7 @@ if exist "%_pfn%\AppxMetadata\Stub\*.*x" if %_SrvESD% neq 1 set "_stub=/StubPack
 %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_mainn%
 goto :eof
 
-:removeappx
+:RemoveAppx
 echo.
 echo %line%
 echo 正在卸载 Appxs 软件包……
@@ -2195,7 +2188,7 @@ for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') d
 )
 goto :eof
 
-:regappx
+:RegAppx
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
@@ -2220,13 +2213,13 @@ if exist "%_mount%\Windows\ProfessionalEducation.xml" del /f /q "%_mount%\Window
 if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Windows\ProfessionalWorkstation.xml" %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismEdition.log" /Image:"%_mount%" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
 if /i not %editionid%==%nedition% goto :dochange
-Dism.exe /Commit-Image /MountDir:"%_mount%"
+%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 echo.
 goto :eof
 
 :dochange
-Dism.exe /Commit-Image /MountDir:"%_mount%" /Append
+%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%" /Append
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
 wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%

@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.5-105"
+@set "uivr=v24.6-105"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -21,7 +21,7 @@ set RefESD=1
 set AddEdition=1
 
 :: 升级或整合 Appx 软件，请将此参数更改为 1
-set AddAppxs=0
+set AddAppxs=1
 
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
@@ -205,6 +205,7 @@ mkdir temp
 :checkdone
 echo.
 if defined _args for %%# in (%*) do if exist "%%~#\*.esd" (set "_DIR=%%~#"&echo %%~#&goto :checkesd)
+for /f "tokens=* delims=" %%# in ('dir /b /ad "*26100*"') do if exist "%%~#\*.esd" (set "_DIR=%%~#"&echo %%~#&goto :checkesd)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _ndir+=1&set "_DIR=%%~#"&echo %%~#)
 if !_ndir! equ 1 if defined _DIR goto :checkesd
 
