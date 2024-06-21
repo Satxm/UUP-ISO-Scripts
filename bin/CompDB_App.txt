@@ -23,10 +23,10 @@ ForEach ($b in $a.Packages.Package) {
     $null = $packs[$($b.ID)] -match '.*\\'
     $prefix = $matches[0].Replace('\','_')
     $suffix = $packs[$($b.ID)] -replace '(.*?)\\(.*?)\\(.*)', '$3'
-    If ($a.Type -eq 'MSIXFramework') {$fnpath = 'Apps\MSIXFramework\' + $suffix}
+    If ($a.Type -eq 'MSIXFramework') {$fnpath = 'Apps\MSIXFramework\' + $a.Packages.Package.ID + [IO.Path]::GetExtension($suffix)}
     Else {$fnpath = 'Apps\' + $a.FeatureID + '\' + $suffix}
     If (Test-Path $fnpath) {continue}
-    $flname = [IO.Path]::GetFileName($fnpath)
+    $flname = [IO.Path]::GetFileName($suffix)
     $drname = [IO.Path]::GetDirectoryName($fnpath)
     If (Test-Path $flname) {$source = $flname}
     ElseIf (Test-Path ($prefix + $flname)) {$source = $prefix + $flname}
@@ -46,10 +46,17 @@ ForEach ($a in $x.CompDB.Features.Feature) {
     If ($a.FeatureID -eq $id + '_' + $lang) {
         ForEach ($k in $a.Dependencies.Feature) {
             If ($k.Group -eq 'PreinstalledApps') {
-                echo $k.FeatureID | Out-File -Encoding ASCII -Append .\Apps_$id.txt 
+                Write-Output $k.FeatureID | Out-File -Encoding ASCII -Append .\Apps_$id.txt 
             }
         }
     }
 }
-Get-Content .\Apps_$id.txt | Sort-object | Select-Object -unique | Set-content .\Apps_$id.txt 
+Get-Content .\Apps_$id.txt | Select-Object -unique | Set-content .\Apps_$id.txt 
+:embed: 
+$x = [xml](Get-Content .\CompDB_App.xml)
+ForEach ($a in $x.CompDB.Features.Feature) {
+    if ($a.FeatureID -eq $id) {
+        Write-Output $a.Dependencies.Feature.FeatureID
+    }
+}
 :embed: 

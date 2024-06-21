@@ -21,7 +21,7 @@ set RefESD=1
 set AddEdition=1
 
 :: 升级或整合 Appx 软件，请将此参数更改为 1
-set AddAppxs=0
+set AddAppxs=1
 
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
@@ -154,7 +154,7 @@ echo 正在调试模式下运行……
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
-@call :Begin >"!_log!.Debug.log" 2>&1
+@call :Begin %_args% >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
 @exit /b
 
 :Begin
@@ -205,7 +205,6 @@ mkdir temp
 :checkdone
 echo.
 if defined _args for %%# in (%*) do if exist "%%~#\*.esd" (set "_DIR=%%~#"&echo %%~#&goto :checkesd)
-for /f "tokens=* delims=" %%# in ('dir /b /ad "*19041*"') do if exist "%%~#\*.esd" (set "_DIR=%%~#"&echo %%~#&goto :checkesd)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _ndir+=1&set "_DIR=%%~#"&echo %%~#)
 if !_ndir! equ 1 if defined _DIR goto :checkesd
 
@@ -281,9 +280,6 @@ if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
-
-if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt" call :appx_sort
-if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
 
 call :uups_ref
 echo.
@@ -363,17 +359,6 @@ for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
     wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-if %AddEdition% equ 1 goto :ExportWim
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
-for /l %%# in (1,1,%imgs%) do (
-    %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"ISOFOLDER\sources\install.wim" /SourceIndex:%%# /DestinationImageFile:"ISOFOLDER\sources\installnew.wim" %_Nul3%
-    set ERRORTEMP=%ERRORLEVEL%
-    if %ERRORTEMP% neq 0 goto :E_Export
-)
-if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
-goto :%_rtrn%
-
-:ExportWim
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /l %%# in (1,1,%imgs%) do (
     imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
@@ -398,7 +383,7 @@ echo %line%
 echo 正在创建 Winre.wim 文件……
 echo %line%
 echo.
-%_psc% "Set-Date '2019/12/7 21:29:00'"
+%_Nul3% %_psc% "Set-Date '2019/12/7 21:29:00'"
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"temp\Winre.wim" /Compress:max /Bootable
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 goto :E_Export
@@ -738,10 +723,9 @@ echo.
 echo %line%
 echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
-if %_inx% equ 1 %_psc% "Set-Date '2019/12/7 21:29:54'"
-echo %_target% | findstr "install" && (
-if %_inx% equ 1 %_psc% "Set-Date '2019/12/7 23:38:05'"
-if %_inx% equ 2 %_psc% "Set-Date '2019/12/7 23:54:44'"
+echo %_target% | findstr "install" %_Nul3% && (
+if %_inx% equ 1 %_Nul3% %_psc% "Set-Date '2019/12/7 23:38:04'"
+if %_inx% equ 2 %_Nul3% %_psc% "Set-Date '2019/12/7 23:54:44'"
 )
 %_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 set ERRORTEMP=%ERRORLEVEL%
@@ -767,7 +751,7 @@ if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 call :AddWinre
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
-if %AddAppxs% equ 1 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" call :AddAppx
+if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 :DoneApps
 if !handle2! equ 0 (
     set handle2=1
@@ -806,52 +790,6 @@ echo 正在添加 Microsoft Edge……
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
 
-:appx_sort
-echo.
-echo %line%
-echo 正在解析应用 CompDB 信息……
-echo %line%
-echo.
-if %_pwsh% equ 0 (
-echo.
-echo 未检测到 Windows PowerShell，将跳过操作。
-goto :eof
-)
-pushd "!_DIR!"
-for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do set "_mdf=%%#"
-if exist "_tmpMD\" rmdir /s /q "_tmpMD\" %_Nul3%
-mkdir "_tmpMD"
-expand.exe -f:*TargetCompDB_* "%_mdf%" _tmpMD %_Null%
-expand.exe -r -f:*.xml "_tmpMD\*%langid%*.cab" _tmpMD %_Null%
-expand.exe -r -f:*.xml "_tmpMD\*TargetCompDB_App_*.cab" _tmpMD %_Null%
-if not exist "_tmpMD\*TargetCompDB_App_*.xml" (
-echo.
-echo 由于 CompDB_App.xml 文件没有找到，将跳过操作。
-rmdir /s /q "_tmpMD\" %_Nul3%
-popd
-goto :eof
-)
-copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
-for %%# in (CoreCountrySpecific, Core, PPIPro, ProfessionalCountrySpecific, Professional) do (
-    if exist _tmpMD\*CompDB_%%#_*%langid%*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*CompDB_%%#_*%langid%*.xml"') do (
-        copy /y _tmpMD\%%i .\CompDB_App.xml %_Nul1%
-        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
-    )
-    if exist _tmpMD\*TargetCompDB_App_Moment_*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_Moment_*.xml"') do (
-        copy /y _tmpMD\%%i .\CompDB_App.xml %_Nul1%
-        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
-    )
-)
-for /f "delims=" %%# in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_*.xml" %_Nul6%') do (
-copy /y _tmpMD\%%# .\CompDB_App.xml %_Nul1%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; iex ($f[1])"
-)
-if exist Apps_*.txt if exist "Apps\*_8wekyb3d8bbwe" move /y Apps_*.txt Apps\ %_Nul1%
-del /f /q CompDB_App.* %_Nul3%
-rmdir /s /q "_tmpMD\" %_Nul3%
-popd
-goto :eof
-
 :AddWinre
 if not exist "temp\Winre.wim" goto :eof
 echo.
@@ -865,40 +803,7 @@ if exist "%_mount%\Windows\System32\Recovery\Winre.wim" (
     del /f /q "%_mount%\Windows\System32\Recovery\Winre.wim" %_Nul3%
 )
 copy /y "temp\Winre.wim" "%_mount%\Windows\System32\Recovery\Winre.wim" %_Nul3%
-goto :eof
-
-:AddAppx
-echo.
-echo %line%
-echo 正在安装 Appxs 软件包……
-echo %line%
-echo.
-pushd "!_DIR!\Apps"
-call :AddFramework
-if exist Custom_Appxs.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs.txt) do call :AddAppxs "%%i"
-for /f "tokens=3 delims=: " %%# in ('%_Dism% /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
-if not exist Custom_Appxs.txt if exist Apps_%editionid%.txt for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
-if not exist Custom_Appxs.txt if not exist Apps_*.txt for /f %%i in ('dir /b *') do if /i not "%%i"=="MSIXFramework" call :AddAppxs "%%i"
-popd
-goto :eof
-
-:AddFramework
-if exist "MSIXFramework\*" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "MSIXFramework\*.*x"') do %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"MSIXFramework\%%#" /SkipLicense | findstr /i /c:"successfully" %_Nul3% && echo %%~n#
-goto :eof
-
-:AddAppxs
-set "_pfn=%~1"
-if not exist "%_pfn%\License.xml" goto :eof
-if not exist "%_pfn%\*.appx*" if not exist "%_pfn%\*.msix*" goto :eof
-set "_main=" & set "_mainn=" 
-if not defined _main if exist "%_pfn%\*.msixbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msixbundle"') do set "_main=%%#" & set "_mainn=%%~n#"
-if not defined _main if exist "%_pfn%\*.appxbundle" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appxbundle"') do set "_main=%%#" & set "_mainn=%%~n#"
-if not defined _main if exist "%_pfn%\*.appx" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.appx"') do set "_main=%%#" & set "_mainn=%%~n#"
-if not defined _main if exist "%_pfn%\*.msix" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msix"') do set "_main=%%#" & set "_mainn=%%~n#"
-if not defined _main goto :eof
-set "_stub="
-if exist "%_pfn%\AppxMetadata\Stub\*.*x" if %_SrvESD% neq 1 set "_stub=/StubPackageOption:InstallStub"
-%_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_mainn%
+%_Nul3% %_psc% "$Filenew = Get-Item '%_mount%\Windows\System32\Recovery\Winre.wim';$Fileold = Get-Item 'temp\Winre.wim';$Filenew.CreationTime = $Fileold.CreationTime;$Filenew.LastWriteTime = $Fileold.LastWriteTime;$Filenew.LastAccessTime = $Fileold.LastWriteTime"
 goto :eof
 
 :RemoveAppx
@@ -910,6 +815,8 @@ echo.
 for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') do (
     %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
+for /f "tokens=3 delims=: " %%# in ('%_Dism% /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
+for /f "tokens=2 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-ProvisionedAppxPackages ^| findstr /c:"PackageName"') do echo %%# >>%editionid%.txt
 goto :eof
 
 :setedition

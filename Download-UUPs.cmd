@@ -63,7 +63,7 @@ if exist %files% del /f /q %files%
 "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=professional;core&aria2=2"
 if defined server "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=serverdatacenter;serverdatacentercore;serverstandard;serverstandardcore&aria2=2"
 if not exist %files% goto :DOWNLOAD_UUPS
-if exist %files% %psc% "(gc %files%) -creplace 'cabs_', '' | Out-File %files%"
+if exist %files% %psc% "(gc %files%) -creplace 'cabs_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'MetadataESD_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace 'Wim_', '' | Out-File %files% -Encoding ASCII"
 if exist %files% %psc% "(gc %files%) -creplace '\.ESD', '.esd' | Out-File %files% -Encoding ASCII"
