@@ -23,7 +23,9 @@ ForEach ($b in $a.Packages.Package) {
     $null = $packs[$($b.ID)] -match '.*\\'
     $prefix = $matches[0].Replace('\','_')
     $suffix = $packs[$($b.ID)] -replace '(.*?)\\(.*?)\\(.*)', '$3'
-    If ($a.Type -eq 'MSIXFramework') {$fnpath = 'Apps\MSIXFramework\' + $a.Packages.Package.ID + [IO.Path]::GetExtension($suffix)}
+    If ($a.Type -eq 'MSIXFramework') {$fnpath = 'Apps\MSIXFramework\' + $b.ID + [IO.Path]::GetExtension($suffix)}
+    ElseIf ($b.PackageType -eq 'MSIXBundlePackage') {$fnpath = 'Apps\' + $a.FeatureID + '\' + $b.ID + [IO.Path]::GetExtension($suffix)}
+    ElseIf ($a.Packages.ChildNodes.Count -eq 1) {$fnpath = 'Apps\' + $a.FeatureID + '\' + $b.ID + [IO.Path]::GetExtension($suffix)}
     Else {$fnpath = 'Apps\' + $a.FeatureID + '\' + $suffix}
     If (Test-Path $fnpath) {continue}
     $flname = [IO.Path]::GetFileName($suffix)
