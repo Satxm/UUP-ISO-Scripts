@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.6-105"
+@set "uivr=v24.6-106"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -177,7 +177,7 @@ echo 正在调试模式下运行……
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
-@call :Begin >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
+@call :Begin %_args% >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
 @exit /b
 
 :Begin
@@ -421,7 +421,7 @@ if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
 if %AddEdition% neq 0 echo 转换 Windows 版本
 if %AutoExit% neq 0 echo 任务结束自动退出
 
-if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
+if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
@@ -539,6 +539,25 @@ if %AddEdition% equ 1 call :ExportWim
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
+:ExportWim
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
+for /l %%# in (1,1,%imgs%) do (
+    imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
+    findstr /i "<EDITIONID>Core</EDITIONID>" temp\newinfo.txt %_Nul3% && set i1=%%#
+    findstr /i "<EDITIONID>CoreSingleLanguage</EDITIONID>" temp\newinfo.txt %_Nul3% && set i2=%%#
+    findstr /i "<EDITIONID>Education</EDITIONID>" temp\newinfo.txt %_Nul3% && set i3=%%#
+    findstr /i "<EDITIONID>Professional</EDITIONID>" temp\newinfo.txt %_Nul3% && set i4=%%#
+    findstr /i "<EDITIONID>ProfessionalEducation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i5=%%#
+    findstr /i "<EDITIONID>ProfessionalWorkstation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i6=%%#
+)
+for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
+    wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
+    set ERRORTEMP=%ERRORLEVEL%
+    if %ERRORTEMP% neq 0 goto :E_Export
+)
+if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
+goto :eof
+
 :OneDrive
 echo.
 echo %line%
@@ -559,25 +578,6 @@ if exist "temp\OneDriveSetup.exe" >>temp\OneDrive.txt echo add 'temp\OneDriveSet
 if exist "temp\OneDrive.ico" >>temp\OneDrive.txt echo add 'temp\OneDrive.ico' '^\Windows^\%sysdir%^\OneDrive.ico'
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\install.wim ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\install.wim %%# < temp\OneDrive.txt %_Nul3%
-goto :eof
-
-:ExportWim
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
-for /l %%# in (1,1,%imgs%) do (
-    imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
-    findstr /i "<EDITIONID>Core</EDITIONID>" temp\newinfo.txt %_Nul3% && set i1=%%#
-    findstr /i "<EDITIONID>CoreSingleLanguage</EDITIONID>" temp\newinfo.txt %_Nul3% && set i2=%%#
-    findstr /i "<EDITIONID>Education</EDITIONID>" temp\newinfo.txt %_Nul3% && set i3=%%#
-    findstr /i "<EDITIONID>Professional</EDITIONID>" temp\newinfo.txt %_Nul3% && set i4=%%#
-    findstr /i "<EDITIONID>ProfessionalEducation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i5=%%#
-    findstr /i "<EDITIONID>ProfessionalWorkstation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i6=%%#
-)
-for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
-    wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
-    set ERRORTEMP=%ERRORLEVEL%
-    if %ERRORTEMP% neq 0 goto :E_Export
-)
-if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
 goto :eof
 
 :doesdswm
@@ -683,7 +683,7 @@ if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if 
     if /i %arch%==x64 if /i %xOS%==amd64 set _dpx=1
 )
 if %_dpx% equ 1 (
-    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" .\temp %_Nul3%
+    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" temp %_Nul3%
     copy /y %SysPath%\expand.exe temp\ %_Nul3%
 )
 if exist "ISOFOLDER\sources\setuphost.exe" 7z.exe l ISOFOLDER\sources\setuphost.exe >temp\version.txt 2>&1
@@ -806,61 +806,58 @@ set "_MSUssu="
 set IncludeSSU=1
 set xmf=cab
 set _mcfail=0
-for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do set "_MSUmeta=%%#"
 if exist "_tMSU\" rmdir /s /q "_tMSU\" %_Nul3%
-mkdir "_tMSU"
+mkdir "_tMSU" %_Nul3%
+for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (
+    expand.exe -f:LCUCompDB*.xml.cab "%%#" "_tMSU" %_Null%
+    expand.exe -f:SSUCompDB*.xml.cab "%%#" "_tMSU" %_Null%
+    expand.exe -f:*.AggregatedMetadata*.cab "%%#" "_tMSU" %_Null%
+)
+if exist "_tMSU\SSU*-express.xml.cab" del /f /q "_tMSU\SSU*-express.xml.cab"
 if %_build% lss 25336 (
-expand.exe -f:LCUCompDB*.xml.cab "%_MSUmeta%" "_tMSU" %_Nul3%
-if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
+    if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
 )
 if %_build% geq 25336 (
-expand.exe -f:*.AggregatedMetadata*.cab "%_MSUmeta%" "_tMSU" %_Null%
-if not exist "_tMSU\*.AggregatedMetadata*.cab" goto :msu_dirs
-for /f %%# in ('dir /b /a:-d "_tMSU\*.AggregatedMetadata*.cab"') do expand.exe -f:*.xml "_tMSU\%%#" "_tMSU" %_Null%
-if not exist "_tMSU\LCUCompDB*.xml" goto :msu_dirs
-for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml"') do (
-%_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
+    if not exist "_tMSU\*.AggregatedMetadata*.cab" goto :msu_dirs
+    for /f %%# in ('dir /b /a:-d "_tMSU\*.AggregatedMetadata*.cab"') do expand.exe -f:*.xml "_tMSU\%%#" "_tMSU" %_Null%
+    if not exist "_tMSU\LCUCompDB*.xml" goto :msu_dirs
+    for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml"') do (
+        %_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
+    )
+    if exist "_tMSU\SSUCompDB*.xml" for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml"') do (
+        %_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
+    )
+    if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
+    del /f /q "_tMSU\*.xml" %_Nul3%
+    set xmf=wim
 )
-if exist "_tMSU\SSUCompDB*.xml" for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml"') do (
-%_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
+set "_MSUkbn="
+for /f "tokens=2 delims=_." %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml.cab"') do if exist "*Windows1*%%#*%arch%*.%xmf%" if exist "*Windows1*%%#*%arch%*.psf" (
+    set "_MSUkbn=%%#"
+    for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB_%%#*.xml.cab"') do set "_MSUcdb=%%#"
 )
-if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
-del /f /q "_tMSU\*.xml" %_Nul3%
-set xmf=wim
-)
-for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml.cab"') do set "_MSUcdb=%%#"
-for /f "tokens=2 delims=_." %%# in ('echo %_MSUcdb%') do set "_MSUkbn=%%#"
+if "%_MSUkbn%"=="" goto :msu_dirs
 if exist "*Windows1*%_MSUkbn%*%arch%*.msu" (
-echo.
-echo 累积更新 %_MSUkbn% 的 msu 文件已经存在，将跳过操作。
-goto :msu_dirs
-)
-if not exist "*Windows1*%_MSUkbn%*%arch%*.%xmf%" (
-echo.
-echo 累积更新 %_MSUkbn% 的 %xmf% 文件丢失，将跳过操作。
-goto :msu_dirs
-)
-if not exist "*Windows1*%_MSUkbn%*%arch%*.psf" (
-echo.
-echo 累积更新 %_MSUkbn% 的 psf 文件丢失，将跳过操作。
-goto :msu_dirs
+    echo.
+    echo 累积更新 %_MSUkbn% 的 msu 文件已经存在，将跳过操作。
+    goto :msu_dirs
 )
 for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.%xmf%"') do set "_MSUcab=%%#"
 for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.psf"') do set "_MSUpsf=%%#"
 set "_MSUkbf=Windows10.0-%_MSUkbn%-%arch%"
 echo %_MSUcab% | findstr /i "Windows11\." %_Nul1% && set "_MSUkbf=Windows11.0-%_MSUkbn%-%arch%"
 echo %_MSUcab% | findstr /i "Windows12\." %_Nul1% && set "_MSUkbf=Windows12.0-%_MSUkbn%-%arch%"
-if exist "SSU-*%arch%*.cab" (
+if not exist "SSU-*%arch%*.cab" set IncludeSSU=0&goto :SkipSSU
 for /f "tokens=2 delims=-" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUtsu=SSU-%%#-%arch%.cab"
 for /f "delims=" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUssu=%%#"
-) else (
-set IncludeSSU=0
-)
-if %IncludeSSU% equ 1 if not exist "_tMSU\SSUCompDB*.xml.cab" (
-expand.exe -f:SSUCompDB*.xml.cab "%_MSUmeta%" "_tMSU" %_Null%
-if exist "_tMSU\SSU*-express.xml.cab" del /f /q "_tMSU\SSU*-express.xml.cab"
-)
-if exist "_tMSU\SSUCompDB*.xml.cab" (for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml.cab"') do set "_MSUsdb=%%#") else (set IncludeSSU=0)
+if exist "_tMSU\update.mum" del /f /q "_tMSU\update.mum"
+expand.exe -f:update.mum "%_MSUssu%" "_tMSU" %_Null%
+set "_SSUkbn="
+if exist "_tMSU\update.mum" for /f "tokens=3 delims== " %%# in ('findstr /i releaseType "_tMSU\update.mum"') do set _SSUkbn=%%~#
+if "%_SSUkbn%"=="" set IncludeSSU=0&goto :SkipSSU
+if not exist "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab" set IncludeSSU=0&goto :SkipSSU
+for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab"') do set "_MSUsdb=%%#"
+:SkipSSU
 set "_MSUddd=DesktopDeployment_x86.cab"
 if exist "*DesktopDeployment*.cab" (
 for /f "delims=" %%# in ('dir /b /a:-d "*DesktopDeployment*.cab" ^|find /i /v "%_MSUddd%"') do set "_MSUddc=%%#"
@@ -904,7 +901,7 @@ goto :msu_dirs
 echo.
 echo 正在创建：%_MSUkbf%.msu
 if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
-mkdir "_tWIM"
+mkdir "_tWIM" %_Nul3%
 copy /y "%_MSUddc%" "_tWIM\DesktopDeployment.cab" %_Nul3%
 if /i not %arch%==x86 copy /y "%_MSUddd%" "_tWIM\DesktopDeployment_x86.cab" %_Nul3%
 copy /y "_tMSU\%_MSUonf%" "_tWIM\%_MSUonf%" %_Nul3%
@@ -929,7 +926,7 @@ exit /b
 echo.
 echo 正在解压所需文件……
 if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
-mkdir "_tSSU\000"
+mkdir "_tSSU\000" %_Nul3%
 if not defined _MSUssu goto :ssuinner64
 expand.exe -f:* "%_MSUssu%" "_tSSU" %_Nul3% || goto :ssuinner64
 goto :ssuouter64
@@ -952,7 +949,7 @@ if %ERRORLEVEL% neq 0 (
     set _mcfail=1
     exit /b
 )
-mkdir "_tSSU\111"
+mkdir "_tSSU\111" %_Nul3%
 if /i not %arch%==x86 if not exist "DesktopDeployment_x86.cab" goto :DDCdual
 rmdir /s /q "_tSSU\" %_Nul3%
 exit /b
@@ -961,7 +958,7 @@ exit /b
 echo.
 echo 正在解压所需文件……
 if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
-mkdir "_tSSU\111"
+mkdir "_tSSU\111" %_Nul3%
 if not defined _MSUssu goto :ssuinner86
 expand.exe -f:* "%_MSUssu%" "_tSSU" %_Nul3% || goto :ssuinner86
 goto :ssuouter86
@@ -1012,7 +1009,7 @@ if exist "%1\UpdateCompression.dll" echo "UpdateCompression.dll"
 exit /b
 
 :extract
-if not exist "!_cabdir!\" mkdir "!_cabdir!"
+if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 set _cab=0
 if %_build% geq 21382 if %UseMSU% equ 1 if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (set "package=%%#"&call :sum2msu)
 if exist "!_DIR!\*defender-dism*%arch%*.cab" for /f "tokens=* delims=" %%# in ('dir /b "!_DIR!\*defender-dism*%arch%*.cab"') do (call set /a _cab+=1)
@@ -1058,7 +1055,7 @@ if defined uupmsu (
 )
 if defined cab_%pkgn% goto :eof
 if exist "!dest!\" rmdir /s /q "!dest!\"
-mkdir "!dest!"
+mkdir "!dest!" %_Nul3%
 set /a count+=1
 7z.exe e "!_DIR!\%package%" -o"!dest!" update.mum -aoa %_Nul3%
 if not exist "!dest!\update.mum" (
@@ -1091,7 +1088,7 @@ if exist "!dest!\*.psf.cix.xml" (
         if /i %arch%==x64 if /i %xOS%==amd64 set _psf=1
     )
     if !_psf! equ 1 (
-        for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:UpdateCompression.dll "!_DIR!\%%#" .\temp %_Nul3%
+        for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:UpdateCompression.dll "!_DIR!\%%#" temp %_Nul3%
         if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
     )
     if %_build% geq 25330 if not exist "bin\MSDelta.dll" if not exist "temp\MSDelta.dll" call :uups_psf
@@ -1209,7 +1206,7 @@ goto :eof
 :msu2
 if defined msu_%pkgn% goto :eof
 if exist "!dest!\" rmdir /s /q "!dest!\"
-mkdir "!dest!"
+mkdir "!dest!" %_Nul3%
 set msuwim=0
 expand.exe -d -f:*Windows*.psf "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% || (
 wimlib-imagex.exe dir "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set msuwim=1) || (goto :eof)
@@ -1269,19 +1266,19 @@ expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_N
 wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
 )
 if defined uupmsu if %msuwim% equ 0 (
-if %_wow% equ 1 expand.exe -f:DesktopDeployment_x86.cab "!_DIR!\%uupmsu%" .\temp %_Nul3%
-if %_nat% equ 1 expand.exe -f:DesktopDeployment.cab "!_DIR!\%uupmsu%" .\temp %_Nul3%
+if %_wow% equ 1 expand.exe -f:DesktopDeployment_x86.cab "!_DIR!\%uupmsu%" temp %_Nul3%
+if %_nat% equ 1 expand.exe -f:DesktopDeployment.cab "!_DIR!\%uupmsu%" temp %_Nul3%
 )
 if defined uupmsu if %msuwim% equ 1 (
-if %_wow% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment_x86.cab --dest-dir=.\temp %_Nul3%
-if %_nat% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment.cab --dest-dir=.\temp %_Nul3%
+if %_wow% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment_x86.cab --dest-dir=temp %_Nul3%
+if %_nat% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment.cab --dest-dir=temp %_Nul3%
 )
 if %_wow% equ 1 (
-if exist "temp\DesktopDeployment_x86.cab" (expand.exe -f:dpx.dll "temp\DesktopDeployment_x86.cab" .\temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\SysWOW64\dpx.dll --dest-dir=.\temp --no-acls --no-attributes %_Nul3%)
+if exist "temp\DesktopDeployment_x86.cab" (expand.exe -f:dpx.dll "temp\DesktopDeployment_x86.cab" temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\SysWOW64\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
 if exist "temp\dpx.dll" copy /y %SystemRoot%\SysWOW64\expand.exe temp\ %_Nul3%
 )
 if %_nat% equ 1 (
-if exist "temp\DesktopDeployment.cab" (expand.exe -f:dpx.dll "temp\DesktopDeployment.cab" .\temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\dpx.dll --dest-dir=.\temp --no-acls --no-attributes %_Nul3%)
+if exist "temp\DesktopDeployment.cab" (expand.exe -f:dpx.dll "temp\DesktopDeployment.cab" temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
 if exist "temp\dpx.dll" copy /y %SysPath%\expand.exe temp\ %_Nul3%
 )
 exit /b
@@ -1299,19 +1296,19 @@ expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_N
 wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
 )
 if defined uupmsu if %msuwim% equ 0 (
-if %_wow% equ 1 expand.exe -f:DesktopDeployment_x86.cab "!_DIR!\%uupmsu%" .\temp %_Nul3%
-if %_nat% equ 1 expand.exe -f:DesktopDeployment.cab "!_DIR!\%uupmsu%" .\temp %_Nul3%
+if %_wow% equ 1 expand.exe -f:DesktopDeployment_x86.cab "!_DIR!\%uupmsu%" temp %_Nul3%
+if %_nat% equ 1 expand.exe -f:DesktopDeployment.cab "!_DIR!\%uupmsu%" temp %_Nul3%
 )
 if defined uupmsu if %msuwim% equ 1 (
-if %_wow% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment_x86.cab --dest-dir=.\temp %_Nul3%
-if %_nat% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment.cab --dest-dir=.\temp %_Nul3%
+if %_wow% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment_x86.cab --dest-dir=temp %_Nul3%
+if %_nat% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 DesktopDeployment.cab --dest-dir=temp %_Nul3%
 )
 if %_wow% equ 1 (
-if exist "temp\DesktopDeployment_x86.cab" (expand.exe -f:UpdateCompression.dll "temp\DesktopDeployment_x86.cab" .\temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\SysWOW64\UpdateCompression.dll --dest-dir=.\temp --no-acls --no-attributes %_Nul3%)
+if exist "temp\DesktopDeployment_x86.cab" (expand.exe -f:UpdateCompression.dll "temp\DesktopDeployment_x86.cab" temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\SysWOW64\UpdateCompression.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
     if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
 )
 if %_nat% equ 1 (
-if exist "temp\DesktopDeployment.cab" (expand.exe -f:UpdateCompression.dll "temp\DesktopDeployment.cab" .\temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\UpdateCompression.dll --dest-dir=.\temp --no-acls --no-attributes %_Nul3%)
+if exist "temp\DesktopDeployment.cab" (expand.exe -f:UpdateCompression.dll "temp\DesktopDeployment.cab" temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\UpdateCompression.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
     if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
 )
 exit /b
@@ -1554,7 +1551,7 @@ goto :%_rtrn%
 
 :ReLCU
 if exist "!lcudir!\update.mum" if exist "!lcudir!\*.manifest" goto :eof
-if not exist "!lcudir!\" mkdir "!lcudir!"
+if not exist "!lcudir!\" mkdir "!lcudir!" %_Nul3%
 expand.exe -f:* "!_DIR!\%lcupkg%" "!lcudir!" %_Nul3%
 7z.exe e "!_DIR!\%lcupkg%" -o"!lcudir!" update.mum -aoa %_Nul3%
 if exist "!lcudir!\*cablist.ini" (
@@ -1830,7 +1827,7 @@ goto :eof
 set "_InCom=!%1Com!"
 set "_InKey=!%1Key!"
 set "_InIdn=!%1Idn!"
-if not exist "!_CabDir!\" mkdir "!_CabDir!"
+if not exist "!_CabDir!\" mkdir "!_CabDir!" %_Nul3%
 if not exist "!_CabDir!\%_InCom%.manifest" (
 (echo ^<?xml version="1.0" encoding="UTF-8" standalone="yes"?^>
 echo ^<assembly xmlns="urn:schemas-microsoft-com:asm.v3" manifestVersion="1.0" copyright="Copyright (c) Microsoft Corporation. All Rights Reserved."^>
@@ -2022,7 +2019,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
     for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
-if %AddRegs% equ 1 if %_build% geq 22621 call :DoReg
+if %AddRegs% equ 1 call :DoReg
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if %AddAppxs% equ 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
@@ -2077,7 +2074,7 @@ goto :eof
 
 :DoReg
 reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
-reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
+if %_build% geq 22621 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
 if %_SrvESD% equ 1 goto :eof
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
@@ -2109,10 +2106,11 @@ echo 未检测到 Windows PowerShell，将跳过操作。
 goto :eof
 )
 pushd "!_DIR!"
-for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do set "_mdf=%%#"
 if exist "_tmpMD\" rmdir /s /q "_tmpMD\" %_Nul3%
-mkdir "_tmpMD"
-expand.exe -f:*TargetCompDB_* "%_mdf%" _tmpMD %_Null%
+mkdir "_tmpMD" %_Nul3%
+for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (
+    expand.exe -f:*TargetCompDB_* "%%#" _tmpMD %_Null%
+)
 expand.exe -r -f:*.xml "_tmpMD\*%langid%*.cab" _tmpMD %_Null%
 expand.exe -r -f:*.xml "_tmpMD\*TargetCompDB_App_*.cab" _tmpMD %_Null%
 if not exist "_tmpMD\*TargetCompDB_App_*.xml" (
@@ -2125,17 +2123,18 @@ goto :eof
 copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
 for %%# in (CoreCountrySpecific, Core, PPIPro, ProfessionalCountrySpecific, Professional) do (
     if exist _tmpMD\*CompDB_%%#_*%langid%*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*CompDB_%%#_*%langid%*.xml"') do (
-        copy /y _tmpMD\%%i .\CompDB_App.xml %_Nul1%
-        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
+        copy /y _tmpMD\%%i CompDB_App.xml %_Nul1%
+        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
     )
     if exist _tmpMD\*TargetCompDB_App_Moment_*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_Moment_*.xml"') do (
-        copy /y _tmpMD\%%i .\CompDB_App.xml %_Nul1%
-        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
+        copy /y _tmpMD\%%i CompDB_App.xml %_Nul1%
+        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
     )
 )
 for /f "delims=" %%# in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_*.xml" %_Nul6%') do (
-copy /y _tmpMD\%%# .\CompDB_App.xml %_Nul1%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('.\CompDB_App.txt') -split ':embed\:.*'; iex ($f[1])"
+copy /y _tmpMD\%%# CompDB_App.xml %_Nul1%
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; iex ($f[1])"
+copy /y _tmpMD\%%# Apps\%%# %_Nul1%
 )
 if exist Apps_*.txt if exist "Apps\*_8wekyb3d8bbwe" move /y Apps_*.txt Apps\ %_Nul1%
 del /f /q CompDB_App.* %_Nul3%
@@ -2150,16 +2149,13 @@ echo 正在安装 Appxs 软件包……
 echo %line%
 echo.
 pushd "!_DIR!\Apps"
-call :AddFramework
+copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
 if exist Custom_Appxs.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs.txt) do call :AddAppxs "%%i"
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if not exist Custom_Appxs.txt if exist Apps_%editionid%.txt for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
 if not exist Custom_Appxs.txt if not exist Apps_*.txt for /f %%i in ('dir /b *') do if /i not "%%i"=="MSIXFramework" call :AddAppxs "%%i"
+del /f /q CompDB_App.* %_Nul3%
 popd
-goto :eof
-
-:AddFramework
-if exist "MSIXFramework\*" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "MSIXFramework\*.*x"') do %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"MSIXFramework\%%#" /SkipLicense | findstr /i /c:"successfully" %_Nul3% && echo %%~n#
 goto :eof
 
 :AddAppxs
@@ -2174,7 +2170,15 @@ if not defined _main if exist "%_pfn%\*.msix" for /f "tokens=* delims=" %%# in (
 if not defined _main goto :eof
 set "_stub="
 if exist "%_pfn%\AppxMetadata\Stub\*.*x" if %_SrvESD% neq 1 set "_stub=/StubPackageOption:InstallStub"
-%_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% | findstr /i /c:"successfully" %_Nul3% && echo %_mainn%
+set Dependency=
+for /f "delims=" %%i in ('dir /b /a:-d "*TargetCompDB_App_*.xml" %_Nul6%') do (
+    copy /y %%i CompDB_App.xml %_Nul1%
+    for /f "delims=_ tokens=1" %%j in ('%_psc% "Set-Location -LiteralPath '!_DIR!\Apps'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; $id='%_pfn%'; iex ($f[3])"') do (
+        if exist "MSIXFramework\%%j_*" for /f %%l in ('dir /b "MSIXFramework\%%j_*"') do set "Dependency=!Dependency! /DependencyPackagePath:"MSIXFramework\%%l""
+    )
+    del /f /q CompDB_App.xml %_Nul3%
+)
+%_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% !Dependency! | findstr /i /c:"successfully" %_Nul3% && echo %_mainn%
 goto :eof
 
 :RemoveAppx
