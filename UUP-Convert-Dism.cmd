@@ -566,7 +566,7 @@ echo %line%
 echo 正在将 install.wim 拆分为多个 install*.swm……
 echo %line%
 echo.
-wimlib-imagex.exe split ISOFOLDER\sources\install.wim ISOFOLDER\sources\install.swm 3500
+%_Dism% /LogPath:"%_dLog%\DismSplit.log" /Split-Image /ImageFile:"ISOFOLDER\sources\install.wim" /SWMFile:"ISOFOLDER\sources\install.swm" /FileSize:3500
 call set ERRORTEMP=!ERRORLEVEL!
 if !ERRORTEMP! neq 0 (
     echo.&echo 在拆分映像的时候出现错误。正在丢弃 install.swm
