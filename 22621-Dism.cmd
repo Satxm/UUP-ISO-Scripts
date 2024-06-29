@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.6-105"
+@set "uivr=v24.6-106"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -276,7 +276,7 @@ if %ResetBase% neq 0 echo 移除已被更新取代的组件
 if %AddAppxs% neq 0 echo 添加 Appxs
 if %AddEdition% neq 0 echo 转换 Windows 版本
 
-if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\"
+if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
@@ -414,7 +414,7 @@ call :BootRemove
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 call :cleanup
-%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
+call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
 call :BootRemove
@@ -422,7 +422,7 @@ if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootAddCab) else (call :B
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 copy ISOFOLDER\sources\lang.ini %_mount%\sources\lang.ini %_Nul3%
 call :cleanup
-%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
+call :DoWork
 call :DoUnmount
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
@@ -511,7 +511,7 @@ if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if 
     if /i %arch%==x64 if /i %xOS%==amd64 set _dpx=1
 )
 if %_dpx% equ 1 (
-    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" .\temp %_Nul3%
+    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" temp %_Nul3%
     copy /y %SysPath%\expand.exe temp\ %_Nul3%
 )
 wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 1 sources\setuphost.exe --dest-dir=temp --no-acls --no-attributes %_Nul3%
@@ -569,6 +569,7 @@ if /i %editionid%==ProfessionalEducation set DVDLABEL=CPREA_%archl%FRE_%langid%_
 if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
 
 :uups_ref
+if not exist "!_DIR!\*Package*.esd" exit /b
 echo.
 echo %line%
 echo 正在将 .cab 转换为 .esd 文件……
@@ -588,12 +589,11 @@ if %EXPRESS% equ 1 (
 )
 if exist "!_DIR!\Metadata\*.xml.cab" copy /y "!_DIR!\Metadata\*.xml.cab" "!_DIR!\" %_Nul3%
 if %RefESD% neq 0 call :uups_backup
-if not exist "!_DIR!\*Package*.esd" exit /b
 mkdir "!_DIR!\CanonicalUUP" %_Nul3%
 mkdir "!_DIR!\Original" %_Nul3%
 for /f %%# in ('dir /b /a:-d "!_DIR!\*.esd" %_Nul6%') do if not exist "!_DIR!\CanonicalUUP\%%#" (move /y "!_DIR!\%%#" "!_DIR!\CanonicalUUP\" %_Nul3%)
 for /f %%# in ('dir /b /a:-d "!_DIR!\*.cab"') do (
-echo %%# | findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetadata" %_Nul1% || move /y "!_DIR!\%%#" "!_DIR!\Original\" %_Nul3%
+echo %%# | findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetadata defender-dism" %_Nul1% || move /y "!_DIR!\%%#" "!_DIR!\Original\" %_Nul3%
 )
 if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
 for /L %%# in (1, 1,%_nsum%) do (
@@ -618,16 +618,16 @@ echo %cbsp% | findstr /i /r "Windows.*-KB SSU-.* RetailDemo Holographic-Desktop-
 echo %cbsp%
 set /a _ref+=1
 set /a _rnd=%random%
-set _dst=%_drv%\_tmp%_ref%
-if exist "%_dst%" (set _dst=%_drv%\_tmp%_rnd%)
+set _dst=temp\_tmp%_ref%
+if exist "%_dst%" (set _dst=temp\_tmp%_rnd%)
 mkdir %_dst% %_Nul3%
 expand.exe -f:* "!_DIR!\%cbsp%.cab" %_dst%\ %_Nul3%
 wimlib-imagex.exe capture "%_dst%" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
 rmdir /s /q %_dst%\ %_Nul3%
 if exist "%_dst%\" (
-    mkdir %_drv%\_del %_Nul3%
-    robocopy %_drv%\_del %_dst% /MIR /R:1 /W:1 /NFL /NDL /NP /NJH /NJS %_Nul3%
-    rmdir /s /q %_drv%\_del\ %_Nul3%
+    mkdir temp\_del %_Nul3%
+    robocopy temp\_del %_dst% /MIR /R:1 /W:1 /NFL /NDL /NP /NJH /NJS %_Nul3%
+    rmdir /s /q temp\_del\ %_Nul3%
     rmdir /s /q %_dst%\ %_Nul3%
 )
 exit /b
@@ -649,7 +649,7 @@ exit /b
 mkdir "!_DIR!\Original" %_Nul3%
 move /y "!_work!\temp\*.esd" "!_DIR!\" %_Nul3%
 for /f %%# in ('dir /b /a:-d "!_DIR!\*.cab"') do (
-echo %%#| findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetadata" %_Nul1% || move /y "!_DIR!\%%#" "!_DIR!\Original\" %_Nul3%
+echo %%#| findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetadata defender-dism" %_Nul1% || move /y "!_DIR!\%%#" "!_DIR!\Original\" %_Nul3%
 )
 exit /b
 
@@ -782,6 +782,7 @@ if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=
 if /i %editionid%==Professional for %%i in (Professional, Education, ProfessionalEducation, ProfessionalWorkstation) do ( set nedition=%%i && call :setedition)
 goto :eof
 :Done
+call :CleanReg
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 goto :eof
 
@@ -805,10 +806,11 @@ echo 未检测到 Windows PowerShell，将跳过操作。
 goto :eof
 )
 pushd "!_DIR!"
-for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do set "_mdf=%%#"
 if exist "_tmpMD\" rmdir /s /q "_tmpMD\" %_Nul3%
 mkdir "_tmpMD" %_Nul3%
-expand.exe -f:*TargetCompDB_* "%_mdf%" _tmpMD %_Null%
+for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (
+    expand.exe -f:*TargetCompDB_* "%%#" _tmpMD %_Null%
+)
 expand.exe -r -f:*.xml "_tmpMD\*%langid%*.cab" _tmpMD %_Null%
 expand.exe -r -f:*.xml "_tmpMD\*TargetCompDB_App_*.cab" _tmpMD %_Null%
 if not exist "_tmpMD\*TargetCompDB_App_*.xml" (
@@ -910,9 +912,11 @@ if exist "%_mount%\Windows\ProfessionalCountrySpecific.xml" del /f /q "%_mount%\
 if exist "%_mount%\Windows\ProfessionalEducation.xml" del /f /q "%_mount%\Windows\ProfessionalEducation.xml" %_Nul3%
 if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Windows\ProfessionalWorkstation.xml" %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismEdition.log" /Image:"%_mount%" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
+call :CleanReg
 if /i not %editionid%==%nedition% goto :dochange
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
+if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 echo.
 goto :eof
 
@@ -1005,6 +1009,29 @@ if exist "%_mount%\Windows\inf\*.log" (
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\assembly\*NativeImages*" %_Nul6%') do rmdir /s /q "%_mount%\Windows\assembly\%%#" %_Nul3%
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\CbsTemp\%%#\" %_Nul3%
 del /s /f /q "%_mount%\Windows\CbsTemp\*" %_Nul3%
+goto :eof
+
+:CleanReg
+if exist "%_mount%\Windows\System32\config\*.TM.blf" (
+    takeown /f "%_mount%\Windows\System32\config\*.TM.blf" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\config\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\config\*.TM.blf" %_Nul3%
+)
+if exist "%_mount%\Windows\System32\config\*.regtrans-ms" (
+    takeown /f "%_mount%\Windows\System32\config\*.regtrans-ms" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\config\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\config\*.regtrans-ms" %_Nul3%
+)
+if exist "%_mount%\Users\Default\*.TM.blf" (
+    takeown /f "%_mount%\Users\Default\*.TM.blf" /R /A %_Nul3%
+    icacls "%_mount%\Users\Default\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Users\Default\*.TM.blf" %_Nul3%
+)
+if exist "%_mount%\Users\Default\*.regtrans-ms" (
+    takeown /f "%_mount%\Users\Default\*.regtrans-ms" /R /A %_Nul3%
+    icacls "%_mount%\Users\Default\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Users\Default\*.regtrans-ms" %_Nul3%
+)
 goto :eof
 
 :DismHostON
