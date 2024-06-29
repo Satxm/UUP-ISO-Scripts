@@ -802,89 +802,115 @@ echo %line%
 pushd "!_DIR!"
 set "_MSUdll=dpx.dll ReserveManager.dll TurboStack.dll UpdateAgent.dll UpdateCompression.dll wcp.dll"
 set "_MSUonf=onepackage.AggregatedMetadata.cab"
+set /a _rnd=%random%
+for /f %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do if /i "%%#"=="%_MSUonf%" (
+    set /a _rnd+=1
+    ren "%%#" "org!_rnd!_%%#"
+)
+for /f %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (set "metaf=%%#"&call :MakeMSU)
+if exist "zzz.ddf" del /f /q "zzz.ddf"
+if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
+if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
+if exist "_tMSU\" rmdir /s /q "_tMSU\" %_Nul3%
+popd
+exit /b
+
+:MakeMSU
 set "_MSUssu="
 set IncludeSSU=1
-set xmf=cab
 set _mcfail=0
 if exist "_tMSU\" rmdir /s /q "_tMSU\" %_Nul3%
 mkdir "_tMSU" %_Nul3%
-for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (
-    expand.exe -f:LCUCompDB*.xml.cab "%%#" "_tMSU" %_Null%
-    expand.exe -f:SSUCompDB*.xml.cab "%%#" "_tMSU" %_Null%
-    expand.exe -f:*.AggregatedMetadata*.cab "%%#" "_tMSU" %_Null%
+expand.exe -f:LCUCompDB*.xml.cab "%metaf%" "_tMSU" %_Nul3%
+expand.exe -f:SSUCompDB*.xml.cab "%metaf%" "_tMSU" %_Nul3%
+expand.exe -f:*.AggregatedMetadata*.cab "%metaf%" "_tMSU" %_Nul3%
+if not exist "_tMSU\LCUCompDB*.xml.cab" if not exist "_tMSU\*.AggregatedMetadata*.cab" (
+    goto :eof
 )
 if exist "_tMSU\SSU*-express.xml.cab" del /f /q "_tMSU\SSU*-express.xml.cab"
-if %_build% lss 25336 (
-    if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
+set xtn=cab
+if not exist "_tMSU\*.AggregatedMetadata*.cab" goto :SkipWIM
+set xtn=wim
+for /f %%# in ('dir /b /a:-d "_tMSU\*.AggregatedMetadata*.cab"') do expand.exe -f:*.xml "_tMSU\%%#" "_tMSU" %_Nul3%
+if not exist "_tMSU\LCUCompDB*.xml" goto :eof
+for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml"') do (
+    %_Nul3% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
 )
-if %_build% geq 25336 (
-    if not exist "_tMSU\*.AggregatedMetadata*.cab" goto :msu_dirs
-    for /f %%# in ('dir /b /a:-d "_tMSU\*.AggregatedMetadata*.cab"') do expand.exe -f:*.xml "_tMSU\%%#" "_tMSU" %_Null%
-    if not exist "_tMSU\LCUCompDB*.xml" goto :msu_dirs
-    for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml"') do (
-        %_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
-    )
-    if exist "_tMSU\SSUCompDB*.xml" for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml"') do (
-        %_Null% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
-    )
-    if not exist "_tMSU\LCUCompDB*.xml.cab" goto :msu_dirs
-    del /f /q "_tMSU\*.xml" %_Nul3%
-    set xmf=wim
+if exist "_tMSU\SSUCompDB*.xml" for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml"') do (
+    %_Nul3% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
 )
+if not exist "_tMSU\LCUCompDB*.xml.cab" goto :eof
+del /f /q "_tMSU\*.xml" %_Nul3%
+:SkipWIM
 set "_MSUkbn="
-for /f "tokens=2 delims=_." %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml.cab"') do if exist "*Windows1*%%#*%arch%*.%xmf%" if exist "*Windows1*%%#*%arch%*.psf" (
-    set "_MSUkbn=%%#"
-    for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB_%%#*.xml.cab"') do set "_MSUcdb=%%#"
-)
-if "%_MSUkbn%"=="" goto :msu_dirs
+for /f "tokens=2 delims=_." %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml.cab"') do set "_MSUkbn=%%#"
 if exist "*Windows1*%_MSUkbn%*%arch%*.msu" (
     echo.
     echo 累积更新 %_MSUkbn% 的 msu 文件已经存在，将跳过操作。
-    goto :msu_dirs
+    goto :eof
 )
-for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.%xmf%"') do set "_MSUcab=%%#"
-for /f "delims=" %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.psf"') do set "_MSUpsf=%%#"
+if not exist "*Windows1*%_MSUkbn%*%arch%*.psf" goto :eof
+if exist "*Windows1*%_MSUkbn%*%arch%*.cab" (
+    set xmf=cab
+) else if exist "*Windows1*%_MSUkbn%*%arch%*.wim" (
+    set xmf=wim
+) else (
+    goto :eof
+)
+for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB_%_MSUkbn%*.xml.cab"') do set "_MSUcdb=%%#"
+for /f %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.%xmf%"') do set "_MSUcab=%%#"
+for /f %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.psf"') do set "_MSUpsf=%%#"
 set "_MSUkbf=Windows10.0-%_MSUkbn%-%arch%"
 echo %_MSUcab% | findstr /i "Windows11\." %_Nul1% && set "_MSUkbf=Windows11.0-%_MSUkbn%-%arch%"
 echo %_MSUcab% | findstr /i "Windows12\." %_Nul1% && set "_MSUkbf=Windows12.0-%_MSUkbn%-%arch%"
 if not exist "SSU-*%arch%*.cab" set IncludeSSU=0&goto :SkipSSU
-for /f "tokens=2 delims=-" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUtsu=SSU-%%#-%arch%.cab"
-for /f "delims=" %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do set "_MSUssu=%%#"
+for /f %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do (set "_chk=%%#"&call :DoSSU)
+if not defined _MSUssu set IncludeSSU=0&goto :SkipSSU
+goto :SkipSSU
+
+:DoSSU
+if defined _MSUssu goto :eof
 if exist "_tMSU\update.mum" del /f /q "_tMSU\update.mum"
-expand.exe -f:update.mum "%_MSUssu%" "_tMSU" %_Null%
+expand.exe -f:update.mum "%_chk%" "_tMSU" %_Nul3%
 set "_SSUkbn="
 if exist "_tMSU\update.mum" for /f "tokens=3 delims== " %%# in ('findstr /i releaseType "_tMSU\update.mum"') do set _SSUkbn=%%~#
-if "%_SSUkbn%"=="" set IncludeSSU=0&goto :SkipSSU
-if not exist "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab" set IncludeSSU=0&goto :SkipSSU
+if "%_SSUkbn%"=="" goto :eof
+if not exist "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab" goto :eof
 for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab"') do set "_MSUsdb=%%#"
+for /f "tokens=2 delims=-" %%# in ('dir /b /a:-d "%_chk%"') do set "_MSUtsu=SSU-%%#-%arch%.cab"
+set "_MSUssu=%_chk%"
+goto :eof
+
 :SkipSSU
+set "_MSUddc="
 set "_MSUddd=DesktopDeployment_x86.cab"
 if exist "*DesktopDeployment*.cab" (
-for /f "delims=" %%# in ('dir /b /a:-d "*DesktopDeployment*.cab" ^|find /i /v "%_MSUddd%"') do set "_MSUddc=%%#"
-) else (
-call set "_MSUddc=_tMSU\DesktopDeployment.cab"
-call set "_MSUddd=_tMSU\DesktopDeployment_x86.cab"
-call :DDCAB
+    for /f %%# in ('dir /b /a:-d "*DesktopDeployment*.cab" ^|find /i /v "%_MSUddd%"') do set "_MSUddc=%%#"
 )
-if %_mcfail% equ 1 goto :msu_dirs
+if not defined _MSUddc (
+    call set "_MSUddc=_tMSU\DesktopDeployment.cab"
+    call set "_MSUddd=_tMSU\DesktopDeployment_x86.cab"
+    call :DDCAB
+)
+if %_mcfail% equ 1 goto :eof
 if /i not %arch%==x86 if not exist "DesktopDeployment_x86.cab" if not exist "_tMSU\DesktopDeployment_x86.cab" (
-call set "_MSUddd=_tMSU\DesktopDeployment_x86.cab"
-call :DDC86
+    call set "_MSUddd=_tMSU\DesktopDeployment_x86.cab"
+    call :DDC86
 )
-if %_mcfail% equ 1 goto :msu_dirs
+if %_mcfail% equ 1 goto :eof
 call :crDDF _tMSU\%_MSUonf%
 (echo "_tMSU\%_MSUcdb%" "%_MSUcdb%"
 if %IncludeSSU% equ 1 echo "_tMSU\%_MSUsdb%" "%_MSUsdb%"
 )>>zzz.ddf
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-    echo 由于 makecab.exe 对 %_MSUonf% 操作失败，将跳过操作。
-    goto :msu_dirs
+    echo makecab.exe 对 %_MSUonf% 操作失败，将跳过操作。
+    goto :eof
 )
-if %_build% geq 25336 goto :msu_wim
+if %xmf%==wim goto :msu_wim
 call :crDDF %_MSUkbf%.msu
 (echo "%_MSUddc%" "DesktopDeployment.cab"
-if /i not %arch%==x86 echo "%_MSUddd%" "DesktopDeployment_x86.cab"
+if exist "%_MSUddd%" if /i not %arch%==x86 echo "%_MSUddd%" "DesktopDeployment_x86.cab"
 echo "_tMSU\%_MSUonf%" "%_MSUonf%"
 if %IncludeSSU% equ 1 echo "%_MSUssu%" "%_MSUtsu%"
 echo "%_MSUcab%" "%_MSUkbf%.cab"
@@ -892,10 +918,10 @@ echo "%_MSUpsf%" "%_MSUkbf%.psf"
 )>>zzz.ddf
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=OFF
 if %ERRORLEVEL% neq 0 (
-    echo 由于 makecab.exe 对 %_MSUkbf%.msu 操作失败，将跳过操作。
-    goto :msu_dirs
+    echo makecab.exe 对 %_MSUkbf%.msu 操作失败，将跳过操作。
+    goto :eof
 )
-goto :msu_dirs
+goto :eof
 
 :msu_wim
 echo.
@@ -903,24 +929,17 @@ echo 正在创建：%_MSUkbf%.msu
 if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
 mkdir "_tWIM" %_Nul3%
 copy /y "%_MSUddc%" "_tWIM\DesktopDeployment.cab" %_Nul3%
-if /i not %arch%==x86 copy /y "%_MSUddd%" "_tWIM\DesktopDeployment_x86.cab" %_Nul3%
+if exist "%_MSUddd%" if /i not %arch%==x86 copy /y "%_MSUddd%" "_tWIM\DesktopDeployment_x86.cab" %_Nul3%
 copy /y "_tMSU\%_MSUonf%" "_tWIM\%_MSUonf%" %_Nul3%
 if %IncludeSSU% equ 1 copy /y "%_MSUssu%" "_tWIM\%_MSUtsu%" %_Nul3%
 copy /y "%_MSUcab%" "_tWIM\%_MSUkbf%.wim" %_Nul3%
 copy /y "%_MSUpsf%" "_tWIM\%_MSUkbf%.psf" %_Nul3%
-wimlib-imagex.exe capture _tWIM\ %_MSUkbf%.msu content --compress=none --nocheck --no-acls %_Nul3%
+%_Nul3% wimlib-imagex.exe capture _tWIM\ %_MSUkbf%.msu content --compress=none --nocheck --no-acls
 if %ERRORLEVEL% neq 0 (
-call :dk_color1 %Red% "由于捕获 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
-(echo.&echo 捕获 %_MSUkbf%.msu 操作失败)>>"!logerr!"
+    echo 捕获 %_MSUkbf%.msu 操作失败，将跳过操作。
+    goto :eof
 )
-
-:msu_dirs
-if exist "zzz.ddf" del /f /q "zzz.ddf"
-if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
-if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
-rmdir /s /q "_tMSU\" %_Nul3%
-popd
-exit /b
+goto :eof
 
 :DDCAB
 echo.
@@ -1976,7 +1995,7 @@ if exist "%SystemRoot%\temp\Facilitator.dll" del /f /q "%SystemRoot%\temp\Facili
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 for %%# in (handle1,handle2) do set %%#=0
-for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :mount "%_target%"&call :DoWork
+for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :DoMount "%_target%"&call :DoWork&call :DoUnmount
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if %_build% geq 19041 if %winbuild% lss 17133 if exist "%SysPath%\ext-ms-win-security-slc-l1-1-0.dll" (
     del /f /q %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
@@ -1990,7 +2009,7 @@ set _label=%isover%
 call :setlabel
 exit /b
 
-:mount
+:DoMount
 set _www=%~1
 set _nnn=%~nx1
 echo.
@@ -1999,14 +2018,21 @@ echo 正在更新 %_nnn% [%_inx%/%imgcount%]
 echo %line%
 %_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 set ERRORTEMP=%ERRORLEVEL%
-if %ERRORTEMP% neq 0 (
-    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
-    %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
-    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
-    %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
-    if exist "%_mount%\" rmdir /s /q "%_mount%\"
-    goto :eof
-)
+if %ERRORTEMP% neq 0 call :Discard
+goto :eof
+
+:DoUnmount
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
+set ERRORTEMP=%ERRORLEVEL%
+if %ERRORTEMP% neq 0 call :Discard
+goto :eof
+
+:Discard
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
+if exist "%_mount%\" rmdir /s /q "%_mount%\"
 goto :eof
 
 :DoWork
@@ -2066,10 +2092,10 @@ echo.
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=%%i && call :setedition)
 if /i %editionid%==Professional for %%i in (Professional, Education, ProfessionalEducation, ProfessionalWorkstation) do ( set nedition=%%i && call :setedition)
-%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 goto :eof
 :Done
-%_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Commit
+call :CleanReg
+%_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 goto :eof
 
 :DoReg
@@ -2216,9 +2242,11 @@ if exist "%_mount%\Windows\ProfessionalCountrySpecific.xml" del /f /q "%_mount%\
 if exist "%_mount%\Windows\ProfessionalEducation.xml" del /f /q "%_mount%\Windows\ProfessionalEducation.xml" %_Nul3%
 if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Windows\ProfessionalWorkstation.xml" %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismEdition.log" /Image:"%_mount%" /Set-Edition:%nedition% /Channel:Retail %_Nul3%
+call :CleanReg
 if /i not %editionid%==%nedition% goto :dochange
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
+if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 echo.
 goto :eof
 
@@ -2311,6 +2339,29 @@ if exist "%_mount%\Windows\inf\*.log" (
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\assembly\*NativeImages*" %_Nul6%') do rmdir /s /q "%_mount%\Windows\assembly\%%#" %_Nul3%
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\CbsTemp\%%#\" %_Nul3%
 del /s /f /q "%_mount%\Windows\CbsTemp\*" %_Nul3%
+goto :eof
+
+:CleanReg
+if exist "%_mount%\Windows\System32\config\*.TM.blf" (
+    takeown /f "%_mount%\Windows\System32\config\*.TM.blf" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\config\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\config\*.TM.blf" %_Nul3%
+)
+if exist "%_mount%\Windows\System32\config\*.regtrans-ms" (
+    takeown /f "%_mount%\Windows\System32\config\*.regtrans-ms" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\config\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\config\*.regtrans-ms" %_Nul3%
+)
+if exist "%_mount%\Users\Default\*.TM.blf" (
+    takeown /f "%_mount%\Users\Default\*.TM.blf" /R /A %_Nul3%
+    icacls "%_mount%\Users\Default\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Users\Default\*.TM.blf" %_Nul3%
+)
+if exist "%_mount%\Users\Default\*.regtrans-ms" (
+    takeown /f "%_mount%\Users\Default\*.regtrans-ms" /R /A %_Nul3%
+    icacls "%_mount%\Users\Default\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Users\Default\*.regtrans-ms" %_Nul3%
+)
 goto :eof
 
 :DismHostON
