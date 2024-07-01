@@ -1,26 +1,37 @@
 @setlocal DisableDelayedExpansion
 @set "uivr=v24.6-106"
 @echo off
+
 :: 若要启用调试模式，请将此参数更改为 1
 set _Debug=0
+
 :: 若要清理映像以增量压缩已取代的组件，请将此参数更改为 1（警告：在 18362 及以上版本中，这将会删除基础 RTM 版本程序包）
 set Cleanup=1
+
 :: 若要重置操作系统映像并移除已被更新取代的组件，请将此参数更改为 1（快于默认的增量压缩，需要首先设置参数 Cleanup=1）
 set ResetBase=1
+
 :: 若不需要创建 ISO 文件，保留原始文件夹，请将此参数更改为 1
 set SkipISO=0
+
 :: 若要保留关联 ESD 文件，请将此参数更改为 1
 set RefESD=1
+
 :: 使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
 set AddEdition=1
+
 :: 升级或整合 Appx 软件，请将此参数更改为 1
 set AddAppxs=1
+
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
+
 :: 若在完成时退出进程而不提示，请将此参数更改为 1
 set AutoExit=1
+
 set "_Null=1>nul 2>nul"
 set "FullExit=exit /b"
+
 set "param=%~f0"
 cmd /v:on /c echo(^^!param^^!| findstr /R "[| ` ~ ! @ %% \^ & ( ) \[ \] { } + = ; ' , |]*^"
 if %errorlevel% EQU 0 (
@@ -34,6 +45,7 @@ echo 请按任意键退出脚本。
 pause >nul
 goto :eof
 )
+
 set _elev=
 set "_args="
 set "_args=%~1"
@@ -43,6 +55,7 @@ for %%# in (%*) do (
 if /i "%%~#"=="-elevated" (set _elev=1
 ) else if /i not "%%~#"=="%~1" (set "_args=%_args% %%~#")
 )
+
 :NoProgArgs
 set "xOS=amd64"
 if /i "%PROCESSOR_ARCHITECTURE%"=="arm64" set "xOS=arm64"
@@ -56,7 +69,7 @@ if exist "%SystemRoot%\Sysnative\reg.exe" (
     set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
 set "_err========== 错误 ========="
-set "_psc=powershell
+set "_psc=powershell -nop -c"
 set winbuild=1
 for /f "tokens=6 delims=[]. " %%# in ('ver') do set winbuild=%%#
 set _cwmi=0
@@ -68,14 +81,18 @@ for %%# in (powershell.exe) do @if "%%~$PATH:#"=="" set _pwsh=0
 if not exist "%SystemRoot%\System32\WindowsPowerShell\v1.0\powershell.exe" set _pwsh=0
 2>nul %_psc% $ExecutionContext.SessionState.LanguageMode | find /i "Full" 1>nul || set _pwsh=0
 if %_cwmi% equ 0 if %_pwsh% EQU 0 goto :E_PowerShell
+
 set _uac=-elevated
 %_Null% reg.exe query HKU\S-1-5-19 && goto :Passed || if defined _elev goto :E_Admin
+
 set _PSarg="""%~f0""" %_uac%
 if defined _args set _PSarg="""%~f0""" %_args:"="""% %_uac%
 set _PSarg=%_PSarg:'=''%
+
 call setlocal EnableDelayedExpansion
-for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe
-%_Null% %_psc% "start wt
+for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe -arg '/c \"!_PSarg!\"' -verb runas" && exit /b || goto :E_Admin
+%_Null% %_psc% "start wt -arg 'new-tab cmd /c \"!_PSarg!\"' -verb runas" && exit /b || goto :E_Admin
+
 :Passed
 set "_log=%~dpn0"
 set "_work=%~dp0"
@@ -118,6 +135,7 @@ set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
 set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 set _MOifeo=0
 setlocal EnableDelayedExpansion
+
 if %_Debug% equ 0 (
     set "_Nul1=1>nul"
     set "_Nul2=2>nul"
@@ -138,11 +156,13 @@ echo 当完成之后，此窗口将会关闭
 @prompt $G
 @call :Begin %_args% >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
 @exit /b
+
 :Begin
 @cls
 title Windows ISO UUP 生成
 set "_dLog=%SystemRoot%\Logs\DISM"
 set "_Dism=Dism.exe /ScratchDir:"!_cabdir!""
+
 :precheck
 set W10UI=0
 if %winbuild% geq 10240 (
@@ -171,6 +191,7 @@ if /i not "%_ntf%"=="NTFS" (
     set "_mount=%SystemDrive%\Mount"
 )
 set "line============================================================="
+
 :check
 pushd "!_work!"
 set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg64.dll,wimlib-imagex.exe,PSFExtractor.exe)
@@ -180,11 +201,13 @@ for %%# in %_fils% do (
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 if exist temp\ rmdir /s /q temp\
 mkdir temp
+
 :checkdone
 echo.
 if defined _args for %%# in (%*) do if exist "%%~#\*.esd" (set "_DIR=%%~#"&echo %%~#&goto :checkesd)
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _ndir+=1&set "_DIR=%%~#"&echo %%~#)
 if !_ndir! equ 1 if defined _DIR goto :checkesd
+
 :selectuup
 set _DIR=
 echo.
@@ -209,6 +232,7 @@ if not exist "%_DIR%\*.esd" (
     echo.
     goto :selectuup
 )
+
 :checkesd
 echo.
 echo %line%
@@ -229,6 +253,7 @@ if %_nsum% equ 0 goto :E_NotFind
 for /l %%# in (1,1,%_nsum%) do call :mediacheck %%#
 if defined eWIMLIB goto :QUIT
 goto :ISO
+
 :ISO
 if %PREPARED% equ 0 call :PREPARE
 if exist "!_DIR!\*.*xbundle" set _appexist=1
@@ -238,6 +263,7 @@ if %Cleanup% equ 0 set ResetBase=0
 if %_SrvESD% equ 1 set AddEdition=0
 if %AddAppxs% equ 1 set _DismHost=1
 if defined _DismHost call :DismHostON
+
 echo.
 echo %line%
 echo 正在列出已配置选项……
@@ -249,12 +275,15 @@ if %Cleanup% neq 0 echo 增量压缩已取代的组件
 if %ResetBase% neq 0 echo 移除已被更新取代的组件
 if %AddAppxs% neq 0 echo 添加 Appxs
 if %AddEdition% neq 0 echo 转换 Windows 版本
+
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
+
 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt" call :appx_sort
 if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
+
 call :uups_ref
 echo.
 echo %line%
@@ -263,16 +292,16 @@ echo %line%
 echo.
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
-wimlib-imagex.exe apply "!_DIR!\%uups_esd1%" 1 ISOFOLDER\
+wimlib-imagex.exe apply "!_DIR!\%uups_esd1%" 1 ISOFOLDER\ --no-acls --no-attributes %_Nul3%
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 goto :E_Apply
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
 if exist ISOFOLDER\__chunk_data del /f /q ISOFOLDER\__chunk_data %_Nul3%
 set _rtrn=WinreRet
-::goto :WinreWim
+goto :WinreWim
 :WinreRet
 set _rtrn=BootRet
-::goto :BootWim
+goto :BootWim
 :BootRet
 set _rtrn=InstallRet
 goto :InstallWim
@@ -293,9 +322,9 @@ echo %line%
 for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.*"') do set wimfile=%%~fi
 for /f %%a in ('%_psc% "(dir %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
 if /i not %arch%==arm64 (
-    oscdimg.exe
+    oscdimg.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -m -u2 -udfver102 -t%isotime% -l%DVDLABEL% ISOFOLDER %DVDISO%.iso
 ) else (
-    oscdimg.exe
+    oscdimg.exe -bootdata:1#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -m -u2 -udfver102 -t%isotime% -l%DVDLABEL% ISOFOLDER %DVDISO%.iso
 )
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 goto :E_ISOC
@@ -305,6 +334,7 @@ echo 完成。
 echo %line%
 echo.
 goto :QUIT
+
 :InstallWim
 echo.
 echo %line%
@@ -317,8 +347,8 @@ for /L %%# in (1, 1,%_nsum%) do (
     call set ERRORTEMP=!ERRORLEVEL!
     if !ERRORTEMP! neq 0 goto :E_Export
     set nedition=!edition%%#! && call :setname
-    wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!"
-    if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!"
+    wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
+    if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 )
 if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
     imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
@@ -330,7 +360,7 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\i
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
-    wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%#
+    wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /l %%# in (1,1,%imgs%) do (
@@ -353,6 +383,7 @@ for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%,%i7%,%i8%,%i9%,%i0%) do (
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
 goto :%_rtrn%
+
 :WinreWim
 echo.
 echo %line%
@@ -364,6 +395,7 @@ echo.
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 goto :E_Export
 goto :%_rtrn%
+
 :BootWim
 echo.
 echo %line%
@@ -375,11 +407,11 @@ if %_SrvESD% equ 1 %_Nul3% %_psc% "Set-Date '2024/4/2 00:25:52'"
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"ISOFOLDER\sources\boot.wim" /Compress:max
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)" %_Nul3%
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%arch%)" "Microsoft Windows PE (%arch%)" %_Nul3%
-wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1
+wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 --image-property FLAGS=9 %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"ISOFOLDER\sources\boot.wim" /Compress:max /Bootable
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 2 "Microsoft Windows Setup (%_ss%)" "Microsoft Windows Setup (%_ss%)" %_Nul3%
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 2 "Microsoft Windows Setup (%arch%)" "Microsoft Windows Setup (%arch%)" %_Nul3%
-wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 2
+wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 2 --image-property FLAGS=2 --boot %_Nul3%
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
@@ -403,7 +435,7 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\b
 for /L %%# in (1,1,%imgs%) do (
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
     for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
-    wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" %%#
+    wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /l %%# in (1,1,%imgs%) do (
@@ -413,6 +445,7 @@ for /l %%# in (1,1,%imgs%) do (
 )
 if exist "ISOFOLDER\sources\bootnew.wim" del /f /q "ISOFOLDER\sources\boot.wim"&ren "ISOFOLDER\sources\bootnew.wim" boot.wim %_Nul3%
 goto :%_rtrn%
+
 :BootRemove
 type nul>temp\winre.txt
 type nul>temp\winpe.txt
@@ -423,6 +456,7 @@ for /f "tokens=* delims=" %%# in (bin\winpe.txt) do for /f "eol=M tokens=* delim
 for /f "tokens=* delims=" %%i in (temp\winpe.txt) do set "remove=!remove! /PackageName:%%i"
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Remove-Package !remove!
 goto :eof
+
 :BootAddCab
 set "cabadd="
 for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
@@ -430,12 +464,13 @@ for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup_*.cab"')
 for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup-*.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Add-Package !cabadd!
 goto :eof
+
 :BootFileCopy
-wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\system32\xmllite.dll
+wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\system32\xmllite.dll --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 copy /y ISOFOLDER\setup.exe %_mount%\setup.exe %_Nul3%
 copy /y ISOFOLDER\sources\inf\setup.cfg %_mount%\sources\inf\setup.cfg %_Nul3%
 set "_bkimg="
-wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 1 Windows\System32\winpe.jpg
+wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Nul3%
 for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png) do if exist "ISOFOLDER\sources\%%#" set "_bkimg=%%#"
 if defined _bkimg (
     copy /y ISOFOLDER\sources\%_bkimg% %_mount%\sources\background.bmp %_Nul3%
@@ -454,6 +489,7 @@ for /f %%# in (bin\bootmui.txt) do if exist "ISOFOLDER\sources\%langid%\%%#" (
 del /f /q ISOFOLDER\sources\xmllite.dll %_Nul3%
 del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
 goto :eof
+
 :PREPARE
 echo.
 echo %line%
@@ -481,23 +517,23 @@ if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if 
     if /i %arch%==x64 if /i %xOS%==amd64 set _dpx=1
 )
 if %_dpx% equ 1 (
-    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe
+    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" temp %_Nul3%
     copy /y %SysPath%\expand.exe temp\ %_Nul3%
 )
-wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 1 sources\setuphost.exe
+wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 1 sources\setuphost.exe --dest-dir=temp --no-acls --no-attributes %_Nul3%
 7z.exe l temp\setuphost.exe >temp\version.txt 2>&1
 if %_build% geq 22478 (
-    wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\System32\UpdateAgent.dll
+    wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\System32\UpdateAgent.dll --dest-dir=temp --no-acls --no-attributes --ref="!_DIR!\*.esd" %_Nul3%
     if exist "temp\UpdateAgent.dll" 7z.exe l temp\UpdateAgent.dll >temp\version.txt 2>&1
 )
 for /f "tokens=4-7 delims=.() " %%i in ('"findstr /i /b "FileVersion" temp\version.txt" %_Nul6%') do (set uupver=%%i.%%j&set uupmaj=%%i&set uupmin=%%j)
 set revver=%uupver%&set revmaj=%uupmaj%&set revmin=%uupmin%
 set "tok=6,7"&set "toe=5,6,7"
 if /i %arch%==x86 (set _ss=x86) else if /i %arch%==x64 (set _ss=amd64) else (set _ss=arm64)
-wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest
+wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest --dest-dir=temp --no-acls --no-attributes --ref="!_DIR!\*.esd" %_Nul3%
 if exist "temp\*_microsoft-windows-coreos-revision*.manifest" for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od temp\*_microsoft-windows-coreos-revision*.manifest') do (set revver=%%i.%%j&set revmaj=%%i&set revmin=%%j)
 if %_build% geq 15063 (
-    wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\System32\config\SOFTWARE
+    wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\System32\config\SOFTWARE --dest-dir=temp --no-acls --no-attributes %_Nul3%
     set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
     for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r ".*\.OS""') do if not errorlevel 1 (
         for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe temp\SOFTWARE "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !revmaj! (
@@ -512,6 +548,7 @@ if %uupmaj% lss %revmaj% set uupver=%revver%
 set _label=%uupver%
 call :setlabel
 exit /b
+
 :setlabel
 set DVDISO=%_label%.%arch%
 if %_SrvESD% equ 1 set DVDISO=%_label%.%arch%.Server
@@ -527,6 +564,7 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\i
 if %images% equ 1 call :isosingle
 if %images% geq 4 set DVDLABEL=CCCOMA_%archl%FRE_%langid%_DV9
 exit /b
+
 :isosingle
 for /f "tokens=3 delims=<>" %%# in ('imagex /info "ISOFOLDER\sources\install.wim" 1 ^| find /i "<EDITIONID>"') do set "editionid=%%#"
 if /i %editionid%==Core set DVDLABEL=CCRA_%archl%FRE_%langid%_DV9%&exit /b
@@ -535,6 +573,7 @@ if /i %editionid%==Education set DVDLABEL=CEDA_%archl%FRE_%langid%_DV9&exit /b
 if /i %editionid%==Professional set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&exit /b
 if /i %editionid%==ProfessionalEducation set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&exit /b
 if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
+
 :uups_ref
 if not exist "!_DIR!\*Package*.esd" exit /b
 echo.
@@ -547,7 +586,7 @@ if exist "!_DIR!\*.xml.cab" if exist "!_DIR!\Metadata\*" move /y "!_DIR!\*.xml.c
 if exist "!_DIR!\*.cab" (
     for /f "tokens=* delims=" %%# in ('dir /b /a:-d "!_DIR!\*.cab"') do (
         del /f /q temp\update.mum %_Nul3%
-        expand.exe
+        expand.exe -f:update.mum "!_DIR!\%%#" temp %_Nul3%
         if exist "temp\update.mum" call :uups_cab "%%#"
     )
 )
@@ -564,9 +603,10 @@ echo %%# | findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetada
 )
 if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
 for /L %%# in (1, 1,%_nsum%) do (
-    wimlib-imagex.exe export "!_DIR!\CanonicalUUP\!uups_esd%%#!" all "!_DIR!\!uups_esd%%#!"
+    wimlib-imagex.exe export "!_DIR!\CanonicalUUP\!uups_esd%%#!" all "!_DIR!\!uups_esd%%#!" --ref="!_DIR!\CanonicalUUP\*.esd" %_rrr% --compress=LZMS --solid
 )
 exit /b
+
 :uups_dir
 set cbsp=%~1
 if exist "temp\%cbsp%.esd" exit /b
@@ -574,8 +614,9 @@ echo %cbsp% | findstr /i /r "Windows.*-KB SSU-.* RetailDemo Holographic-Desktop-
 if /i "%cbsp%"=="Metadata" exit /b
 echo 转换为 ESD 文件：%cbsp%.cab
 rmdir /s /q "!_DIR!\%~1\$dpx$.tmp\" %_Nul3%
-wimlib-imagex.exe capture "!_DIR!\%~1" "temp\%cbsp%.esd"
+wimlib-imagex.exe capture "!_DIR!\%~1" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
 exit /b
+
 :uups_cab
 set cbsp=%~n1
 if exist "temp\%cbsp%.esd" exit /b
@@ -586,8 +627,8 @@ set /a _rnd=%random%
 set _dst=temp\_tmp%_ref%
 if exist "%_dst%" (set _dst=temp\_tmp%_rnd%)
 mkdir %_dst% %_Nul3%
-expand.exe
-wimlib-imagex.exe capture "%_dst%" "temp\%cbsp%.esd"
+expand.exe -f:* "!_DIR!\%cbsp%.cab" %_dst%\ %_Nul3%
+wimlib-imagex.exe capture "%_dst%" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
 rmdir /s /q %_dst%\ %_Nul3%
 if exist "%_dst%\" (
     mkdir temp\_del %_Nul3%
@@ -596,6 +637,7 @@ if exist "%_dst%\" (
     rmdir /s /q %_dst%\ %_Nul3%
 )
 exit /b
+
 :uups_backup
 if not exist "!_work!\temp\*.esd" exit /b
 echo.
@@ -616,6 +658,7 @@ for /f %%# in ('dir /b /a:-d "!_DIR!\*.cab"') do (
 echo %%#| findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetadata defender-dism" %_Nul1% || move /y "!_DIR!\%%#" "!_DIR!\Original\" %_Nul3%
 )
 exit /b
+
 :mediacheck
 set _ESDSrv%1=0
 for /f "tokens=2 delims=]" %%# in ('find /v /n "" temp\uups_esd.txt ^| find "[%1]"') do set uups_esd=%%#
@@ -656,6 +699,7 @@ if /i "!edition%1!"=="ServerDatacenter" set "edition%1=ServerDatacenterCore"
 if /i "!edition%1!"=="ServerTurbine" set "edition%1=ServerTurbineCore"
 )
 exit /b
+
 :update
 if %W10UI% equ 0 exit /b
 set directcab=0
@@ -680,6 +724,7 @@ if %isomaj% lss %revmaj% set isover=%revver%
 set _label=%isover%
 call :setlabel
 exit /b
+
 :DoMount
 set _www=%~1
 set _nnn=%~nx1
@@ -703,11 +748,13 @@ if %_SrvESD% equ 1 (
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 call :Discard
 goto :eof
+
 :DoUnmount
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 set ERRORTEMP=%ERRORLEVEL%
 if %ERRORTEMP% neq 0 call :Discard
 goto :eof
+
 :Discard
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
@@ -715,6 +762,7 @@ goto :eof
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Wim %_Nul3%
 if exist "%_mount%\" rmdir /s /q "%_mount%\"
 goto :eof
+
 :DoWork
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
@@ -752,6 +800,7 @@ goto :eof
 call :CleanReg
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 goto :eof
+
 :AddEdge
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" goto :eof
 echo.
@@ -759,6 +808,7 @@ echo 正在添加 Microsoft Edge……
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
 goto :eof
+
 :appx_sort
 echo.
 echo %line%
@@ -774,10 +824,10 @@ pushd "!_DIR!"
 if exist "_tmpMD\" rmdir /s /q "_tmpMD\" %_Nul3%
 mkdir "_tmpMD" %_Nul3%
 for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (
-    expand.exe
+    expand.exe -f:*TargetCompDB_* "%%#" _tmpMD %_Null%
 )
-expand.exe
-expand.exe
+expand.exe -r -f:*.xml "_tmpMD\*%langid%*.cab" _tmpMD %_Null%
+expand.exe -r -f:*.xml "_tmpMD\*TargetCompDB_App_*.cab" _tmpMD %_Null%
 if not exist "_tmpMD\*TargetCompDB_App_*.xml" (
 echo.
 echo 由于 CompDB_App.xml 文件没有找到，将跳过操作。
@@ -789,16 +839,16 @@ copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
 for %%# in (CoreCountrySpecific, Core, PPIPro, ProfessionalCountrySpecific, Professional) do (
     if exist _tmpMD\*CompDB_%%#_*%langid%*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*CompDB_%%#_*%langid%*.xml"') do (
         copy /y _tmpMD\%%i CompDB_App.xml %_Nul1%
-        %_Nul3% %_psc% "Set-Location
+        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
     )
     if exist _tmpMD\*TargetCompDB_App_Moment_*.xml for /f %%i in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_Moment_*.xml"') do (
         copy /y _tmpMD\%%i CompDB_App.xml %_Nul1%
-        %_Nul3% %_psc% "Set-Location
+        %_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; $id='%%#'; $lang='%langid%'; iex ($f[2])"
     )
 )
 for /f "delims=" %%# in ('dir /b /a:-d "_tmpMD\*TargetCompDB_App_*.xml" %_Nul6%') do (
 copy /y _tmpMD\%%# CompDB_App.xml %_Nul1%
-%_Nul3% %_psc% "Set-Location
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_DIR!'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; iex ($f[1])"
 copy /y _tmpMD\%%# Apps\%%# %_Nul1%
 )
 if exist Apps_*.txt if exist "Apps\*_8wekyb3d8bbwe" move /y Apps_*.txt Apps\ %_Nul1%
@@ -806,6 +856,7 @@ del /f /q CompDB_App.* %_Nul3%
 rmdir /s /q "_tmpMD\" %_Nul3%
 popd
 goto :eof
+
 :AddWinre
 if not exist "temp\Winre.wim" goto :eof
 echo.
@@ -821,6 +872,7 @@ if exist "%_mount%\Windows\System32\Recovery\Winre.wim" (
 copy /y "temp\Winre.wim" "%_mount%\Windows\System32\Recovery\Winre.wim" %_Nul3%
 %_Nul3% %_psc% "$Filenew = Get-Item '%_mount%\Windows\System32\Recovery\Winre.wim';$Fileold = Get-Item 'temp\Winre.wim';$Filenew.CreationTime = $Fileold.CreationTime;$Filenew.LastWriteTime = $Fileold.LastWriteTime;$Filenew.LastAccessTime = $Fileold.LastWriteTime"
 goto :eof
+
 :AddAppx
 echo.
 echo %line%
@@ -837,6 +889,7 @@ for /f "tokens=2 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Ima
 del /f /q CompDB_App.* %_Nul3%
 popd
 goto :eof
+
 :AddAppxs
 set "_pfn=%~1"
 if not exist "%_pfn%\License.xml" goto :eof
@@ -852,13 +905,14 @@ if exist "%_pfn%\AppxMetadata\Stub\*.*x" if %_SrvESD% neq 1 set "_stub=/StubPack
 set Dependency=
 for /f "delims=" %%i in ('dir /b /a:-d "*TargetCompDB_App_*.xml" %_Nul6%') do (
     copy /y %%i CompDB_App.xml %_Nul1%
-    for /f "delims=_ tokens=1" %%j in ('%_psc% "Set-Location
+    for /f "delims=_ tokens=1" %%j in ('%_psc% "Set-Location -LiteralPath '!_DIR!\Apps'; $f=[IO.File]::ReadAllText('CompDB_App.txt') -split ':embed\:.*'; $id='%_pfn%'; iex ($f[3])"') do (
         if exist "MSIXFramework\%%j_*" for /f %%l in ('dir /b "MSIXFramework\%%j_*"') do set "Dependency=!Dependency! /DependencyPackagePath:"MSIXFramework\%%l""
     )
     del /f /q CompDB_App.xml %_Nul3%
 )
 %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Add-ProvisionedAppxPackage /PackagePath:"%_pfn%\%_main%" /LicensePath:"%_pfn%\License.xml" /Region:all %_stub% !Dependency! | findstr /i /c:"successfully" %_Nul3% && echo %_mainn%
 goto :eof
+
 :RemoveAppx
 echo.
 echo %line%
@@ -871,6 +925,7 @@ for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') d
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 for /f "tokens=2 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-ProvisionedAppxPackages ^| findstr /c:"PackageName"') do echo %%# >>%editionid%.txt
 goto :eof
+
 :setedition
 call :setname
 echo.
@@ -888,17 +943,19 @@ if exist "%_mount%\Windows\ProfessionalWorkstation.xml" del /f /q "%_mount%\Wind
 call :CleanReg
 if /i not %editionid%==%nedition% goto :dochange
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
-wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!"
-if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!"
+wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
+if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 echo.
 goto :eof
+
 :dochange
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%" /Append
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
-wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!"
-if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!"
+wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
+if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 echo.
 goto :eof
+
 :setname
 for %%# in (
     "Core:%_wtx% Home:%_wtx% 家庭版"
@@ -920,6 +977,7 @@ for %%# in (
     if /i %nedition%==%%A set "_namea=%%B"&set "_nameb=%%C"&set "_namec=%%D"
 )
 goto :eof
+
 :cleanup
 set savc=0&set savr=1
 if %_build% geq 18362 (set savc=3&set savr=3)
@@ -956,6 +1014,7 @@ if /i not %arch%==arm64 (
 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
 if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
 call :cleanmanual&goto :eof
+
 :cleanmanual
 if exist "%_mount%\Windows\WinSxS\ManifestCache\*.bin" (
     takeown /f "%_mount%\Windows\WinSxS\ManifestCache\*.bin" /A %_Nul3%
@@ -979,6 +1038,7 @@ for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\assembly\*Native
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\CbsTemp\%%#\" %_Nul3%
 del /s /f /q "%_mount%\Windows\CbsTemp\*" %_Nul3%
 goto :eof
+
 :CleanReg
 if exist "%_mount%\Windows\System32\config\*.TM.blf" (
     takeown /f "%_mount%\Windows\System32\config\*.TM.blf" /R /A %_Nul3%
@@ -1028,6 +1088,7 @@ if %errorlevel% equ 0 (
 )
 reg.exe import temp\DismAdd.reg %_Nul3%
 exit /b
+
 :DismHostOFF
 if %winbuild% lss 9200 exit /b
 if %_MOifeo% equ 0 exit /b
@@ -1043,11 +1104,13 @@ if exist "temp\DismOrg.reg" (
 )
 del /f /q temp\Dism*.reg %_Nul3%
 exit /b
+
 :E_NotFind
 echo %_err%
 echo 在指定的路径中未找到所需文件（夹）。
 echo.
 goto :QUIT
+
 :E_Admin
 echo %_err%
 echo 此脚本需要以管理员权限运行。
@@ -1056,6 +1119,7 @@ echo.
 echo 请按任意键退出脚本。
 pause >nul
 exit /b
+
 :E_PowerShell
 echo %_err%
 echo 此脚本的工作需要 Windows PowerShell。
@@ -1063,27 +1127,32 @@ echo.
 echo 请按任意键退出脚本。
 pause >nul
 exit /b
+
 :E_BinMiss
 echo %_err%
 echo 所需的文件 %_bin% 丢失。
 echo.
 goto :QUIT
+
 :E_Apply
 echo.
 echo 在应用映像的时候出现错误。
 echo.
 goto :QUIT
+
 :E_Export
 echo.
 echo 在导出映像的时候出现错误。
 echo.
 goto :QUIT
+
 :E_ISOC
 ren ISOFOLDER %DVDISO%
 echo.
 echo 在创建ISO映像的时候出现错误。
 echo.
 goto :QUIT
+
 :QUIT
 if %_MOifeo% neq 0 (
 call :DismHostOFF
