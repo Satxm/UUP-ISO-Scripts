@@ -395,6 +395,7 @@ echo %line%
 echo 正在创建 boot.wim 文件……
 echo %line%
 echo.
+%_Nul3% %_psc% "Set-Date '2019/12/7 21:25:00'"
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"ISOFOLDER\sources\boot.wim" /Compress:max
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)" %_Nul3%
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%arch%)" "Microsoft Windows PE (%arch%)" %_Nul3%
@@ -953,6 +954,16 @@ if exist "%_mount%\Users\Default\*.regtrans-ms" (
     takeown /f "%_mount%\Users\Default\*.regtrans-ms" /R /A %_Nul3%
     icacls "%_mount%\Users\Default\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
     del /a  /s /f /q "%_mount%\Users\Default\*.regtrans-ms" %_Nul3%
+)
+if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" (
+    takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" %_Nul3%
+)
+if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" (
+    takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" %_Nul3%
 )
 goto :eof
 

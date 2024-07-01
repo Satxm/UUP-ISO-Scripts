@@ -2503,6 +2503,16 @@ if exist "%_mount%\Users\Default\*.regtrans-ms" (
     icacls "%_mount%\Users\Default\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
     del /a  /s /f /q "%_mount%\Users\Default\*.regtrans-ms" %_Nul3%
 )
+if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" (
+    takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" %_Nul3%
+)
+if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" (
+    takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /R /A %_Nul3%
+    icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
+    del /a  /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" %_Nul3%
+)
 goto :eof
 
 :DismHostON
