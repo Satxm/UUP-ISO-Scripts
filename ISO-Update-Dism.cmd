@@ -1,6 +1,6 @@
 @setlocal DisableDelayedExpansion
 @set "uivr=v24.10.20-109f"
-@echo on
+@echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
 set _Debug=0
