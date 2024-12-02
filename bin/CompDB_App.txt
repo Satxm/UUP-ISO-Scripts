@@ -13,6 +13,8 @@ ForEach ($a in $doc.CompDB.Features.Feature) {
     If ($null -eq $d) {continue}
     $null = [IO.Directory]::CreateDirectory($p)
     [IO.File]::WriteAllText($t,$d,[System.Text.Encoding]::ASCII)
+    $x = [xml](Get-Content $t)
+    (Get-Item $t).LastWriteTime = (Get-Date $x.License.LicenseInfo.LastUpdateDate)
 }
 $packs = @{}
 ForEach ($a in $doc.CompDB.Packages.Package) {

@@ -591,8 +591,10 @@ echo.
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"temp\Winre.wim" /Compress:max /Bootable
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 1 call :update "temp\Winre.wim"
-%_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
+call :update "temp\Winre.wim"
+::%_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winre.esd" /Compress:recovery %_Nul3%
+%_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.esd" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" /Compress:max /Bootable %_Nul3%
 if exist "temp\Winrenew.wim" del /f /q "temp\Winre.wim"&ren "temp\Winrenew.wim" Winre.wim %_Nul3%
 goto :%_rtrn%
 
@@ -2214,6 +2216,7 @@ goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
 if defined mounterr goto :eof
+call :cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
   set isoupdate=
   xcopy /CDRUY "%_mount%\sources" "ISOFOLDER\sources\" %_Nul3%
