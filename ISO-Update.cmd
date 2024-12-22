@@ -1291,25 +1291,14 @@ set msu_%pkgn%=1
 findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && call :chklcu
 goto :eof
 
-:vrpad
-set cuvr=%1
-       if %cuvr% lss 10 (set cuvr=0000%cuvr%
-) else if %cuvr% lss 100 (set cuvr=000%cuvr%
-) else if %cuvr% lss 1000 (set cuvr=00%cuvr%
-) else if %cuvr% lss 10000 (set cuvr=0%cuvr%
-)
-goto :eof
-
 :chklcu
 set /a c_num+=1
 set kbvr=0
 for /f "tokens=5-8 delims==. " %%H in ('findstr /i Package_for_RollupFix "!dest!\update.mum"') do set "kbvr=%%I"&set "cver=%%~H.%%I.%%J.%%K
 if %_build% geq 22621 (
 if not exist "!_cabdir!\LCUmum\Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%.mum" copy /y "!dest!\update.mum" "!_cabdir!\LCUmum\Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%.mum" %_Nul1%
-)
-call :vrpad %kbvr%
-if %_build% geq 26052 if %UseMSU% equ 1 (
-if not exist "!_cabdir!\LCUall\%cuvr%-%package%" copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%cuvr%-%package%" %_Nul1%
+)if %_build% geq 26052 if %UseMSU% equ 1 (
+if not exist "!_cabdir!\LCUall\%package%" copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
 )
 if %kbvr% geq %c_ver% (
 set "c_ver=%kbvr%"
