@@ -2,10 +2,10 @@
 @echo off
 title 清理临时文件
 
-for %%# in (powershell.exe) do @if "%%~$PATH:#"=="" echo 未找到 PowerShell，请右键点击“以管理员身份运行”
-1>nul 2>nul reg.exe query HKU\S-1-5-19 || (
-  for %%# in (wt.exe) do @if "%%~$PATH:#"=="" powershell "start cmd -arg '/c """%~f0"""' -verb runas" && exit /b || echo 请右键点击“以管理员身份运行”！
-  powershell "start wt 'new-tab """%~f0"""' -verb runas" && exit /b || echo 请右键点击“以管理员身份运行”！
+for %%# in (powershell.exe) do @if "%%~$PATH:#"=="" echo 在系统中未找到 PowerShell，请右键并点击【以管理员身份运行】。
+1>nul 2>nul fltmc || (
+  for %%# in (wt.exe) do @if "%%~$PATH:#"=="" powershell "start cmd -arg '/c \"%~f0\"' -verb runas" && exit /b || ( echo 此脚本需要以管理员权限运行，请右键并点击【以管理员身份运行】。& pause & exit /b )
+  powershell "start wt '\"%~f0\"' -verb runas" && exit /b || ( echo 此脚本需要以管理员权限运行，请右键并点击【以管理员身份运行】。& pause & exit /b )
 )
 
 set "_work=%~dp0"
@@ -15,7 +15,6 @@ set "_cabdir=%_drv%\Updates"
 if "%_work:~0,2%"=="\\" set "_cabdir=%~dp0temp\Updates"
 
 set "_Null=1>nul 2>nul"
-reg.exe query HKU\S-1-5-19 %_Null% || (echo.&echo 此脚本需要以管理员权限运行。&goto :TheEnd)
 set "_cmdf=%~f0"
 if exist "%SystemRoot%\Sysnative\cmd.exe" (
 setlocal EnableDelayedExpansion
