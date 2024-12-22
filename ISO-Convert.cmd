@@ -16,8 +16,8 @@ set _uac=-elevated
 set _PSarg="""%~f0""" %_uac%
 set _PSarg=%_PSarg:'=''%
 
-for %%# in (wt.exe) do @if "%%~$PATH:#"=="" 1>nul 2>nul %_psc% "start cmd.exe -arg '/c \"!_PSarg!\"' -verb runas" && exit /b || goto :E_Admin
-1>nul 2>nul %_psc% "start wt -arg 'new-tab cmd /c \"!_PSarg!\"' -verb runas" && exit /b || goto :E_Admin
+for %%# in (wt.exe) do @if "%%~$PATH:#"=="" 1>nul 2>nul %_psc% "start cmd.exe -arg '/c %_PSarg%' -verb runas" && exit /b || goto :E_Admin
+1>nul 2>nul %_psc% "start wt -arg 'cmd /c %_PSarg%' -verb runas" && exit /b || goto :E_Admin
 
 :Passed
 SET ISOFILE=

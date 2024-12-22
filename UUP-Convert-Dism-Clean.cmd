@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.10.20-109f"
+@set "uivr=v24.12.22-110"“
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -59,20 +59,6 @@ set AutoExit=0
 
 set "_Null=1>nul 2>nul"
 set "FullExit=exit /b"
-
-set "param=%~f0"
-cmd /v:on /c echo(^^!param^^!| findstr /R "[| ` ~ ! @ %% \^ & ( ) \[ \] { } + = ; ' , |]*^"
-if %errorlevel% EQU 0 (
-echo.
-echo ==== 出现错误 ====
-echo 不允许在文件路径名中检测到特殊字符。
-echo 请确保在路径中不包含以下所示的特殊字符
-echo ^` ^~ ^! ^@ %% ^^ ^& ^( ^) [ ] { } ^+ ^= ^; ^' ^,
-echo.
-echo 请按任意键退出脚本。
-pause >nul
-goto :eof
-)
 
 set _elev=
 set "_args="
@@ -160,6 +146,7 @@ set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
 set "_CedIdn=Microsoft-Windows-EdgeChromium"
 set "_EsuIdn=Microsoft-Windows-SLC-Component-ExtendedSecurityUpdatesAI"
 set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
+set "_CBS=Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages"
 set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 set _MOifeo=0
 setlocal EnableDelayedExpansion
@@ -169,7 +156,6 @@ if %_Debug% equ 0 (
   set "_Nul2=2>nul"
   set "_Nul6=2^>nul"
   set "_Nul3=1>nul 2>nul"
-  set "_Pause=pause >nul"
   goto :Begin
 )
 set "_Nul1="
@@ -221,10 +207,6 @@ if /i not "%_ntf%"=="NTFS" (
 set "line============================================================="
 
 :check
-if %_Debug% neq 0 (
-if defined _args echo "!_args!"
-echo "!_work!"
-)
 pushd "!_work!"
 set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg64.dll,wimlib-imagex.exe,PSFExtractor.exe)
 for %%# in %_fils% do (
@@ -701,12 +683,7 @@ for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set 
 for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch=x86") else if %%# equ 9 (set "arch=x64") else (set "arch=arm64"))
 for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _build=%%#
 if %_build% geq 21382 if exist "!_DIR!\*.AggregatedMetadata*.cab" if exist "!_DIR!\*Windows1*-KB*.cab" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
-if %_build% geq 25336 if exist "!_DIR!\*.AggregatedMetadata*.cab" if exist "!_DIR!\*Windows1*-KB*.wim" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
-if %_build% geq 22563 if exist "!_DIR!\*.AggregatedMetadata*.cab" (
-if exist "!_DIR!\*.*xbundle" set _IPA=1
-if exist "!_DIR!\*.appx" set _IPA=1
-if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set _IPA=1
-)
+if %_build% geq 22621 if exist "!_DIR!\*.AggregatedMetadata*.cab" if exist "!_DIR!\*Windows1*-KB*.wim" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
 if %_build% geq 22621 if exist "!_DIR!\*Edge*.wim" (
   set _wimEdge=1
   if not exist "!_DIR!\Edge.wim" for /f %%# in ('dir /b /a:-d "!_DIR!\*Edge*.wim"') do rename "!_DIR!\%%#" Edge.wim %_Nul3%
@@ -748,7 +725,6 @@ if %vermaj% lss %revmaj% set verver=%revver%
 set _label=%verver%
 set _bit=%arch%
 if /i %arch%==arm64 set _bit=arm
-set c_pkg=
 set c_ver=0
 set c_num=0
 set s_pkg=
@@ -814,6 +790,7 @@ echo %%# | findstr /i /r "Windows.*-KB SSU-.* DesktopDeployment AggregatedMetada
 if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
 for /L %%# in (1, 1,%_nsum%) do (
   wimlib-imagex.exe export "!_DIR!\CanonicalUUP\!uups_esd%%#!" all "!_DIR!\!uups_esd%%#!" --ref="!_DIR!\CanonicalUUP\*.esd" %_rrr% --compress=LZMS --solid
+  %_Nul3% %_psc% "$Filenew = Get-Item '!_DIR!\!uups_esd%%#!';$Fileold = Get-Item '!_DIR!\CanonicalUUP\!uups_esd%%#!';$Filenew.LastWriteTime = $Fileold.LastWriteTime"
 )
 exit /b
 
@@ -916,15 +893,45 @@ echo 解包更新 %package% 文件
 echo %line%
 echo.
 mkdir "!_DIR!\%pkgn%" %_Nul3%
-7z.exe e "!_DIR!\%package%" -o"!_DIR!\%pkgn%" *Windows1*.cab -aoa %_Nul3%
-if exist "!_DIR!\%pkgn%\*Windows*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.cab"') do if not exist "!_DIR!\%%i" copy /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
-7z.exe e "!_DIR!\%package%" -o"!_DIR!\%pkgn%" *Windows1*.wim -aoa %_Nul3%
-if exist "!_DIR!\%pkgn%\*Windows*.wim" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.wim"') do if not exist "!_DIR!\%%i" copy /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
-7z.exe e "!_DIR!\%package%" -o"!_DIR!\%pkgn%" *Windows1*.psf -aoa %_Nul3%
-if exist "!_DIR!\%pkgn%\*Windows*.psf" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.psf"') do if not exist "!_DIR!\%%i" copy /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
-7z.exe e "!_DIR!\%package%" -o"!_DIR!\%pkgn%" *SSU-*.cab -aoa %_Nul3%
-if exist "!_DIR!\%pkgn%\*SSU-*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*SSU-*.cab"') do if not exist "!_DIR!\%%i" copy /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
+expand.exe -d -f:*Windows*.cab "!_DIR!\%package%" %_Nul2% | findstr /i cab %_Nul3% && (
+  expand.exe -f:* "!_DIR!\%package%" "!_DIR!\%pkgn%" %_Nul2%) || (
+  wimlib-imagex.exe apply "!_DIR!\%package%" 1 "!_DIR!\%pkgn%" --no-acls --no-attributes %_Nul3%
+)
+if exist "!_DIR!\%pkgn%\*Windows*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.cab"') do if not exist "!_DIR!\%%i" move /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
+if exist "!_DIR!\%pkgn%\*Windows*.wim" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.wim"') do if not exist "!_DIR!\%%i" move /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
+if exist "!_DIR!\%pkgn%\*Windows*.psf" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.psf"') do if not exist "!_DIR!\%%i" move /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
+if exist "!_DIR!\%pkgn%\*SSU-*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*SSU-*.cab"') do if not exist "!_DIR!\%%i" move /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
 rmdir /s /q "!_DIR!\%pkgn%\" %_Nul3%
+exit /b
+
+:expand_dll
+set "_f_=%1.dll"
+set _ddc=DesktopDeployment.cab
+set _dsp=System32
+set _wow=0
+set _nat=0
+if /i %arch%==%xOS% set _nat=1
+if /i %arch%==x64 if /i %xOS%==amd64 set _nat=1
+if %_nat% equ 0 (
+set _ddc=DesktopDeployment_x86.cab
+set _dsp=SysWOW64
+set _wow=1
+)
+if exist "temp\%_f_%" goto :expand_end
+set msuwim=0
+set "uupmsu="
+if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (
+expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#")
+wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
+)
+if defined uupmsu if not exist "temp\%_ddc%" (
+if %msuwim% equ 0 expand.exe -f:%_ddc% "!_DIR!\%uupmsu%" .\temp %_Nul3%
+if %msuwim% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 %_ddc% --dest-dir=.\temp %_Nul3%
+)
+if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\SysWOW64\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
+:expand_end
+if exist "temp\%_f_%" if "%_f_%"=="dpx.dll" copy /y %SystemRoot%\%_dsp%\expand.exe temp\ %_Nul3%
+if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "bin\MSDelta.dll" %_Nul3%
 exit /b
 
 :upd_msu
@@ -937,7 +944,7 @@ set "_MSUonf=onepackage.AggregatedMetadata.cab"
 set /a _rnd=%random%
 for /f %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do if /i "%%#"=="%_MSUonf%" (
   set /a _rnd+=1
-  ren "%%#" "org!_rnd!_%%#"
+  ren "%%#" "org!_rnd!.cab"
 )
 for /f %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (set "metaf=%%#"&call :MakeMSU)
 if exist "zzz.ddf" del /f /q "zzz.ddf"
@@ -1235,16 +1242,6 @@ if exist "!dest!\*.psf.cix.xml" (
     goto :eof
   )
   set psf_%pkgn%=1
-  set _psf=0
-  if %_build% geq 25330 if exist "!_DIR!\*DesktopDeployment*.cab" (
-    if /i %arch%==%xOS% set _psf=1
-    if /i %arch%==x64 if /i %xOS%==amd64 set _psf=1
-  )
-  if !_psf! equ 1 (
-    for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:UpdateCompression.dll "!_DIR!\%%#" temp %_Nul3%
-    if exist "temp\UpdateCompression.dll" copy "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
-  )
-  if %_build% geq 25330 if not exist "bin\MSDelta.dll" if not exist "temp\MSDelta.dll" call :uups_psf
 )
 findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && call :chklcu
 7z.exe e "!_DIR!\%package%" -o"!dest!" toc.xml -aoa %_Nul3%
@@ -1316,6 +1313,17 @@ if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_adobe-flash-for-windows_*.manifest -aoa %_Nul3%
   if exist "!dest!\*_adobe-flash-for-windows_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[Flash]"
 )
+if not defined _type (
+expand.exe -f:*_microsoft-windows-m..update-genuineintel_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+expand.exe -f:*_microsoft-windows-m..update-authenticamd_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+if exist "!dest!\*_microsoft-windows-m..update-*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[微码]"
+)
+if not defined _type (
+expand.exe -f:*_microsoft-onecore-c..dexperiencehost-api_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+expand.exe -f:*_microsoft-updatetargeting-windowsoobe_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+expand.exe -f:*_microsoft-windows-oobe-*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+if exist "!dest!\*_microsoft-*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[OOBE]"
+)
 echo [%count%/%_cab%] %package% %_type%
 set cab_%pkgn%=1
 if not defined wim_%pkgn% expand.exe -f:* "!_DIR!\%package%" "!dest!" %_Nul3% || (
@@ -1344,7 +1352,7 @@ if defined wim_%pkgn% (
 )
 if defined psf_%pkgn% (
   if not exist "!dest!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!dest!\*.psf.cix.xml"') do rename "!dest!\%%#" express.psf.cix.xml %_Nul3%
-  if not exist "bin\MSDelta.dll" copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
+  if exist "%SysPath%\UpdateCompression.dll" (copy /y "%SysPath%\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
   PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
   if !errorlevel! neq 0 (
     echo 出现错误：解压 PSF 更新包失败
@@ -1353,6 +1361,11 @@ if defined psf_%pkgn% (
     goto :eof
   )
   if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
+)
+for /f "tokens=5-8 delims==. " %%H in ('findstr /i Package_for_RollupFix "!dest!\update.mum"') do set "cver=%%~H.%%I.%%J.%%K
+findstr /i Baseline "!dest!\update.mum" %_Nul1% && (
+set "basekbn=!basekbn! %pkgid%"
+set "basepkg=!basepkg! Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%"
 )
 goto :eof
 
@@ -1393,6 +1406,15 @@ set msu_%pkgn%=1
 findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && call :chklcu
 goto :eof
 
+:vrpad
+set cuvr=%1
+       if %cuvr% lss 10 (set cuvr=0000%cuvr%
+) else if %cuvr% lss 100 (set cuvr=000%cuvr%
+) else if %cuvr% lss 1000 (set cuvr=00%cuvr%
+) else if %cuvr% lss 10000 (set cuvr=0%cuvr%
+)
+goto :eof
+
 :chklcu
 set /a c_num+=1
 set kbvr=0
@@ -1400,12 +1422,12 @@ for /f "tokens=5-8 delims==. " %%H in ('findstr /i Package_for_RollupFix "!dest!
 if %_build% geq 22621 (
 if not exist "!_cabdir!\LCUmum\Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%.mum" copy /y "!dest!\update.mum" "!_cabdir!\LCUmum\Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%.mum" %_Nul1%
 )
-if %_build% geq 26052 (
-if %c_num% neq 1 if not exist "!_cabdir!\LCUall\%package%" copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
+call :vrpad %kbvr%
+if %_build% geq 26052 if %UseMSU% equ 1 (
+if not exist "!_cabdir!\LCUall\%cuvr%-%package%" copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%cuvr%-%package%" %_Nul1%
 )
 if %kbvr% geq %c_ver% (
 set "c_ver=%kbvr%"
-set "c_pkg=%package%"
 ) else (
 goto :eof
 )
@@ -1443,38 +1465,7 @@ goto :eof
 if exist "!_DIR!\%compkg:~0,-4%*.cab" goto :eof
 call set /a _cab+=1
 move /y "!_cabdir!\lcu\%compkg%" "!_DIR!\%compkg%" %_Nul3%
-for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\%compkg%"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 goto :eof
-
-:expand_dll
-set "_f_=%1.dll"
-set _ddc=DesktopDeployment.cab
-set _dsp=System32
-set _wow=0
-set _nat=0
-if /i %arch%==%xOS% set _nat=1
-if /i %arch%==x64 if /i %xOS%==amd64 set _nat=1
-if %_nat% equ 0 (
-set _ddc=DesktopDeployment_x86.cab
-set _dsp=SysWOW64
-set _wow=1
-)
-if exist "temp\%_f_%" goto :expand_end
-set msuwim=0
-set "uupmsu="
-if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (
-expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#")
-wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
-)
-if defined uupmsu if not exist "temp\%_ddc%" (
-if %msuwim% equ 0 expand.exe -f:%_ddc% "!_DIR!\%uupmsu%" .\temp %_Nul3%
-if %msuwim% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 %_ddc% --dest-dir=.\temp %_Nul3%
-)
-if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 1 Windows\SysWOW64\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
-:expand_end
-if exist "temp\%_f_%" if "%_f_%"=="dpx.dll" copy /y %SystemRoot%\%_dsp%\expand.exe temp\ %_Nul3%
-if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "bin\MSDelta.dll" %_Nul3%
-exit /b
 
 :updatewim
 set SYSTEM=uiSYSTEM
@@ -1650,6 +1641,7 @@ if not defined cumulative if not defined lcumsu goto :cuwd
 set _gobk=cuwd
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :updtlcu
 :cuwd
+if defined basekbn call :RegBase
 if defined lcupkg call :ReLCU
 if defined callclean call :cleanup
 if defined mpamfe (
@@ -1720,6 +1712,40 @@ set AddUpdates=0
 set FullExit=exit
 goto :%_rtrn%
 
+:RegBase
+if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :eof
+if exist "!_cabdir!\W10UI*.*" del /f /q "!_cabdir!\W10UI*.*" %_Nul3%
+set "_k_=HKEY_LOCAL_MACHINE\%SOFTWARE%\%_CBS%"
+set "_p_=HKLM:\%SOFTWARE%\%_CBS%"
+reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
+
+reg.exe query "%_k_%" /s /v Baseline | findstr /i HKEY_LOCAL_MACHINE | findstr /i /v Package_for_RollupFix >>"!_cabdir!\W10UIbaseline.txt"
+type nul>"!_cabdir!\W10UIsimilar.txt"
+if exist "!_cabdir!\W10UIbaseline.txt" for /f "usebackq tokens=8 delims=\." %%G in ("!_cabdir!\W10UIbaseline.txt") do (
+findstr /i "%%G" "!_cabdir!\W10UIsimilar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"!_cabdir!\W10UIsimilar.txt"
+)
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" for %%G in (Microsoft-Windows-WinPE-LanguagePack-Package~ Microsoft-Windows-WinPE-Package~) do (
+findstr /i "%%G" "!_cabdir!\W10UIsimilar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"!_cabdir!\W10UIsimilar.txt"
+)
+findstr /i HKEY_LOCAL_MACHINE "!_cabdir!\W10UIsimilar.txt" %_Nul3% && for %%# in (%basekbn%) do (
+for /f "usebackq tokens=8 delims=\" %%G in ("!_cabdir!\W10UIsimilar.txt") do reg.exe query "%_k_%\%%G" /v InstallLocation %_Nul2% | findstr /i %%# %_Nul1% && echo %%G >>"!_cabdir!\W10UImatched.txt"
+)
+if exist "!_cabdir!\W10UImatched.txt" for /f "usebackq tokens=1 delims= " %%G in ("!_cabdir!\W10UImatched.txt") do (
+(echo New-ItemProperty '%_p_%\%%G' Baseline -Value 1 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+)
+for %%# in (%basepkg%) do (
+(echo New-ItemProperty '%_p_%\%%#' Baseline -Value 1 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+)
+pushd "!_cabdir!"
+if not exist "tiTkn.txt" copy /y "!_work!\bin\tiTkn.txt" . %_Nul3%
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_cabdir!'; $r='!_cabdir!\W10UIreg.txt'; $f=[IO.File]::ReadAllText('.\tiTkn.txt') -split ':cbsreg\:.*';iex ($f[1])"
+popd
+
+if /i %xOS%==x86 if /i not %arch%==x86 reg.exe save HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE2" /y %_Nul1%
+reg.exe unload HKLM\%SOFTWARE% %_Nul1%
+if /i %xOS%==x86 if /i not %arch%==x86 move /y "%_mount%\Windows\System32\Config\SOFTWARE2" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
+goto :eof
+
 :ReLCU
 if exist "!lcudir!\update.mum" if exist "!lcudir!\*.manifest" goto :eof
 if not exist "!lcudir!\" mkdir "!lcudir!" %_Nul3%
@@ -1732,7 +1758,7 @@ if exist "!lcudir!\*cablist.ini" (
 )
 if exist "!lcudir!\*.psf.cix.xml" (
   if not exist "!lcudir!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!lcudir!\*.psf.cix.xml"') do rename "!lcudir!\%%#" express.psf.cix.xml %_Nul3%
-  if not exist "bin\MSDelta.dll" copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%
+  if exist "%SysPath%\UpdateCompression.dll" (copy /y "%SysPath%\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
   PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!lcudir!" %_Nul3%
   if !errorlevel! neq 0 (
     echo 出现错误：解压 PSF 更新包失败
@@ -1763,9 +1789,7 @@ set xmsu=0
 if /i "%packx%"==".msu" set xmsu=1
 for /f "tokens=2 delims=-" %%V in ('echo %pckn%') do set pckid=%%V
 set "uupmsu="
-if %xmsu% equ 0 if %_build% geq 21382 if %UseMSU% equ 1 if exist "!_DIR!\*Windows1*%pckid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*%pckid%*%arch%*.msu"') do (
-set "uupmsu=%%#"
-)
+if %xmsu% equ 0 if %_build% geq 21382 if %UseMSU% equ 1 if exist "!_DIR!\*Windows1*%pckid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*%pckid%*%arch%*.msu"') do set "uupmsu=%%#"
 if defined uupmsu (
   expand.exe -d -f:*Windows*.psf "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
   wimlib-imagex.exe dir "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
@@ -1903,7 +1927,7 @@ goto :eof
 :setlcu
 if exist "!_cabdir!\LCUall\*.msu" (
 if defined lcuall goto :eof
-for /f "tokens=* delims=" %%# in ('dir /b /a:-d "!_cabdir!\LCUall\*.msu"') do set "lcumsu=!lcumsu! "!_cabdir!\LCUall\%%#""
+for /f "tokens=* delims=" %%# in ('dir /b /a:-d "!_cabdir!\LCUall\*.msu"') do set "lcumsu="!_cabdir!\LCUall\%%#""
 set lcuall=1
 ) else (
 set "lcumsu=!lcumsu! "!_DIR!\%package%""
@@ -1929,7 +1953,7 @@ set "cfil1=!_fil1:\=\\!"
 set "cfil2=!_fil2:\=\\!"
 if %_skpd% equ 0 if exist "!_fil1!" (
   if %_cwmi% equ 1 for /f "tokens=3,4 delims==." %%a in ('wmic datafile where "name='!cfil1!'" get Version /value ^| find "="') do set "_ver1j=%%a"&set "_ver1n=%%b"
-  if %_cwmi% equ 0 for /f "tokens=2,3 delims=." %%a in ('%_psc% "([WMI]'CIM_DataFile.Name=''!cfil1!\''').Version"') do set "_ver1j=%%a"&set "_ver1n=%%b"
+  if %_cwmi% equ 0 for /f "tokens=2,3 delims=." %%a in ('%_psc% "([WMI]'CIM_DataFile.Name=''!cfil1!''').Version"') do set "_ver1j=%%a"&set "_ver1n=%%b"
   expand.exe -i -f:mpavdlta.vdm "!_DIR!\%package%" "!_cabdir!" %_Nul3%
 )
 if exist "!_fil2!" (
