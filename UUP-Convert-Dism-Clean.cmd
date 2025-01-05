@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v24.12.22-110"“
+@set "uivr=v25.01.05-110""“
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -107,6 +107,7 @@ for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe -arg '
 %_Null% %_psc% "start wt -arg '!_PSarg!' -verb runas" && exit /b || goto :E_Admin
 
 :Passed
+@cls
 set "_log=%~dpn0"
 set "_work=%~dp0"
 set "_work=%_work:~0,-1%"
@@ -405,7 +406,7 @@ set _rtrn=InstallRet
 goto :InstallWim
 :InstallRet
 set _rtrn=IsoRet
-goto :doesdswm
+goto :WimWork
 :IsoRet
 if %SkipISO% neq 0 (
   ren ISOFOLDER %DVDISO%
@@ -420,7 +421,9 @@ echo.
 echo %line%
 echo 正在创建 ISO ……
 echo %line%
-for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.*"') do set wimfile=%%~fi
+set "wimfile=ISOFOLDER\sources\install.wim"
+if exist "ISOFOLDER\sources\install.esd" set "wimfile=ISOFOLDER\sources\install.esd"
+if exist "ISOFOLDER\sources\install.swm" set "wimfile=ISOFOLDER\sources\install.swm"
 for /f %%a in ('%_psc% "(dir %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
 if /i not %arch%==arm64 (
   oscdimg.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -m -u2 -udfver102 -t%isotime% -l%DVDLABEL% ISOFOLDER %DVDISO%.iso
@@ -524,13 +527,14 @@ if exist "%_mount%\Windows\%sysdir%\OneDriveSetup.exe" (
 if exist "temp\OneDriveSetup.exe" copy /y "temp\OneDriveSetup.exe" "%_mount%\Windows\%sysdir%\OneDriveSetup.exe" %_Nul3%
 goto :eof
 
-:doesdswm
+:WimWork
 for /f "delims=" %%i in ('dir /s /b /tc "ISOFOLDER\sources\install.wim"') do set "_size=000000%%~z#"
 if "%_size%" lss "0000004194304000" set WIM2SWM=0
-if %WIM2ESD% equ 0 if %WIM2SWM% equ 0 goto :%_rtrn%
-if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :doswm
+if %WIM2ESD% equ 1 if %WIM2SWM% equ 0 goto :DoESD
+if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :DoSWM
+goto :%_rtrn%
 
-:doesd
+:DoESD
 echo.
 echo %line%
 echo 正在将 install.wim 转换为 install.esd……
@@ -548,7 +552,7 @@ for /l %%# in (1,1,%imgs%) do (
 if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim
 goto :%_rtrn%
 
-:doswm
+:DoSWM
 echo.
 echo %line%
 echo 正在将 install.wim 拆分为多个 install*.swm……
@@ -599,9 +603,8 @@ if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 set "_inx=1"&call :DoMount "ISOFOLDER\sources\boot.wim"
 call :BootRemove
-%_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\
+%_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\ %_Nul3%
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
-call :cleanup
 call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
@@ -609,7 +612,6 @@ call :BootRemove
 if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootAddCab) else (call :BootFileCopy)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 copy ISOFOLDER\sources\lang.ini %_mount%\sources\lang.ini %_Nul3%
-call :cleanup
 call :DoWork
 call :DoUnmount
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
@@ -762,6 +764,7 @@ if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid
 
 :uups_ref
 if not exist "!_DIR!\*Package*.esd" exit /b
+if not exist "!_DIR!\*Package*.cab" exit /b
 echo.
 echo %line%
 echo 正在将 .cab 转换为 .esd 文件……
@@ -1412,7 +1415,8 @@ set kbvr=0
 for /f "tokens=5-8 delims==. " %%H in ('findstr /i Package_for_RollupFix "!dest!\update.mum"') do set "kbvr=%%I"&set "cver=%%~H.%%I.%%J.%%K
 if %_build% geq 22621 (
 if not exist "!_cabdir!\LCUmum\Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%.mum" copy /y "!dest!\update.mum" "!_cabdir!\LCUmum\Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%.mum" %_Nul1%
-)if %_build% geq 26052 if %UseMSU% equ 1 (
+)
+if %_build% geq 26052 if %UseMSU% equ 1 (
 if not exist "!_cabdir!\LCUall\%package%" copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
 )
 if %kbvr% geq %c_ver% (
@@ -2554,8 +2558,8 @@ if exist "%_mount%\Windows\WinSxS\Temp\TransformerRollbackData\*" (
   del /s /f /q "%_mount%\Windows\WinSxS\Temp\TransformerRollbackData\*" %_Nul3%
 )
 if exist "%_mount%\Windows\WinSxS\Backup\*" (
-  takeown /f "%_mount%\Windows\WinSxS\Backup\*" /R /A %_Nul3%
-  icacls "%_mount%\Windows\WinSxS\Backup\*" /grant *S-1-5-32-544:F /T %_Nul3%
+  takeown /f "%_mount%\Windows\WinSxS\Backup\*" /A %_Nul3%
+  icacls "%_mount%\Windows\WinSxS\Backup\*" /grant *S-1-5-32-544:F %_Nul3%
   del /s /f /q "%_mount%\Windows\WinSxS\Backup\*" %_Nul3%
 )
 if exist "%_mount%\Windows\inf\*.log" (
@@ -2581,34 +2585,34 @@ goto :eof
 
 :CleanReg
 if exist "%_mount%\Windows\System32\config\*.TM.blf" (
-  takeown /f "%_mount%\Windows\System32\config\*.TM.blf" /R /A %_Nul3%
-  icacls "%_mount%\Windows\System32\config\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
-  del /a  /s /f /q "%_mount%\Windows\System32\config\*.TM.blf" %_Nul3%
+  takeown /f "%_mount%\Windows\System32\config\*.TM.blf" /A %_Nul3%
+  icacls "%_mount%\Windows\System32\config\*.TM.blf" /grant *S-1-5-32-544:F %_Nul3%
+  del /a /s /f /q "%_mount%\Windows\System32\config\*.TM.blf" %_Nul3%
 )
 if exist "%_mount%\Windows\System32\config\*.regtrans-ms" (
-  takeown /f "%_mount%\Windows\System32\config\*.regtrans-ms" /R /A %_Nul3%
-  icacls "%_mount%\Windows\System32\config\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
-  del /a  /s /f /q "%_mount%\Windows\System32\config\*.regtrans-ms" %_Nul3%
+  takeown /f "%_mount%\Windows\System32\config\*.regtrans-ms" /A %_Nul3%
+  icacls "%_mount%\Windows\System32\config\*.regtrans-ms" /grant *S-1-5-32-544:F %_Nul3%
+  del /a /s /f /q "%_mount%\Windows\System32\config\*.regtrans-ms" %_Nul3%
 )
 if exist "%_mount%\Users\Default\*.TM.blf" (
-  takeown /f "%_mount%\Users\Default\*.TM.blf" /R /A %_Nul3%
-  icacls "%_mount%\Users\Default\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
-  del /a  /s /f /q "%_mount%\Users\Default\*.TM.blf" %_Nul3%
+  takeown /f "%_mount%\Users\Default\*.TM.blf" /A %_Nul3%
+  icacls "%_mount%\Users\Default\*.TM.blf" /grant *S-1-5-32-544:F %_Nul3%
+  del /a /s /f /q "%_mount%\Users\Default\*.TM.blf" %_Nul3%
 )
 if exist "%_mount%\Users\Default\*.regtrans-ms" (
-  takeown /f "%_mount%\Users\Default\*.regtrans-ms" /R /A %_Nul3%
-  icacls "%_mount%\Users\Default\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
-  del /a  /s /f /q "%_mount%\Users\Default\*.regtrans-ms" %_Nul3%
+  takeown /f "%_mount%\Users\Default\*.regtrans-ms" /A %_Nul3%
+  icacls "%_mount%\Users\Default\*.regtrans-ms" /grant *S-1-5-32-544:F %_Nul3%
+  del /a /s /f /q "%_mount%\Users\Default\*.regtrans-ms" %_Nul3%
 )
 if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" (
-  takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /R /A %_Nul3%
-  icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /grant *S-1-5-32-544:F /T %_Nul3%
-  del /a  /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" %_Nul3%
+  takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /A %_Nul3%
+  icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" /grant *S-1-5-32-544:F %_Nul3%
+  del /a /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.TM.blf" %_Nul3%
 )
 if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" (
-  takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /R /A %_Nul3%
-  icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /grant *S-1-5-32-544:F /T %_Nul3%
-  del /a  /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" %_Nul3%
+  takeown /f "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /A %_Nul3%
+  icacls "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" /grant *S-1-5-32-544:F %_Nul3%
+  del /a /s /f /q "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" %_Nul3%
 )
 goto :eof
 
