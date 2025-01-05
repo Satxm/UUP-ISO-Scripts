@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.01.05-110""“
+@set "uivr=v25.01.05-110"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
