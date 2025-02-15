@@ -1718,7 +1718,7 @@ for %%# in (%basepkg%) do (
 )
 
 if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('.\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('!_work!\temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
@@ -1731,7 +1731,7 @@ if %1 neq 9 (echo New-ItemProperty '%_p_%' SupersededActions -Value %1 -Force -E
 if %2 neq 9 (echo New-ItemProperty '%_p_%' DisableResetbase -Value %2 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
 if %3 neq 9 (echo New-ItemProperty '%_p_%' DisableComponentBackups -Value %3 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
 if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('.\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('!_work!\temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
