@@ -102,8 +102,8 @@ if defined _args set _PSarg="""%~f0""" %_args:"="""% %_uac%
 set _PSarg=%_PSarg:'=''%
 
 call setlocal EnableDelayedExpansion
-%_Null% %_psc% "start cmd.exe -arg '/c !_PSarg!' -verb runas" && exit /b || goto :E_Admin
-
+for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe -arg '/c !_PSarg!' -verb runas" && exit /b || goto :E_Admin
+%_Null% %_psc% "start wt -arg '!_PSarg!' -verb runas" && exit /b || goto :E_Admin
 
 :Passed
 @cls
@@ -249,8 +249,8 @@ goto :eof
 
 :checkdone
 echo.
-if defined _args for %%# in (%*) do if exist "%%~#\*Windows1*-KB*" (set "_DIR=%%~#"&echo %%~#&goto :finddir)
-for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*Windows1*-KB*" (set /a _ncab+=1&set "_DIR=%%~#"&echo %%~#)
+if defined _args for %%# in (%*) do if exist "%%~#\*Windows1*-KB*" (set "_DIR=%%~f#"&echo %%~#&goto :finddir)
+for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*Windows1*-KB*" (set /a _ncab+=1&set "_DIR=%%~f#"&echo %%~#)
 if !_ncab! equ 1 if defined _DIR goto :finddir
 
 :selectupd
@@ -1604,14 +1604,15 @@ if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" go
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 set "_k_=HKEY_LOCAL_MACHINE\%SOFTWARE%\%_CBS%"
-set "_p_=HKLM\%SOFTWARE%\%_CBS%"
+set "_p_=HKLM:\%SOFTWARE%\%_CBS%"
+
 reg.exe query "%_k_%" /s /v Baseline | findstr /i HKEY_LOCAL_MACHINE | findstr /i /v Package_for_RollupFix >>"temp\Reg-Baseline.txt"
 type nul>"temp\Reg-Similar.txt"
 if exist "temp\Reg-Baseline.txt" for /f "usebackq tokens=8 delims=\." %%G in ("temp\Reg-Baseline.txt") do (
-findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
+  findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" for %%G in (Microsoft-Windows-WinPE-LanguagePack-Package~ Microsoft-Windows-WinPE-Package~) do (
-findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
+  findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
 )
 findstr /i HKEY_LOCAL_MACHINE "temp\Reg-Similar.txt" %_Nul3% && for %%# in (%basekbn%) do (
   for /f "usebackq tokens=8 delims=\" %%G in ("temp\Reg-Similar.txt") do (
@@ -1619,20 +1620,27 @@ findstr /i HKEY_LOCAL_MACHINE "temp\Reg-Similar.txt" %_Nul3% && for %%# in (%bas
   )
 )
 if exist "temp\Reg-Matched.txt" for /f "usebackq tokens=1 delims= " %%G in ("temp\Reg-Matched.txt") do (
-  reg add "%_p_%\%%G" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
+  (echo New-ItemProperty '%_p_%\%%G' Baseline -Value 1 -Force -EA 0)>>"temp\Reg-Work.txt"
 )
 for %%# in (%basepkg%) do (
-  reg add "%_p_%\%%#" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
+  (echo New-ItemProperty '%_p_%\%%#' Baseline -Value 1 -Force -EA 0)>>"temp\Reg-Work.txt"
 )
+
+if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('.\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
 :SBSConfig
+if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
-if %1 neq 9 if %_build% geq 26052 reg.exe delete HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v DecompressOverride /f %_Nul3%
-if %1 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v SupersededActions /t REG_DWORD /d %1 /f %_Nul1%
-if %2 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul1%
-if %3 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul1%
+set "_p_=HKLM:\%SOFTWARE%\%_SxsCfg%"
+if %1 neq 9 if %_build% geq 26052 (echo Remove-ItemProperty 'HKLM:\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide' 'DecompressOverride' -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+if %1 neq 9 (echo New-ItemProperty '%_p_%' SupersededActions -Value %1 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+if %2 neq 9 (echo New-ItemProperty '%_p_%' DisableResetbase -Value %2 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+if %3 neq 9 (echo New-ItemProperty '%_p_%' DisableComponentBackups -Value %3 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('.\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
