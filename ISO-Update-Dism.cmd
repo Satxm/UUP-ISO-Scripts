@@ -1625,7 +1625,7 @@ for %%# in (%basepkg%) do (
 )
 
 if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('!_work!\temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
@@ -1633,12 +1633,12 @@ goto :eof
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 set "_p_=HKLM:\%SOFTWARE%\%_SxsCfg%"
-if %1 neq 9 if %_build% geq 26052 (echo Remove-ItemProperty 'HKLM:\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide' 'DecompressOverride' -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
-if %1 neq 9 (echo New-ItemProperty '%_p_%' SupersededActions -Value %1 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
-if %2 neq 9 (echo New-ItemProperty '%_p_%' DisableResetbase -Value %2 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
-if %3 neq 9 (echo New-ItemProperty '%_p_%' DisableComponentBackups -Value %3 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+if %1 neq 9 if %_build% geq 26052 (echo Remove-ItemProperty 'HKLM:\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide' 'DecompressOverride' -Force -EA 0)>>"temp\Reg-Work.txt"
+if %1 neq 9 (echo New-ItemProperty '%_p_%' SupersededActions -Value %1 -Force -EA 0)>>"temp\Reg-Work.txt"
+if %2 neq 9 (echo New-ItemProperty '%_p_%' DisableResetbase -Value %2 -Force -EA 0)>>"temp\Reg-Work.txt"
+if %3 neq 9 (echo New-ItemProperty '%_p_%' DisableComponentBackups -Value %3 -Force -EA 0)>>"temp\Reg-Work.txt"
 if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='!_work!\temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('!_work!\temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
+%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
