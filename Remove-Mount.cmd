@@ -4,8 +4,8 @@ title 清理临时文件
 
 for %%# in (powershell.exe) do @if "%%~$PATH:#"=="" echo 在系统中未找到 PowerShell，请右键并点击【以管理员身份运行】。
 1>nul 2>nul fltmc || (
-  for %%# in (wt.exe) do @if "%%~$PATH:#"=="" powershell "start cmd -arg '/c \"%~f0\"' -verb runas" && exit /b || ( echo 此脚本需要以管理员权限运行，请右键并点击【以管理员身份运行】。& pause & exit /b )
-  powershell "start wt '\"%~f0\"' -verb runas" && exit /b || ( echo 此脚本需要以管理员权限运行，请右键并点击【以管理员身份运行】。& pause & exit /b )
+  for %%# in (wt.exe) do @if "%%~$PATH:#"=="" 1>nul 2>nul powershell "start cmd -arg '/c \"%~f0\"' -verb runas" && exit /b || ( echo 此脚本需要以管理员权限运行，请右键并点击【以管理员身份运行】。& pause & exit /b )
+  1>nul 2>nul powershell "start wt '\"%~f0\"' -verb runas" && exit /b || ( echo 此脚本需要以管理员权限运行，请右键并点击【以管理员身份运行】。& pause & exit /b )
 )
 
 set "_work=%~dp0"
