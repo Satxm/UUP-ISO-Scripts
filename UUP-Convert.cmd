@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.01.05-110"
+@set "uivr=v25.02.15-111"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -11,8 +11,9 @@ set AddUpdates=0
 :: 若要清理映像以增量压缩已取代的组件，请将此参数更改为 1（警告：在 18362 及以上版本中，这将会删除基础 RTM 版本程序包）
 set Cleanup=0
 
-:: 若要重置操作系统映像并移除已被更新取代的组件，请将此参数更改为 1（快于默认的增量压缩）
+:: 若要重置操作系统映像（ResetBase），请将此参数更改为 1（快于默认的增量压缩）
 :: 需要首先设置参数 Cleanup=1
+:: 在 26052 及更高版本每个累积更新后重置操作系统映像，请将此参数更改为 2
 set ResetBase=0
 
 :: 若将 install.wim 转换为 install.esd，请将此参数更改为 1
@@ -33,7 +34,8 @@ set SkipWinRE=0
 :: 在 Build 26052 及以上版本将会忽略并自动禁用
 set LCUWinRE=0
 
-:: 若不更新 ISO 引导文件 bootmgr/bootmgr.efi/efisys.bin，请将此参数更改为 1
+:: 从累积更新更新 ISO 启动文件 bootmgr/memtest/efisys.bin，请将此参数更改为 1
+:: 如果检测到新的 UEFI CA 2023 启动文件，还会将其更新
 set UpdtBootFiles=0
 
 :: 更新OneDrive，请将此参数更改为 1
@@ -103,8 +105,8 @@ if defined _args set _PSarg="""%~f0""" %_args:"="""% %_uac%
 set _PSarg=%_PSarg:'=''%
 
 call setlocal EnableDelayedExpansion
-for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe -arg '/c !_PSarg!' -verb runas" && exit /b || goto :E_Admin
-%_Null% %_psc% "start wt -arg '!_PSarg!' -verb runas" && exit /b || goto :E_Admin
+%_Null% %_psc% "start cmd.exe -arg '/c !_PSarg!' -verb runas" && exit /b || goto :E_Admin
+
 
 :Passed
 @cls
@@ -183,7 +185,9 @@ set W10UI=0
 if %winbuild% geq 10240 (
   set W10UI=1
 )
-set ksub=SOFTWIM
+set SYSTEM=uiSYSTEM
+set SOFTWARE=uiSOFTWARE
+set COMPONENTS=uiCOMPONENTS
 set ERRTEMP=
 set PREPARED=0
 set EXPRESS=0
@@ -343,6 +347,8 @@ if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if exist "%_dLog%\*" del /f /q %_dLog%\* %_Nul3%
 if not exist "%_dLog%\" mkdir "%_dLog%" %_Nul3%
+if not exist "%SystemRoot%\temp\" mkdir "%SystemRoot%\temp" %_Nul3%
+del /f /q %SystemRoot%\temp\*.mum %_Nul3%
 
 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" if %_SrvESD% neq 1 if not exist "!_DIR!\Apps\Custom_Appxs.txt" if not exist "!_DIR!\Apps\Apps_*.txt" call :appx_sort
 if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (call :appx_sort) else if exist "!_DIR!\*.msix" (call :appx_sort)
@@ -360,7 +366,7 @@ set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Apply
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
 if exist ISOFOLDER\__chunk_data del /f /q ISOFOLDER\__chunk_data %_Nul3%
-if %_build% geq 18890 (
+if %_build% geq 18890 if %_build% lss 27500 (
   wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\Boot\Fonts\* --dest-dir=ISOFOLDER\boot\fonts --no-acls --no-attributes %_Nul3%
   xcopy /CRY ISOFOLDER\boot\fonts\* ISOFOLDER\efi\microsoft\boot\fonts\ %_Nul3%
 )
@@ -480,7 +486,7 @@ for /L %%# in (1,1,%imgs%) do (
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
   wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-if %AddEdition% equ 1 call :ExportWim
+if %AddEdition% equ 1 goto :ExportWim
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
@@ -497,11 +503,12 @@ for /l %%# in (1,1,%imgs%) do (
 )
 for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
   wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
-  set ERRTEMP=%ERRORLEVEL%
-  if %ERRTEMP% neq 0 goto :E_Export
+  set ERRTEMP=!ERRORLEVEL!
+  if !ERRTEMP! neq 0 goto :E_Export
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
-goto :eof
+wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
+goto :%_rtrn%
 
 :OneDrive
 echo.
@@ -595,7 +602,7 @@ set "_inx=1"&call :DoMount "ISOFOLDER\sources\boot.wim"
 call :BootRemove
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\ %_Nul3%
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
-call :cleanup
+call :Cleanup
 call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
@@ -603,7 +610,7 @@ call :BootRemove
 if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootAddCab) else (call :BootFileCopy)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 copy ISOFOLDER\sources\lang.ini %_mount%\sources\lang.ini %_Nul3%
-call :cleanup
+call :Cleanup
 call :DoWork
 call :DoUnmount
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
@@ -720,6 +727,9 @@ set ssvr_aa=0
 set ssvr_bl=0
 set ssvr_mj=0
 set ssvr_mn=0
+set savc=0&set savr=1&set rbvr=0
+if %_build% geq 18362 (set savc=3&set savr=3)
+if %_build% geq 25380 (set rbvr=1)
 call :setlabel
 exit /b
 
@@ -1436,9 +1446,6 @@ move /y "!_cabdir!\lcu\%compkg%" "!_DIR!\%compkg%" %_Nul3%
 goto :eof
 
 :updatewim
-set SYSTEM=uiSYSTEM
-set SOFTWARE=uiSOFTWARE
-set COMPONENTS=uiCOMPONENTS
 set "_Wnn=HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide\Winners"
 set "_Cmp=HKLM\%COMPONENTS%\DerivedData\Components"
 if exist "%_mount%\Windows\Servicing\Packages\*~arm64~~*.mum" (
@@ -1508,18 +1515,14 @@ if %_build% geq 19041 if %winbuild% lss 17133 if not exist "%SysPath%\ext-ms-win
   copy /y %SysPath%\slc.dll %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul1%
   if /i not %xOS%==x86 copy /y %SystemRoot%\SysWOW64\slc.dll %SystemRoot%\SysWOW64\ext-ms-win-security-slc-l1-1-0.dll %_Nul1%
 )
-if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
-  if %winbuild% lss 15063 if /i %arch%==arm64 reg.exe add HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v AllowImproperDeploymentProcessorArchitecture /t REG_DWORD /d 1 /f %_Nul1%
-  if %winbuild% lss 9600 reg.exe add HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v AllowImproperDeploymentProcessorArchitecture /t REG_DWORD /d 1 /f %_Nul
-  reg.exe save HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE2" %_Nul1%
-  reg.exe unload HKLM\%SOFTWARE% %_Nul1%
-  move /y "%_mount%\Windows\System32\Config\SOFTWARE2" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
+if %winbuild% lss 15063 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  call :RegLoad
+  if /i %arch%==arm64 reg.exe add HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v AllowImproperDeploymentProcessorArchitecture /t REG_DWORD /d 1 /f %_Nul1%
+  if %winbuild% lss 9600 reg.exe add HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v AllowImproperDeploymentProcessorArchitecture /t REG_DWORD /d 1 /f %_Nul1%
+  call :RggUnload
 )
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if /i not %arch%==arm64 (
-  reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
-  reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableComponentBackups /t REG_DWORD /d 1 /f %_Nul1%
-  reg.exe unload HKLM\%SOFTWARE% %_Nul1%
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  call :SBSConfig 9 9 1
 )
 if defined netpack set "ldr=!netpack! !ldr!"
 for %%# in (dupdt,cupdt,supdt,fupdt,safeos,secureboot,edge,ldr,cumulative,lcumsu) do if defined %%# set overall=1
@@ -1528,10 +1531,9 @@ if defined servicingstack (
   set idpkg=ServicingStack
   set callclean=1
   %_Dism% /LogPath:"%_dLog%\DismSSU.log" /Image:"%_mount%" /Add-Package %servicingstack%
-  cmd /c exit /b !errorlevel!
-  call :chkEC "!=ExitCode!"
+  call :chkEC !errorlevel!
   if !_ec!==1 goto :errmount
-  if not defined overall call :cleanup
+  if not defined overall call :Cleanup
 )
 if not defined overall if not defined mpamfe goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" goto :skipsafeos
@@ -1543,10 +1545,9 @@ if defined safeos (
   set idpkg=SafeOS
   set callclean=1
   %_Dism% /LogPath:"%_dLog%\DismWinRE.log" /Image:"%_mount%" /Add-Package %safeos%
-  cmd /c exit /b !errorlevel!
-  call :chkEC "!=ExitCode!"
+  call :chkEC !errorlevel!
   if !_ec!==1 goto :errmount
-  if not defined lcumsu call :cleanup
+  if not defined lcumsu call :Cleanup
   if not defined lcumsu if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
   if %LCUWinRE% equ 0 goto :eof
 )
@@ -1559,16 +1560,14 @@ if defined secureboot (
   set idpkg=SecureBoot
   set callclean=1
   %_Dism% /LogPath:"%_dLog%\DismSecureBoot.log" /Image:"%_mount%" /Add-Package %secureboot%
-  cmd /c exit /b !errorlevel!
-  call :chkEC "!=ExitCode!"
+  call :chkEC !errorlevel!
   if !_ec!==1 goto :errmount
 )
 if defined ldr (
   set idpkg=General
   set callclean=1
   %_Dism% /LogPath:"%_dLog%\DismUpdt.log" /Image:"%_mount%" /Add-Package %ldr%
-  cmd /c exit /b !errorlevel!
-  call :chkEC "!=ExitCode!"
+  call :chkEC !errorlevel!
   if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
 )
 if defined fupdt (
@@ -1611,7 +1610,7 @@ if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto
 :cuwd
 if defined basekbn call :RegBase
 if defined lcupkg call :ReLCU
-if defined callclean call :cleanup
+if defined callclean call :Cleanup
 if defined mpamfe (
   echo.
   echo 正在添加 Defender 更新……
@@ -1621,8 +1620,7 @@ if not defined edge goto :eof
 if defined edge (
   set idpkg=Edge
   %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Package %edge%
-  cmd /c exit /b !errorlevel!
-  call :chkEC "!=ExitCode!"
+  call :chkEC !errorlevel!
   if !_ec!==1 goto :errmount
 )
 goto :eof
@@ -1631,21 +1629,32 @@ goto :eof
 set "_DsmLog=DismLCU.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinRE.log"
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  if %_build% geq 26052 if exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" for /f "delims=" %%# in ('dir /b /a:-d "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum"') do (
+    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Remove-Package /PackageName:%%~n#
+  )
+)
 set idpkg=LCU
 set callclean=1
-if defined cumulative %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package %cumulative%
+set _c_=0
+if defined cumulative for %%# in (%cumulative%) do (
+  %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%%#
+  call set /a _c_+=1
+  if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
+)
 if defined lcumsu for %%# in (%lcumsu%) do (
   echo.&echo %%~nx#
   %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%%#
+  call set /a _c_+=1
+  if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
 )
-cmd /c exit /b !errorlevel!
-call :chkEC "!=ExitCode!"
+call :chkEC !errorlevel!
 if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinRE% equ 1 call :cleanup
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinRE% equ 1 call :Cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :%_gobk%
 if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :%_gobk%
 if not defined lcumsu goto :%_gobk%
-if %_build% geq 26052 goto :%_gobk%
+:: if %_build% geq 26052 goto :%_gobk%
 if not exist "!_cabdir!\LCUmum\*.mum" goto :%_gobk%
 for /f %%# in ('dir /b /a:-d /od "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" %_Nul6%') do if exist "!_cabdir!\LCUmum\%%#" (
   %_Nul3% icacls "%_mount%\Windows\Servicing\Packages\%%#" /save "!_cabdir!\acl.txt"
@@ -1660,7 +1669,8 @@ goto :%_gobk%
 
 :chkEC
 set _ec=0
-set "_ic=%~1"
+cmd /c exit /b %1
+set "_ic=%=ExitCode%"
 if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" if /i not "!_ic!"=="000006be" if /i not "!_ic!"=="000006ba" set _ec=1
 if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 goto :eof
@@ -1682,33 +1692,50 @@ goto :%_rtrn%
 
 :RegBase
 if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :eof
-if exist "!_cabdir!\W10UI*.*" del /f /q "!_cabdir!\W10UI*.*" %_Nul3%
+if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
+call :RegLoad
 set "_k_=HKEY_LOCAL_MACHINE\%SOFTWARE%\%_CBS%"
-set "_p_=HKLM:\%SOFTWARE%\%_CBS%"
-reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
-
-reg.exe query "%_k_%" /s /v Baseline | findstr /i HKEY_LOCAL_MACHINE | findstr /i /v Package_for_RollupFix >>"!_cabdir!\W10UIbaseline.txt"
-type nul>"!_cabdir!\W10UIsimilar.txt"
-if exist "!_cabdir!\W10UIbaseline.txt" for /f "usebackq tokens=8 delims=\." %%G in ("!_cabdir!\W10UIbaseline.txt") do (
-findstr /i "%%G" "!_cabdir!\W10UIsimilar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"!_cabdir!\W10UIsimilar.txt"
+set "_p_=HKLM\%SOFTWARE%\%_CBS%"
+reg.exe query "%_k_%" /s /v Baseline | findstr /i HKEY_LOCAL_MACHINE | findstr /i /v Package_for_RollupFix >>"temp\Reg-Baseline.txt"
+type nul>"temp\Reg-Similar.txt"
+if exist "temp\Reg-Baseline.txt" for /f "usebackq tokens=8 delims=\." %%G in ("temp\Reg-Baseline.txt") do (
+findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
 )
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" for %%G in (Microsoft-Windows-WinPE-LanguagePack-Package~ Microsoft-Windows-WinPE-Package~) do (
-findstr /i "%%G" "!_cabdir!\W10UIsimilar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"!_cabdir!\W10UIsimilar.txt"
+findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
 )
-findstr /i HKEY_LOCAL_MACHINE "!_cabdir!\W10UIsimilar.txt" %_Nul3% && for %%# in (%basekbn%) do (
-for /f "usebackq tokens=8 delims=\" %%G in ("!_cabdir!\W10UIsimilar.txt") do reg.exe query "%_k_%\%%G" /v InstallLocation %_Nul2% | findstr /i %%# %_Nul1% && echo %%G >>"!_cabdir!\W10UImatched.txt"
+findstr /i HKEY_LOCAL_MACHINE "temp\Reg-Similar.txt" %_Nul3% && for %%# in (%basekbn%) do (
+  for /f "usebackq tokens=8 delims=\" %%G in ("temp\Reg-Similar.txt") do (
+    reg.exe query "%_k_%\%%G" /v InstallLocation %_Nul2% | findstr /i %%# %_Nul1% && echo %%G >>"temp\Reg-Matched.txt"
+  )
 )
-if exist "!_cabdir!\W10UImatched.txt" for /f "usebackq tokens=1 delims= " %%G in ("!_cabdir!\W10UImatched.txt") do (
-(echo New-ItemProperty '%_p_%\%%G' Baseline -Value 1 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+if exist "temp\Reg-Matched.txt" for /f "usebackq tokens=1 delims= " %%G in ("temp\Reg-Matched.txt") do (
+  reg add "%_p_%\%%G" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
 )
 for %%# in (%basepkg%) do (
-(echo New-ItemProperty '%_p_%\%%#' Baseline -Value 1 -Force -EA 0)>>"!_cabdir!\W10UIreg.txt"
+  reg add "%_p_%\%%#" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
 )
-pushd "!_cabdir!"
-if not exist "tiTkn.txt" copy /y "!_work!\bin\tiTkn.txt" . %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_cabdir!'; $r='!_cabdir!\W10UIreg.txt'; $f=[IO.File]::ReadAllText('.\tiTkn.txt') -split ':cbsreg\:.*';iex ($f[1])"
-popd
+call :RggUnload
+goto :eof
 
+:SBSConfig
+call :RegLoad
+if %1 neq 9 if %_build% geq 26052 reg.exe delete HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v DecompressOverride /f %_Nul3%
+if %1 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v SupersededActions /t REG_DWORD /d %1 /f %_Nul1%
+if %2 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul1%
+if %3 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul1%
+call :RggUnload
+goto :eof
+
+:RegLoad
+reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
+goto :eof
+
+:RggUnload
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  reg.exe unload HKLM\%SOFTWARE% %_Nul1%
+  goto :eof
+)
 if /i %xOS%==x86 if /i not %arch%==x86 reg.exe save HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE2" /y %_Nul1%
 reg.exe unload HKLM\%SOFTWARE% %_Nul1%
 if /i %xOS%==x86 if /i not %arch%==x86 move /y "%_mount%\Windows\System32\Config\SOFTWARE2" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
@@ -1857,7 +1884,7 @@ if exist "!dest!\*enablement-package*.mum" (
 )
 for %%# in (%directcab%) do (
   if /i "%package%"=="%%~#" (
-    set "cumulative=!cumulative! /PackagePath:"!_DIR!\%package%""
+    set "cumulative=!cumulative! "!_DIR!\%package%""
     goto :eof
   )
 )
@@ -1881,7 +1908,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
     call :setlcu
     goto :eof
   )
-  set "cumulative=!cumulative! /PackagePath:!dest!\update.mum"
+  set "cumulative=!cumulative! !dest!\update.mum"
   goto :eof
 )
 if %xmsu% equ 1 (
@@ -1889,7 +1916,7 @@ if %xmsu% equ 1 (
   goto :eof
 )
 set "netlcu=!netlcu! /PackagePath:!dest!\update.mum"
-set "cumulative=!cumulative! /PackagePath:!dest!\update.mum"
+set "cumulative=!cumulative! !dest!\update.mum"
 goto :eof
 
 :setlcu
@@ -2220,36 +2247,45 @@ if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\A
 if %AddAppxs% equ 1 call :RegAppx
 if %AddAppxs% equ 1 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" call :AddAppx
 :DoneApps
-if !handle1! equ 0 (
-  set handle1=1
-  if %UpdtBootFiles% equ 1 (
-    for %%i in (efisys.bin,efisys_noprompt.bin) do if exist "%_mount%\Windows\Boot\DVD\EFI\en-US\%%i" ( xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\%%i" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%)
-    if /i not %arch%==arm64 (
-      xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\bootmgr" "ISOFOLDER\" %_Nul3%
-      xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\memtest.exe" "ISOFOLDER\boot\" %_Nul3%
-      xcopy /CIDRY "%_mount%\Windows\Boot\EFI\memtest.efi" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
-    )
-    if exist "%_mount%\Windows\Boot\EFI\winsipolicy.p7b" if exist "ISOFOLDER\efi\microsoft\boot\winsipolicy.p7b" xcopy /CIDRY "%_mount%\Windows\Boot\EFI\winsipolicy.p7b" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
-    if exist "%_mount%\Windows\Boot\EFI\CIPolicies\" if exist "ISOFOLDER\efi\microsoft\boot\cipolicies\" xcopy /CEDRY "%_mount%\Windows\Boot\EFI\CIPolicies" "ISOFOLDER\efi\microsoft\boot\cipolicies\" %_Nul3%
-  )
-  if /i %arch%==x86 (set efifile=bootia32.efi) else if /i %arch%==x64 (set efifile=bootx64.efi) else ( set efifile=bootaa64.efi)
-  if exist "ISOFOLDER\efi\boot\bootmgfw.efi" xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\bootmgfw.efi" %_Nul3%
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%
+if /i %arch%==x86 (set efifile=bootia32.efi) else if /i %arch%==x64 (set efifile=bootx64.efi) else (set efifile=bootaa64.efi)
+if !handle1! equ 1 goto :Skiphand1
+set handle1=1
+if %UpdtBootFiles% neq 1 goto :NoNewBoot
+if exist "%_mount%\Windows\Boot\EFI\winsipolicy.p7b" if exist "ISOFOLDER\efi\microsoft\boot\winsipolicy.p7b" xcopy /CIDRY "%_mount%\Windows\Boot\EFI\winsipolicy.p7b" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+if exist "%_mount%\Windows\Boot\EFI\CIPolicies\" if exist "ISOFOLDER\efi\microsoft\boot\cipolicies\" xcopy /CEDRY "%_mount%\Windows\Boot\EFI\CIPolicies" "ISOFOLDER\efi\microsoft\boot\cipolicies\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys_noprompt.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+if /i not %arch%==arm64 (
+  xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\bootmgr" "ISOFOLDER\" %_Nul3%
+  xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\memtest.exe" "ISOFOLDER\boot\" %_Nul3%
+  xcopy /CIDRY "%_mount%\Windows\Boot\EFI\memtest.efi" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 )
-if !handle2! equ 0 (
-  set handle2=1
-  set vermin=0
-  for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest"') do (set verver=%%i.%%j&set vermaj=%%i&set vermin=%%j)
-  set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-  for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r ".*\.OS""') do if not errorlevel 1 (
-    for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !vermaj! (
-      set "revver=%%~A.%%B
-      set revmaj=%%~A
-      set "revmin=%%B
-    )
+if not exist "%_mount%\Windows\Boot\EFI_EX\*_EX.efi" goto :NoNewBoot
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgr_EX.efi" "ISOFOLDER\bootmgr.efi" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_EX.bin" "ISOFOLDER\efi\microsoft\boot\efisys.bin" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_noprompt_EX.bin" "ISOFOLDER\efi\microsoft\boot\efisys_noprompt.bin" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\FONTS_EX\*" "ISOFOLDER\efi\microsoft\boot\fonts\" %_Nul3%
+for /f "tokens=1-3 delims=_." %%i in ('dir /b "ISOFOLDER\efi\microsoft\boot\fonts\*_EX.ttf" %_Nul6%') do move /y "ISOFOLDER\efi\microsoft\boot\fonts\%%i_%%j_%%k.ttf" "ISOFOLDER\efi\microsoft\boot\fonts\%%i_%%j.ttf" %_Nul3%
+goto :Skiphand1
+:NoNewBoot
+if exist "ISOFOLDER\efi\boot\bootmgfw.efi" xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\bootmgfw.efi" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%
+:Skiphand1
+if !handle2! equ 1 goto :Skiphand2
+set handle2=1
+set vermin=0
+for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest"') do (set verver=%%i.%%j&set vermaj=%%i&set vermin=%%j)
+set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
+for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r ".*\.OS""') do if not errorlevel 1 (
+  for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !vermaj! (
+    set "revver=%%~A.%%B
+    set revmaj=%%~A
+    set "revmin=%%B
   )
 )
+:Skiphand2
 if exist "%_mount%\Windows\System32\UpdateAgent.dll" if not exist "%SystemRoot%\temp\UpdateAgent.dll" copy /y "%_mount%\Windows\System32\UpdateAgent.dll" %SystemRoot%\temp\ %_Nul1%
 if exist "%_mount%\Windows\System32\Facilitator.dll" if not exist "%SystemRoot%\temp\Facilitator.dll" copy /y "%_mount%\Windows\System32\Facilitator.dll" %SystemRoot%\temp\ %_Nul1%
 if %AddEdition% neq 1 goto :Done
@@ -2271,15 +2307,20 @@ goto :eof
 reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_build% geq 22621 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
-if %_SrvESD% equ 1 goto :eof
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
+reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
+if %_SrvESD% equ 1 ( reg.exe unload HKLM\%SOFTWARE% %_Nul3% & goto :eof )
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v HideOnlineAccountScreens /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\CrossDeviceUpdate" /f %_Nul3%
 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
-reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
+reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "DevHome" /f %_Nul3%
+reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "PCManager" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
+reg load HKLM\uUSER "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
+reg add "HKLM\uUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t REG_DWORD /d 1 /f %_Nul3%
+reg unload HKLM\uUSER %_Nul3%
 goto :eof
 
 :AddEdge
@@ -2450,45 +2491,35 @@ for %%# in (
 )
 goto :eof
 
-:cleanup
-set savc=0&set savr=1&set rbvr=0
-if %_build% geq 18362 (set savc=3&set savr=3)
-if %_build% geq 25380 (set rbvr=1)
+:Cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  if /i not %arch%==arm64 (
-    reg.exe load HKLM\%ksub% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
-    reg.exe add HKLM\%ksub%\%_SxsCfg% /v SupersededActions /t REG_DWORD /d %savr% /f %_Nul1%
-    reg.exe add HKLM\%ksub%\%_SxsCfg% /v DisableComponentBackups /t REG_DWORD /d 1 /f %_Nul1%
-    reg.exe unload HKLM\%ksub% %_Nul1%
-  )
+  call :SBSConfig %savr% 9 1
   %_Dism% /LogPath:"%_dLog%\DismClean_PE.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
   if %Cleanup% neq 0 (
     if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean_PE.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
   )
-  call :cleanmanual&goto :eof
+  call :CleanManual&goto :eof
 )
-if %Cleanup% equ 0 call :cleanmanual&goto :eof
-if exist "%_mount%\Windows\WinSxS\pending.xml" call :cleanmanual&goto :eof
-if /i not %arch%==arm64 (
-  reg.exe load HKLM\%ksub% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
-  if %ResetBase% equ 1 (
-    reg.exe add HKLM\%ksub%\%_SxsCfg% /v DisableResetbase /t REG_DWORD /d 0 /f %_Nul1%
-    reg.exe add HKLM\%ksub%\%_SxsCfg% /v SupersededActions /t REG_DWORD /d %savr% /f %_Nul1%
-  ) else (
-    reg.exe add HKLM\%ksub%\%_SxsCfg% /v DisableResetbase /t REG_DWORD /d %rbvr% /f %_Nul1%
-    reg.exe add HKLM\%ksub%\%_SxsCfg% /v SupersededActions /t REG_DWORD /d %savc% /f %_Nul1%
-  )
-  if /i %xOS%==x86 if /i not %arch%==x86 reg.exe save HKLM\%ksub% "%_mount%\Windows\System32\Config\SOFTWARE2" %_Nul1%
-  reg.exe unload HKLM\%ksub% %_Nul1%
-  if /i %xOS%==x86 if /i not %arch%==x86 move /y "%_mount%\Windows\System32\Config\SOFTWARE2" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
-) else (
-  %_Nul3% offlinereg.exe "%_mount%\Windows\System32\Config\SOFTWARE" %_SxsCfg% setvalue SupersededActions 3 4
+if %Cleanup% equ 0 call :CleanManual&goto :eof
+if exist "%_mount%\Windows\WinSxS\pending.xml" call :CleanManual&goto :eof
+set "_Nul8="
+if %_build% geq 25380 if %_build% lss 26000 (
+  set "_Nul8=1>nul 2>nul"
+  echo Running DISM Cleanup . . .
 )
+if %ResetBase% equ 0 (
+  call :SBSConfig %savc% 1 9
+  %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup %_Nul8%
+  goto :FinalClean
+)
+:ResetBase
+call :SBSConfig %savr% %rbvr% 9
 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
 if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
-call :cleanmanual&goto :eof
+:FinalClean
+call :CleanManual&goto :eof
 
-:cleanmanual
+:CleanManual
 if exist "%_mount%\Windows\WinSxS\ManifestCache\*.bin" (
   takeown /f "%_mount%\Windows\WinSxS\ManifestCache\*.bin" /A %_Nul3%
   icacls "%_mount%\Windows\WinSxS\ManifestCache\*.bin" /grant *S-1-5-32-544:F %_Nul3%
