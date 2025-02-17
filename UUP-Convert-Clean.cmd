@@ -476,10 +476,7 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\i
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
 if %UpdtOneDrive% equ 1 call :OneDrive
-if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 goto :SkipUpdate
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 if %_wimEdge% neq 1 goto :SkipUpdate
 call :update "ISOFOLDER\sources\install.wim"
-:SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /L %%# in (1,1,%imgs%) do (
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
@@ -1695,7 +1692,6 @@ if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" go
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 set "_k_=HKEY_LOCAL_MACHINE\%SOFTWARE%\%_CBS%"
-set "_p_=HKLM:\%SOFTWARE%\%_CBS%"
 
 reg.exe query "%_k_%" /s /v Baseline | findstr /i HKEY_LOCAL_MACHINE | findstr /i /v Package_for_RollupFix >>"temp\Reg-Baseline.txt"
 type nul>"temp\Reg-Similar.txt"
@@ -1711,27 +1707,22 @@ findstr /i HKEY_LOCAL_MACHINE "temp\Reg-Similar.txt" %_Nul3% && for %%# in (%bas
   )
 )
 if exist "temp\Reg-Matched.txt" for /f "usebackq tokens=1 delims= " %%G in ("temp\Reg-Matched.txt") do (
-  (echo New-ItemProperty '%_p_%\%%G' Baseline -Value 1 -Force -EA 0)>>"temp\Reg-Work.txt"
+  reg.exe add "%_k_%\%%G" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
 )
 for %%# in (%basepkg%) do (
-  (echo New-ItemProperty '%_p_%\%%#' Baseline -Value 1 -Force -EA 0)>>"temp\Reg-Work.txt"
+  reg.exe add "%_k_%\%%#" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
 )
 
-if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
 call :RggUnload
 goto :eof
 
 :SBSConfig
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
-set "_p_=HKLM:\%SOFTWARE%\%_SxsCfg%"
-if %1 neq 9 if %_build% geq 26052 (echo Remove-ItemProperty 'HKLM:\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide' 'DecompressOverride' -Force -EA 0)>>"temp\Reg-Work.txt"
-if %1 neq 9 (echo New-ItemProperty '%_p_%' SupersededActions -Value %1 -Force -EA 0)>>"temp\Reg-Work.txt"
-if %2 neq 9 (echo New-ItemProperty '%_p_%' DisableResetbase -Value %2 -Force -EA 0)>>"temp\Reg-Work.txt"
-if %3 neq 9 (echo New-ItemProperty '%_p_%' DisableComponentBackups -Value %3 -Force -EA 0)>>"temp\Reg-Work.txt"
-if not exist "temp\CBSReg.txt" copy /y "!_work!\bin\CBSReg.txt" temp\ %_Nul3%
-%_Nul3% %_psc% "Set-Location -LiteralPath '!_work!'; $r='temp\Reg-Work.txt'; $f=[IO.File]::ReadAllText('temp\CBSReg.txt') -split ':cbsreg\:.*';iex ($f[1])"
+if %1 neq 9 if %_build% geq 26052 reg.exe delete HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v DecompressOverride /f %_Nul3%
+if %1 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v SupersededActions /t REG_DWORD /d %1 /f %_Nul1%
+if %2 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul1%
+if %3 neq 9 reg.exe add HKLM\%SOFTWARE%\%_SxsCfg% /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul1%
 call :RggUnload
 goto :eof
 
