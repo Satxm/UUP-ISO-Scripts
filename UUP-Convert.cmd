@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.02.15-111"
+@set "uivr=v25.03.03-111"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -637,6 +637,10 @@ for /f "eol=W tokens=* delims=" %%# in (bin\winpe.txt) do for /f "tokens=* delim
 for /f "tokens=* delims=" %%# in (bin\winpe.txt) do for /f "eol=M tokens=* delims=" %%i in ('type temp\winre.txt ^| findstr /c:"%%#"') do echo %%i>>temp\winpe.txt
 for /f "tokens=* delims=" %%i in (temp\winpe.txt) do set "remove=!remove! /PackageName:%%i"
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Remove-Package !remove!
+if not exist "%_mount%\Windows\Globalization\Sorting\SortDefault.nls" (
+  wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 2 Windows\Globalization\Sorting --dest-dir="%_mount%\Windows\Globalization" %_Nul3%
+  wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 2 Windows\WinSxS\FileMaps\$$_globalization_sorting_04883de290c6ef1b.cdf-ms --dest-dir="%_mount%\Windows\WinSxS\FileMaps" %_Nul3%
+)
 goto :eof
 
 :BootAddCab

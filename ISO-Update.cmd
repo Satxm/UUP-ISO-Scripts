@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.02.15-111"
+@set "uivr=v25.03.03-111"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -13,7 +13,7 @@ set Cleanup=0
 
 :: 若要重置操作系统映像（ResetBase），请将此参数更改为 1（快于默认的增量压缩）
 :: 需要首先设置参数 Cleanup=1
-:: 更改为 2 以在 26052 及更高版本的每个累积更新后重置操作系统映像
+:: 在 26052 及更高版本每个累积更新后重置操作系统映像，请将此参数更改为 2
 set ResetBase=0
 
 :: 若将 install.wim 转换为 install.esd，请将此参数更改为 1
@@ -2148,6 +2148,7 @@ if exist "%_mount%\" rmdir /s /q "%_mount%\"
 goto :eof
 
 :DoWork
+if exist "%_mount%\inetpub" rmdir /s /q "%_mount%\inetpub" %_Nul3%
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
 if defined mounterr goto :eof
