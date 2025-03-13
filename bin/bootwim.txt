@@ -30,6 +30,7 @@ compatctrl.dll
 compatprovider.dll
 compliance.ini
 cryptosetup.dll
+deployprovider.dll
 diager.dll
 diagnostic.dll
 diagtrack.dll
@@ -57,6 +58,7 @@ ndiscompl.dll
 nlsbres.dll
 ntdsupg.dll
 offline.xml
+osimageprovider.dll
 pnpibs.dll
 pnppropmig.dll
 reagent.admx
