@@ -1541,11 +1541,6 @@ goto :eof
 set "_DsmLog=DismLCU.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinRE.log"
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  if %_build% geq 26052 if exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" for /f "delims=" %%# in ('dir /b /a:-d "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum"') do (
-    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Remove-Package /PackageName:%%~n#
-  )
-)
 set idpkg=LCU
 set callclean=1
 set _c_=0

@@ -11,6 +11,9 @@ set AddUpdates=0
 :: 若要清理映像以增量压缩已取代的组件，请将此参数更改为 1（警告：在 18362 及以上版本中，这将会删除基础 RTM 版本程序包）
 set Cleanup=0
 
+:: 若要在无 Winre 更新情况下清理 Winre 映像，请将此参数更改为 1
+set CleanWinre=0
+
 :: 若要重置操作系统映像（ResetBase），请将此参数更改为 1（快于默认的增量压缩）
 :: 需要首先设置参数 Cleanup=1
 :: 在 26052 及更高版本每个累积更新后重置操作系统映像，请将此参数更改为 2
@@ -227,6 +230,7 @@ findstr /i \[Config\] Config.ini %_Nul1% || goto :checkdone
 for %%# in (
 AddUpdates
 Cleanup
+CleanWinre
 ResetBase
 SkipISO
 SkipWinRE
@@ -588,8 +592,15 @@ echo.
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"temp\Winre.wim" /Compress:max /Bootable
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 1 call :update "temp\Winre.wim"
-%_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
+if %uwinpe% equ 1 (
+  call :update "temp\Winre.wim"
+  %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
+)
+if %uwinpe% equ 0 if %CleanWinre% equ 1 (
+  call :update "temp\Winre.wim"
+  %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winre.esd" /Compress:recovery %_Nul3%
+  %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.esd" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" /Compress:max /Bootable %_Nul3%
+)
 if exist "temp\Winrenew.wim" del /f /q "temp\Winre.wim"&ren "temp\Winrenew.wim" Winre.wim %_Nul3%
 goto :%_rtrn%
 
@@ -1662,11 +1673,6 @@ goto :eof
 set "_DsmLog=DismLCU.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinRE.log"
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  if %_build% geq 26052 if exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" for /f "delims=" %%# in ('dir /b /a:-d "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum"') do (
-    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Remove-Package /PackageName:%%~n#
-  )
-)
 set idpkg=LCU
 set callclean=1
 set _c_=0
@@ -1756,9 +1762,9 @@ goto :eof
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 if %1 neq 9 if %_build% geq 26052 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide" /v DecompressOverride /f %_Nul3%
-if %1 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v SupersededActions /t REG_DWORD /d %1 /f %_Nul1%
-if %2 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul1%
-if %3 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul1%
+if %1 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v SupersededActions /t REG_DWORD /d %1 /f %_Nul3%
+if %2 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul3%
+if %3 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul3%
 call :RggUnload
 goto :eof
 

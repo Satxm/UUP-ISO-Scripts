@@ -1543,11 +1543,6 @@ goto :eof
 set "_DsmLog=DismLCU.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinRE.log"
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  if %_build% geq 26052 if exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" for /f "delims=" %%# in ('dir /b /a:-d "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum"') do (
-    %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Remove-Package /PackageName:%%~n#
-  )
-)
 set idpkg=LCU
 set callclean=1
 set _c_=0
@@ -1637,9 +1632,9 @@ goto :eof
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 if %1 neq 9 if %_build% geq 26052 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide" /v DecompressOverride /f %_Nul3%
-if %1 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v SupersededActions /t REG_DWORD /d %1 /f %_Nul1%
-if %2 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul1%
-if %3 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul1%
+if %1 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v SupersededActions /t REG_DWORD /d %1 /f %_Nul3%
+if %2 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableResetbase /t REG_DWORD /d %2 /f %_Nul3%
+if %3 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v DisableComponentBackups /t REG_DWORD /d %3 /f %_Nul3%
 call :RggUnload
 goto :eof
 
