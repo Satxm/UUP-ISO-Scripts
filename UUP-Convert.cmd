@@ -59,6 +59,16 @@ set UseMSU=0
 :: 添加智能应用控制（解决软件打开慢）及阻止微软推送软件自动安装的注册表，请将此参数更改为 1
 set AddRegs=0
 
+:: ### 驱动选项 ###
+
+:: 将驱动程序添加到 install.wim 、 boot.wim 或 winre.wim，请将此参数更改为 1
+:: 驱动程序的默认文件夹路径为更新文件夹内的 Drivers 文件夹
+:: 该文件夹必须包含下列子文件夹：
+:: All   / 驱动程序都将添加到所有 wim 文件
+:: OS    / 驱动程序将仅添加到 install.wim 文件
+:: PE    / 驱动程序将仅添加到 boot.wim / Winre.wim 文件
+set AddDrivers=1
+
 :: 若在完成时退出进程而不提示，请将此参数更改为 1
 set AutoExit=0
 
@@ -241,6 +251,8 @@ RefESD
 AddEdition
 AddAppxs
 AddRegs
+AddDrivers
+Drv_Source
 AutoExit
 UseMSU
 WIM2ESD
@@ -313,6 +325,7 @@ goto :ISO
 
 :ISO
 if %PREPARED% equ 0 call :PREPARE
+call :optDrivers
 if exist "!_DIR!\*Windows1*-KB*" set _updexist=1
 if exist "!_DIR!\*.*xbundle" set _appexist=1
 if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set _appexist=1
@@ -349,7 +362,8 @@ if %AddAppxs% neq 0 echo 添加 Appxs
 if %AddRegs% neq 0 echo 修改注册表
 if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
 if %AddEdition% neq 0 echo 转换 Windows 版本
-if %RefESD% neq 0 echo 保留转换的esd文件
+if %AddDrivers% neq 0 echo 添加驱动程序
+if %RefESD% neq 0 echo 保留转换的 ESD 文件
 if %AutoExit% neq 0 echo 任务结束自动退出
 
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
@@ -888,6 +902,17 @@ if /i "!edition%1!"=="ServerDatacenter" set "edition%1=ServerDatacenterCore"
 if /i "!edition%1!"=="ServerTurbine" set "edition%1=ServerTurbineCore"
 )
 exit /b
+
+:optDrivers
+set "DrvSrcAll="
+set "DrvSrcOS="
+set "DrvSrcPE="
+if %AddDrivers% neq 0 if %W10UI% neq 0 if exist "!_DIR!\Drivers" (
+  if exist "!_DIR!\Drivers\All" dir /b /s "!_DIR!\Drivers\All\*.inf" %_Nul3% && set "DrvSrcAll=!_DIR!\Drivers\All"
+  if exist "!_DIR!\Drivers\OS" dir /b /s "!_DIR!\Drivers\OS\*.inf" %_Nul3% && set "DrvSrcOS=!_DIR!\Drivers\OS"
+  if exist "!_DIR!\Drivers\PE" dir /b /s "!_DIR!\Drivers\PE\*.inf" %_Nul3% && set "DrvSrcPE=!_DIR!\Drivers\PE"
+)
+goto :eof
 
 :exd_msu
 echo %line%
@@ -2252,8 +2277,12 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
   xcopy /CDRUY "%_mount%\sources" "ISOFOLDER\sources\" %_Nul3%
   for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
+if %AddDrivers% neq 0 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddRegs% equ 1 call :DoReg
+if %_build% geq 26100 if %_build% leq 26200 for /f "tokens=7 delims=._" %%# in ('dir /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do (
+  if %%# geq 3912 %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
+)
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
@@ -2318,17 +2347,20 @@ goto :eof
 :DoReg
 reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_build% geq 22621 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
+if %_build% geq 26100 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
+::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\ReserveManager" /v "ShippedWithReserves" /t REG_DWORD /d 0 /f %_Nul3%
 if %_SrvESD% equ 1 ( reg.exe unload HKLM\%SOFTWARE% %_Nul3% & goto :eof )
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v HideOnlineAccountScreens /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
-reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "DevHome" /f %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "PCManager" /f %_Nul3%
+::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
+reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
+::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
+::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
+::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
+::reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "DevHome" /f %_Nul3%
+::reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "PCManager" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 reg load HKLM\uUSER "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
 reg add "HKLM\uUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t REG_DWORD /d 1 /f %_Nul3%
@@ -2341,6 +2373,22 @@ echo.
 echo 正在添加 Microsoft Edge……
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 echo 添加 Edge.wim 失败
+goto :eof
+
+:AddDrivers
+if not defined DrvSrcAll if not defined DrvSrcPE if not defined DrvSrcOS goto :eof
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  if defined DrvSrcAll %_Dism% /LogPath:"%_dLog%\DrvPE.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcAll!" /Recurse
+  if defined DrvSrcPE %_Dism% /LogPath:"%_dLog%\DrvPE.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcPE!" /Recurse
+  goto :eof
+)
+echo.
+echo %line%
+echo 正在添加驱动
+echo %line%
+echo.
+if defined DrvSrcAll %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcAll!" /Recurse
+if defined DrvSrcOS %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcOS!" /Recurse
 goto :eof
 
 :appx_sort
@@ -2570,6 +2618,11 @@ if exist "%_mount%\Windows\WinSxS\Temp\PendingRenames\*" (
   takeown /f "%_mount%\Windows\WinSxS\Temp\PendingRenames\*" /A %_Nul3%
   icacls "%_mount%\Windows\WinSxS\Temp\PendingRenames\*" /grant *S-1-5-32-544:F %_Nul3%
   del /f /q "%_mount%\Windows\WinSxS\Temp\PendingRenames\*" %_Nul3%
+)
+if exist "%_mount%\Windows\System32\*.tmp" (
+  takeown /f "%_mount%\Windows\System32\*.tmp" /A %_Nul3%
+  icacls "%_mount%\Windows\System32\*.tmp" /grant *S-1-5-32-544:F %_Nul3%
+  del /f /q "%_mount%\Windows\System32\*.tmp" %_Nul3%
 )
 goto :eof
 
