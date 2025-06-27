@@ -323,7 +323,7 @@ goto :ISO
 
 :ISO
 if %PREPARED% equ 0 call :PREPARE
-if %AddDrivers% neq 0 if %W10UI% neq 0 if exist "!_DIR!\Drivers"call :optDrivers
+if %AddDrivers% neq 0 if %W10UI% neq 0 if exist "!_DIR!\Drivers" call :optDrivers
 if not exist "!_DIR!\*Windows1*-KB*" set AddUpdates=0
 if not exist "!_DIR!\*.*xbundle" if not exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set AddAppxs=0
 if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq 17763 set AddUpdates=0
