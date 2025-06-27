@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.03.03-111"
+@set "uivr=v25.06.27-113"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -67,7 +67,7 @@ set AddRegs=0
 :: All   / 驱动程序都将添加到所有 wim 文件
 :: OS    / 驱动程序将仅添加到 install.wim 文件
 :: PE    / 驱动程序将仅添加到 boot.wim / Winre.wim 文件
-set AddDrivers=1
+set AddDrivers=0
 
 :: 若在完成时退出进程而不提示，请将此参数更改为 1
 set AutoExit=0
@@ -213,8 +213,6 @@ set _reMSU=0
 set _wimEdge=0
 set _SrvESD=0
 set _Srvr=0
-set _updexist=0
-set _appexist=0
 set "_mount=%_drv%\Mount"
 set "_ntf=NTFS"
 if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
@@ -325,12 +323,9 @@ goto :ISO
 
 :ISO
 if %PREPARED% equ 0 call :PREPARE
-call :optDrivers
-if exist "!_DIR!\*Windows1*-KB*" set _updexist=1
-if exist "!_DIR!\*.*xbundle" set _appexist=1
-if exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set _appexist=1
-if %_updexist% equ 0 set AddUpdates=0
-if %_appexist% equ 0 set AddAppxs=0
+if %AddDrivers% neq 0 if %W10UI% neq 0 if exist "!_DIR!\Drivers"call :optDrivers
+if not exist "!_DIR!\*Windows1*-KB*" set AddUpdates=0
+if not exist "!_DIR!\*.*xbundle" if not exist "!_DIR!\Apps\*_8wekyb3d8bbwe" set AddAppxs=0
 if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq 17763 set AddUpdates=0
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
@@ -343,28 +338,6 @@ if %_build% lss 21382 set UseMSU=0
 if %AddUpdates% equ 1 set _DismHost=1
 if %AddAppxs% equ 1 set _DismHost=1
 if defined _DismHost call :DismHostON
-
-echo.
-echo %line%
-echo 正在列出已配置选项……
-echo %line%
-echo.
-if %_updexist% neq 0 echo 存在更新文件
-if %_appexist% neq 0 echo 存在 Appxs
-if %_wimEdge% equ 1 echo 存在 Edge.wim
-if %AddUpdates% neq 0 echo 添加更新
-if %Cleanup% neq 0 echo 增量压缩已取代的组件
-if %ResetBase% neq 0 echo 移除已被更新取代的组件
-if %SkipWinRE% neq 0 echo 跳过 WinRE.wim
-if %LCUWinRE% neq 0 echo 使用累积更新更新 WinRE
-if %UpdtOneDrive% neq 0 echo 更新 OneDrive
-if %AddAppxs% neq 0 echo 添加 Appxs
-if %AddRegs% neq 0 echo 修改注册表
-if %UseMSU% neq 0 echo 创建并使用 MSU 更新包
-if %AddEdition% neq 0 echo 转换 Windows 版本
-if %AddDrivers% neq 0 echo 添加驱动程序
-if %RefESD% neq 0 echo 保留转换的 ESD 文件
-if %AutoExit% neq 0 echo 任务结束自动退出
 
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
@@ -401,7 +374,7 @@ echo 正在检查更新文件……
 echo %line%
 echo.
 if %UseMSU% neq 1 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
-if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :expand_dll dpx
+if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :expand_dll dpx
 if %_reMSU% equ 1 if %UseMSU% equ 1 call :upd_msu
 set directcab=0
 call :extract
@@ -731,7 +704,7 @@ if %_build% geq 22621 if exist "!_DIR!\*Edge*.wim" (
   if not exist "!_DIR!\Edge.wim" for /f %%# in ('dir /b /a:-d "!_DIR!\*Edge*.wim"') do rename "!_DIR!\%%#" Edge.wim %_Nul3%
 )
 set _dpx=0
-if %_updexist% equ 1 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if exist "!_DIR!\*DesktopDeployment*.cab" (
+if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if exist "!_DIR!\*DesktopDeployment*.cab" (
   if /i %arch%==%xOS% set _dpx=1
   if /i %arch%==x64 if /i %xOS%==amd64 set _dpx=1
 )
@@ -937,7 +910,8 @@ exit /b
 set "DrvSrcAll="
 set "DrvSrcOS="
 set "DrvSrcPE="
-if %AddDrivers% neq 0 if %W10UI% neq 0 if exist "!_DIR!\Drivers" (
+if not exist "!_DIR!\Drivers" set AddDrivers=0
+if exist "!_DIR!\Drivers" (
   if exist "!_DIR!\Drivers\All" dir /b /s "!_DIR!\Drivers\All\*.inf" %_Nul3% && set "DrvSrcAll=!_DIR!\Drivers\All"
   if exist "!_DIR!\Drivers\OS" dir /b /s "!_DIR!\Drivers\OS\*.inf" %_Nul3% && set "DrvSrcOS=!_DIR!\Drivers\OS"
   if exist "!_DIR!\Drivers\PE" dir /b /s "!_DIR!\Drivers\PE\*.inf" %_Nul3% && set "DrvSrcPE=!_DIR!\Drivers\PE"
@@ -2321,7 +2295,7 @@ if %UpdtOneDrive% equ 1 call :OneDrive
 call :AddWinre
 if %AddRegs% equ 1 call :DoReg
 if %_build% geq 26100 if %_build% leq 26200 for /f "tokens=7 delims=._" %%# in ('dir /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do (
-  if %%# geq 3912 %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
+  if %%# equ 3912 %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
 )
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
