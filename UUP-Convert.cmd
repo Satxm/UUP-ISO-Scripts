@@ -2323,6 +2323,7 @@ reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_build% geq 22621 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 if %_build% geq 26100 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
+::if %_build% geq 22000 offlinereg.exe "%_mount%\Windows\System32\Config\SOFTWARE" "Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" setvalue " " "" %_Nul3%
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
@@ -2332,10 +2333,6 @@ if %_SrvESD% equ 1 ( reg.exe unload HKLM\%SOFTWARE% %_Nul3% & goto :eof )
 ::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
 ::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
-::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
-::reg.exe delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
-::reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "DevHome" /f %_Nul3%
-::reg.exe add "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /v "BlockedOobeUpdaters" /t REG_SZ /d "PCManager" /f %_Nul3%
 reg.exe unload HKLM\%SOFTWARE% %_Nul3%
 reg load HKLM\uUSER "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
 reg add "HKLM\uUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t REG_DWORD /d 1 /f %_Nul3%
