@@ -8,16 +8,21 @@ if exist "%SystemRoot%\Sysnative\reg.exe" (
     set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
 set "_psc=powershell -nop -c"
+set "_args="
+set "_args=%~1"
 cd /d "%~dp0"
 
 set _uac=-elevated
 1>nul 2>nul reg.exe query HKU\S-1-5-19 && goto :Passed
 
 set _PSarg="""%~f0""" %_uac%
+if defined _args set _PSarg="""%~f0""" %_args:"="""% %_uac%
 set _PSarg=%_PSarg:'=''%
 
-for %%# in (wt.exe) do @if "%%~$PATH:#"=="" 1>nul 2>nul %_psc% "start cmd.exe -arg '/c %_PSarg%' -verb runas" && exit /b || goto :E_Admin
-1>nul 2>nul %_psc% "start wt -arg 'cmd /c %_PSarg%' -verb runas" && exit /b || goto :E_Admin
+call setlocal EnableDelayedExpansion
+for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe -arg '/c !_PSarg!' -verb runas" && exit /b || goto :E_Admin
+%_Null% %_psc% "start wt -arg '!_PSarg!' -verb runas" && exit /b || goto :E_Admin
+
 
 :Passed
 SET ISOFILE=
