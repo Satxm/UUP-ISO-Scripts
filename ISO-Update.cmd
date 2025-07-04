@@ -2227,7 +2227,7 @@ reg.exe unload HKLM\%SYSTEM% %_Nul3%
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
-if %_build% geq 22000 superUser.exe /w /s reg.exe add "HKLM\%SOFTWARE%\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32" /ve /f %_Nul3%
+::if %_build% geq 22000 superUser.exe /w /s reg.exe add "HKLM\%SOFTWARE%\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32" /ve /f %_Nul3%
 ::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\ReserveManager" /v "ShippedWithReserves" /t REG_DWORD /d 0 /f %_Nul3%
 if %_SrvESD% equ 1 ( reg.exe unload HKLM\%SOFTWARE% %_Nul3% & goto :eof )
 ::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
