@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.06.27-113"
+@set "uivr=v25.07.16-114f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -33,7 +33,6 @@ set SkipISO=0
 set SkipWinRE=0
 
 :: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
-:: 在 Build 22000-26050 中自动启用，若要禁用，请将此参数更改为 2
 :: 在 Build 26052 及以上版本将会忽略并自动禁用
 set LCUWinRE=0
 
@@ -330,9 +329,8 @@ if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %LCUWinRE% equ 2 (
-  if %_build% geq 22000 if %_build% lss 26052 (set LCUWinRE=1) else (set LCUWinRE=0)
-)
+if %_build% geq 22000 if %LCUWinRE% equ 2 set LCUWinRE=0
+if %_build% geq 26052 set LCUWinRE=0
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
 if %AddUpdates% equ 1 set _DismHost=1
@@ -579,15 +577,9 @@ echo.
 %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"!_DIR!\%uups_esd1%" /SourceIndex:2 /DestinationImageFile:"temp\Winre.wim" /Compress:max /Bootable
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 1 (
-  call :update "temp\Winre.wim"
-  %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
-)
-if %uwinpe% equ 0 if %CleanWinre% equ 1 (
-  call :update "temp\Winre.wim"
-  %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winre.esd" /Compress:recovery %_Nul3%
-  %_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.esd" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" /Compress:max /Bootable %_Nul3%
-)
+if %uwinpe% equ 0 if %CleanWinre% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
+call :update "temp\Winre.wim"
+%_Dism% /LogPath:"%_dLog%\DismExport.log" /Export-Image /SourceImageFile:"temp\Winre.wim" /SourceIndex:1 /DestinationImageFile:"temp\Winrenew.wim" %_Nul3%
 if exist "temp\Winrenew.wim" del /f /q "temp\Winre.wim"&ren "temp\Winrenew.wim" Winre.wim %_Nul3%
 goto :%_rtrn%
 

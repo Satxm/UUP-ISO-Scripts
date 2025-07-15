@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.06.27-113"
+@set "uivr=v25.07.16-114f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -30,7 +30,6 @@ set SkipISO=0
 set SkipWinRE=0
 
 :: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
-:: 在 Build 22000-26050 中自动启用，若要禁用，请将此参数更改为 2
 :: 在 Build 26052 及以上版本将会忽略并自动禁用
 set LCUWinRE=0
 
@@ -397,9 +396,8 @@ if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %LCUWinRE% equ 2 (
-  if %_build% geq 22000 if %_build% lss 26052 (set LCUWinRE=1) else (set LCUWinRE=0)
-)
+if %_build% geq 22000 if %LCUWinRE% equ 2 set LCUWinRE=0
+if %_build% geq 26052 set LCUWinRE=0
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
 if %AddUpdates% equ 1 set _DismHost=1
@@ -514,8 +512,8 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\i
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
 if %UpdtOneDrive% equ 1 call :OneDrive
-if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 goto :SkipUpdate
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 if %_wimEdge% neq 1 goto :SkipUpdate
+if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 if %_wimEdge% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
 call :update "ISOFOLDER\sources\install.wim"
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
@@ -608,8 +606,8 @@ if exist ISOFOLDER\sources\install*.swm del /f /q ISOFOLDER\sources\install.wim
 goto :%_rtrn%
 
 :WinreWim
-if %uwinpe% equ 0 goto :%_rtrn%
 if %SkipWinRE% equ 1 goto :%_rtrn%
+if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 echo.
 echo %line%
 echo 正在导出 Winre.wim 文件……
@@ -618,13 +616,13 @@ echo.
 wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 1 call :update "temp\Winre.wim"
+call :update "temp\Winre.wim"
 wimlib-imagex.exe optimize "temp\Winre.wim"
 goto :%_rtrn%
 
 :BootWim
-if %uwinpe% equ 0 goto :%_rtrn%
-if %uwinpe% equ 1 call :update "ISOFOLDER\sources\boot.wim"
+if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
+call :update "ISOFOLDER\sources\boot.wim"
 if not defined isoupdate goto :BootDone
 mkdir "temp\du" %_Nul3%
 for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "temp\du" %_Nul1%
