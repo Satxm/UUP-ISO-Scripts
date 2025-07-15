@@ -41,6 +41,7 @@ echo %line%
 echo.
 for /f "delims=' tokens=*" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuup\:.*';$id = \"%id%\";iex ($f[1]);"') do set info=%%a
 for /f "tokens=1 delims=. " %%b in ("%info%") do set build=%%b
+for /f "tokens=1 delims= " %%b in ("%info%") do set fullbuild=%%b
 echo %info% | find /i "Server" 1>nul 2>nul && set server=1
 echo 此 UUPID 对应的系统版本为：%build%
 
@@ -53,6 +54,22 @@ if defined server set "files=%files%.Server.txt"
 set "Dir=UUPs.%build%"
 if defined server set "Dir=%Dir%.Server"
 
+:DOWNLOAD_APPS
+echo.
+echo %line%
+echo 正在检索完整 Apps aria2 脚本……
+echo %line%
+echo.
+if exist %files% del /f /q %files%
+"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=neutral&edition=app&aria2=2"
+%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':outapp\:.*';$file = \"%files%\";iex ($f[1]);"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
+if exist "%Dir%\Apps\Microsoft.SecHealthUI_8wekyb3d8bbwe" (
+  if exist "%Dir%\Apps\Microsoft.SecHealthUI_8wekyb3d8bbwe\*.Appx" del /f /q "%Dir%\Apps\Microsoft.SecHealthUI_8wekyb3d8bbwe\*.Appx"
+  for /f %%i in ('dir /b "%Dir%\*Microsoft.SecHealthUI_8wekyb3d8bbwe*"') do move /y "%Dir%\%%i" "%Dir%\Apps\Microsoft.SecHealthUI_8wekyb3d8bbwe\Microsoft.SecHealthUI_1000.%fullbuild%.0_x64__8wekyb3d8bbwe.Appx"
+)
+
 :DOWNLOAD_UUPS
 echo.
 echo %line%
@@ -64,17 +81,6 @@ if exist %files% del /f /q %files%
 if defined server "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=serverdatacenter;serverdatacentercore;serverstandard;serverstandardcore&aria2=2"
 if not exist %files% goto :DOWNLOAD_UUPS
 if exist %files% %psc% "(Get-Content %files%).Replace('cabs_','').Replace('MetadataESD_','').Replace('Wim_','').Replace('.ESD','.esd').Replace('-kb','-KB').Replace('windows1','Windows1').Replace('-ndp','-NDP') | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
-if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
-
-:DOWNLOAD_APPS
-echo.
-echo %line%
-echo 正在检索完整 Apps aria2 脚本……
-echo %line%
-echo.
-if exist %files% del /f /q %files%
-"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=neutral&edition=app&aria2=2"
 if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
@@ -101,3 +107,9 @@ $build = $json.response.updateInfo.build
 $name = $json.response.updateInfo.title
 Write-Host $build $name
 :getuup:
+
+:outapp:
+$line = (Get-Content $file | Select-String "Microsoft.SecHealthUI_8wekyb3d8bbwe").LineNumber
+$result = Get-Content $file | Select-Object -Skip ($line - 2) -First 3
+$result | Out-File $file -Encoding ASCII
+:outapp:

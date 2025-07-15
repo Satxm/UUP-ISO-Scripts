@@ -52,7 +52,7 @@ set "files=files.%build%.txt"
 if defined server set "files=%files%.Server.txt"
 if %build% lss 22000 set "Dir=Win10.%build%"
 if %build% gtr 22000 set "Dir=Win11.%build%"
-if defined server set "Dir=%Dir%.Server"
+if defined server set "Dir=WinServer.%build%"
 
 :DOWNLOAD_CABS
 echo.
@@ -62,10 +62,8 @@ echo %line%
 echo.
 "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=updateOnly&aria2=2"
 if not exist %files% goto :DOWNLOAD_CABS
-if exist %files% %psc% "(gc %files%) -creplace '-kb', '-KB' | Out-File %files% -Encoding ASCII"
-if exist %files% %psc% "(gc %files%) -creplace 'windows1', 'Windows1' | Out-File %files% -Encoding ASCII"
-if exist %files% %psc% "(gc %files%) -creplace '-ndp', '-NDP' | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if exist %files% %psc% "(Get-Content %files%).Replace('-kb','-KB').Replace('windows1','Windows1').Replace('-ndp','-NDP') | Out-File %files% -Encoding ASCII"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true --auto-file-renaming=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_DONE
