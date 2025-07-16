@@ -328,7 +328,8 @@ if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %_build% geq 22000 if %LCUWinRE% equ 2 set LCUWinRE=0
+if %_build% geq 22000 if %_build% lss 26052 set LCUWinRE=1
+if %LCUWinRE% equ 2 set LCUWinRE=0
 if %_build% geq 26052 set LCUWinRE=0
 if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
