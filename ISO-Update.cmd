@@ -93,7 +93,7 @@ if exist "%SystemRoot%\Sysnative\reg.exe" (
   set "SysPath=%SystemRoot%\Sysnative"
   set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
-set "_err=echo: &echo ==== 出现错误 ===="
+set "_err===== 出现错误 ===="
 set "_psc=powershell -nop -c"
 set winbuild=1
 for /f "tokens=6 delims=[]. " %%# in ('ver') do set winbuild=%%#
@@ -276,7 +276,7 @@ set /p _DIR=
 if not defined _DIR (
   echo.
   echo %_err%
-  echo 未指定文件夹
+  echo 未指定文件（夹）
   echo.
   goto :selectupd
 )
@@ -294,35 +294,35 @@ if not exist "%_DIR%\*Windows1*-KB*" (
 :finddir
 echo.
 if defined _args for %%# in (%*) do (
-  if exist "%%~#\sources\install.wim" (set ISOdir=%%~#&echo %%#&goto :copydir)
-  if /i "%%~x#"==".iso" if exist "%%~#" (set ISOfile=%%~#&echo %%~#&goto :extraciso)
+  if exist "%%~#\sources\install.wim" (set _ISO=%%~#&echo %%#&goto :copydir)
+  if /i "%%~x#"==".iso" if exist "%%~#" (set _ISO=%%~#&echo %%~#&goto :extraciso)
 )
-for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\sources\install.wim" set /a _ndir+=1&set ISOdir=%%~#&echo %%~#
-if !_ndir! equ 1 if defined ISOdir goto :copydir
+for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\sources\install.wim" set /a _ndir+=1&set _ISO=%%~#&echo %%~#
+if !_ndir! equ 1 if defined _ISO goto :copydir
 if !_ndir! gtr 1 goto :selectdir
-if exist "*.iso" for /f "tokens=* delims=" %%# in ('dir /b /a:-d *.iso') do set /a _niso+=1&set ISOfile=%%~#&echo %%~#
+if exist "*.iso" for /f "tokens=* delims=" %%# in ('dir /b /a:-d *.iso') do set /a _niso+=1&set _ISO=%%~#&echo %%~#
 if !_niso! equ 0 goto :E_NotFind
-if !_niso! equ 1 if defined ISOfile goto :extraciso
+if !_niso! equ 1 if defined _ISO goto :extraciso
 if !_niso! gtr 1 goto :selectiso
 
 :selectdir
-set ISOdir=
+set _ISO=
 echo.
 echo %line%
 echo 使用 Tab 键选择或输入包含 install.wim 文件的文件夹
 echo %line%
 echo.
-set /p ISOdir=
-if not defined ISOdir (
+set /p _ISO=
+if not defined _ISO (
   echo.
   echo %_err%
   echo 未指定文件夹
   echo.
   goto :selectdir
 )
-set "ISOdir=%ISOdir:"=%"
-if "%ISOdir:~-1%"=="\" set "ISOdir=%ISOdir:~0,-1%"
-if not exist "%ISOdir%\sources\install.wim" (
+set "_ISO=%_ISO:"=%"
+if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
+if not exist "%_ISO%\sources\install.wim" (
   echo.
   echo %_err%
   echo 指定的文件夹内无 install.wim 文件
@@ -331,34 +331,34 @@ if not exist "%ISOdir%\sources\install.wim" (
 )
 
 :copydir
-if "%ISOdir%"=="ISOFOLDER" goto :checkiso
 echo.
 echo %line%
-echo 正在复制 ISO 文件夹 %ISOdir% ……
+echo 正在复制 ISO 文件夹 %_ISO% ……
 echo %line%
+if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
-robocopy "%ISOdir%" "ISOFOLDER" /E /A-:R %_Nul3%
+robocopy "%_ISO%" "ISOFOLDER" /E /A-:R %_Nul3%
 goto :checkiso
 
 :selectiso
 set _erriso=0
-set ISOfile=
+set _ISO=
 echo.
 echo %line%
 echo 使用 Tab 键选择或输入 ISO 文件
 echo %line%
 echo.
-set /p ISOfile=
-if not defined ISOfile (
+set /p _ISO=
+if not defined _ISO (
   echo.
   echo %_err%
   echo 未指定 ISO 文件
   echo.
   goto :selectiso
 )
-set "ISOfile=%ISOfile:"=%"
-if not exist "%ISOfile%" set _erriso=1
-if /i not "%ISOfile:~-4%"==".iso" set _erriso=1
+set "_ISO=%_ISO:"=%"
+if not exist "%_ISO%" set _erriso=1
+if /i not "%_ISO:~-4%"==".iso" set _erriso=1
 if %_erriso% equ 1 (
   echo.
   echo %_err%
@@ -370,10 +370,10 @@ if %_erriso% equ 1 (
 :extraciso
 echo.
 echo %line%
-echo 正在解压 ISO 文件 %ISOfile% ……
+echo 正在解压 ISO 文件 %_ISO% ……
 echo %line%
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
-7z.exe x "%ISOfile%" -oISOFOLDER * -r %_Nul3%
+7z.exe x "%_ISO%" -oISOFOLDER * -r %_Nul3%
 
 :checkiso
 @cls
