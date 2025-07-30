@@ -678,7 +678,7 @@ echo 正在导出 Winre.wim 文件……
 echo %line%
 echo.
 if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
-if not exist "temp\Winre.wim" wimlib-imagex.exe extract "temp\Winre.wim" "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
+if not exist "temp\Winre.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
 if %uwinpe% equ 0 if %CleanWinre% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
