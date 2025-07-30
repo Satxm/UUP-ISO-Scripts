@@ -3,6 +3,7 @@ Microsoft-Windows-WinPE-FontSupport-WinRE
 WinPE-AppxDeployment
 WinPE-AppxPackaging
 WinPE-CILockdownPolicies
+WinPE-Connectivity-Package
 WinPE-FMAPI
 WinPE-HTA
 WinPE-OpcServices

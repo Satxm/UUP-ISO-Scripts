@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.07.16-114f"
+@set "uivr=v25.07.30-114f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -33,18 +33,21 @@ set SkipWinRE=0
 :: 在 Build 26052 及以上版本将会忽略并自动禁用
 set LCUWinRE=0
 
-:: 从累积更新更新 ISO 启动文件 bootmgr/memtest/efisys.bin，请将此参数更改为 1
+:: 若从累积更新更新 ISO 启动文件 bootmgr/memtest/efisys.bin，请将此参数更改为 1
 :: 如果检测到新的 UEFI CA 2023 启动文件，还会将其更新
 set UpdtBootFiles=0
 
-:: 更新OneDrive，请将此参数更改为 1
+:: 若更新OneDrive，请将此参数更改为 1
 set UpdtOneDrive=0
 
-:: 使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
+:: 若使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
 set AddEdition=0
 
-:: 升级或整合 Appx 软件，请将此参数更改为 1
+:: 若安装或升级合应用包，请将此参数更改为 1
 set AddAppxs=0
+
+:: 若安装应用包为存根版本，请将此参数更改为 1
+set AppsAsStub=0
 
 :: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
@@ -218,7 +221,7 @@ set "line============================================================="
 
 :check
 pushd "!_work!"
-set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg64.dll,wimlib-imagex.exe,PSFExtractor.exe,superUser.exe)
+set _fils=(7z.dll,7z.exe,bootmui.txt,bootwim.txt,oscdimg.exe,imagex.exe,libwim-15.dll,offlinereg.exe,offreg64.dll,wimlib-imagex.exe,PSFExtractor.exe)
 for %%# in %_fils% do (
   if not exist "bin\%%#" (set _bin=%%#&goto :E_BinMiss)
 )
@@ -240,6 +243,7 @@ UpdtBootFiles
 UpdtOneDrive
 AddEdition
 AddAppxs
+AppsAsStub
 AddRegs
 AddDrivers
 AutoExit
@@ -2141,7 +2145,6 @@ if exist "%_mount%\" rmdir /s /q "%_mount%\"
 goto :eof
 
 :DoWork
-if exist "%_mount%\inetpub" rmdir /s /q "%_mount%\inetpub" %_Nul3%
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
 if defined mounterr goto :eof
@@ -2202,6 +2205,7 @@ for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!is
 :Skiphand2
 if exist "%_mount%\Windows\System32\UpdateAgent.dll" if not exist "%SystemRoot%\temp\UpdateAgent.dll" copy /y "%_mount%\Windows\System32\UpdateAgent.dll" %SystemRoot%\temp\ %_Nul1%
 if exist "%_mount%\Windows\System32\Facilitator.dll" if not exist "%SystemRoot%\temp\Facilitator.dll" copy /y "%_mount%\Windows\System32\Facilitator.dll" %SystemRoot%\temp\ %_Nul1%
+if exist "%_mount%\inetpub" attrib +h "%_mount%\inetpub" %_Nul3%
 if %AddEdition% neq 1 goto :Done
 echo.
 echo %line%
@@ -2222,12 +2226,9 @@ reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_build% geq 22621 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 if %_build% geq 26100 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
 reg.exe unload HKLM\%SYSTEM% %_Nul3%
-::if %_build% geq 22000 offlinereg.exe "%_mount%\Windows\System32\Config\SOFTWARE" "Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InprocServer32" setvalue " " "" %_Nul3%
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
-::if %_build% geq 22000 superUser.exe /w /s reg.exe add "HKLM\%SOFTWARE%\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}\InProcServer32" /ve /f %_Nul3%
-::reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\ReserveManager" /v "ShippedWithReserves" /t REG_DWORD /d 0 /f %_Nul3%
 if %_SrvESD% equ 1 ( reg.exe unload HKLM\%SOFTWARE% %_Nul3% & goto :eof )
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
@@ -2337,7 +2338,7 @@ if not defined _main if exist "%_pfn%\*.appx" for /f "tokens=* delims=" %%# in (
 if not defined _main if exist "%_pfn%\*.msix" for /f "tokens=* delims=" %%# in ('dir /b /a:-d "%_pfn%\*.msix"') do set "_main=%%#" & set "_mainn=%%~n#"
 if not defined _main goto :eof
 set "_stub="
-if exist "%_pfn%\AppxMetadata\Stub\*.*x" if %_SrvESD% neq 1 set "_stub=/StubPackageOption:InstallStub"
+if %_SrvESD% neq 1 if %AppsAsStub% equ 1 if exist "%_pfn%\AppxMetadata\Stub\*.*x" set "_stub=/StubPackageOption:InstallStub"
 set Dependency=
 for /f "delims=" %%i in ('dir /b /a:-d "*TargetCompDB_App_*.xml" %_Nul6%') do (
   copy /y %%i CompDB_App.xml %_Nul1%
