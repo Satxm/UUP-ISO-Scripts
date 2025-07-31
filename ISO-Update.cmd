@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.07.30-114f"
+@set "uivr=v25.07.31-114f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -93,7 +93,7 @@ if exist "%SystemRoot%\Sysnative\reg.exe" (
   set "SysPath=%SystemRoot%\Sysnative"
   set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
-set "_err===== 出现错误 ===="
+set "_err=echo: &echo ==== 出现错误 ===="
 set "_psc=powershell -nop -c"
 set winbuild=1
 for /f "tokens=6 delims=[]. " %%# in ('ver') do set winbuild=%%#
@@ -253,15 +253,15 @@ WIM2SWM
 ) do (
 call :Readini %%#
 )
-goto :checkdone
+goto :ReadDone
 
 :Readini
 findstr /b /i %1 Config.ini %_Nul1% && for /f "tokens=2 delims==" %%# in ('findstr /b /i %1 Config.ini') do set "%1=%%#"
 goto :eof
 
-:checkdone
-echo.
+:ReadDone
 if defined _args for %%# in (%*) do if exist "%%~#\*Windows1*-KB*" (set "_DIR=%%~f#"&echo %%~#&goto :finddir)
+
 for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*Windows1*-KB*" (set /a _ncab+=1&set "_DIR=%%~f#"&echo %%~#)
 if !_ncab! equ 1 if defined _DIR goto :finddir
 
@@ -275,7 +275,7 @@ echo.
 set /p _DIR=
 if not defined _DIR (
   echo.
-  echo %_err%
+  %_err%
   echo 未指定文件（夹）
   echo.
   goto :selectupd
@@ -285,7 +285,7 @@ for %%# in ("!_DIR!") do set "_DIR=%%~f#"
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
 if not exist "%_DIR%\*Windows1*-KB*" (
   echo.
-  echo %_err%
+  %_err%
   echo 指定的文件夹内无更新文件
   echo.
   goto :selectupd
@@ -315,7 +315,7 @@ echo.
 set /p _ISO=
 if not defined _ISO (
   echo.
-  echo %_err%
+  %_err%
   echo 未指定文件夹
   echo.
   goto :selectdir
@@ -324,7 +324,7 @@ set "_ISO=%_ISO:"=%"
 if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if not exist "%_ISO%\sources\install.wim" (
   echo.
-  echo %_err%
+  %_err%
   echo 指定的文件夹内无 install.wim 文件
   echo.
   goto :selectdir
@@ -351,7 +351,7 @@ echo.
 set /p _ISO=
 if not defined _ISO (
   echo.
-  echo %_err%
+  %_err%
   echo 未指定 ISO 文件
   echo.
   goto :selectiso
@@ -361,7 +361,7 @@ if not exist "%_ISO%" set _erriso=1
 if /i not "%_ISO:~-4%"==".iso" set _erriso=1
 if %_erriso% equ 1 (
   echo.
-  echo %_err%
+  %_err%
   echo 指定的文件不是有效的 ISO 文件
   echo.
   goto :selectiso
@@ -745,14 +745,14 @@ set _ESDSrv%1=0
 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %1 %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% equ 73 (
-  echo %_err%
+  %_err%
   echo install.wim 文件已损坏
   echo.
   set eWIMLIB=1
   exit /b
 )
 if %ERRTEMP% neq 0 (
-  echo %_err%
+  %_err%
   echo 无法解析来自文件 install.wim 的信息
   echo.
   set eWIMLIB=1
@@ -2437,7 +2437,7 @@ if exist "%_mount%\Windows\WinSxS\pending.xml" call :CleanManual&goto :eof
 set "_Nul8="
 if %_build% geq 25380 if %_build% lss 26000 (
   set "_Nul8=1>nul 2>nul"
-  echo Running DISM Cleanup . . .
+  echo 正在运行 Dism 清理……
 )
 if %ResetBase% equ 0 (
   call :SBSConfig %savc% 1 9
@@ -2565,13 +2565,13 @@ del /f /q temp\Dism*.reg %_Nul3%
 exit /b
 
 :E_NotFind
-echo %_err%
+%_err%
 echo 在指定的路径中未找到所需文件（夹）。
 echo.
 goto :QUIT
 
 :E_Admin
-echo %_err%
+%_err%
 echo 此脚本需要以管理员权限运行。
 echo 若要继续执行，请在脚本上右键单击并选择“以管理员权限运行”。
 echo.
@@ -2580,7 +2580,7 @@ pause >nul
 exit /b
 
 :E_PowerShell
-echo %_err%
+%_err%
 echo 此脚本的工作需要 Windows PowerShell。
 echo.
 echo 请按任意键退出脚本。
@@ -2588,7 +2588,7 @@ pause >nul
 exit /b
 
 :E_BinMiss
-echo %_err%
+%_err%
 echo 所需的文件 %_bin% 丢失。
 echo.
 goto :QUIT
