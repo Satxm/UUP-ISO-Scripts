@@ -2619,16 +2619,12 @@ call :DismHostOFF
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 if exist temp\ rmdir /s /q temp\
 popd
-if exist "!_cabdir!\" (
-  if %AddUpdates% equ 1 (
-    echo.
-    echo %line%
-    echo 正在移除临时文件……
-    echo %line%
-    echo.
-  )
-  rmdir /s /q "!_cabdir!\" %_Nul3%
-)
+echo.
+echo %line%
+echo 正在清理临时文件……
+echo %line%
+echo.
+if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 if exist "!_cabdir!\" (
   mkdir %_drv%\_del286 %_Nul3%

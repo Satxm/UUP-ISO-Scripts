@@ -133,40 +133,7 @@ set "_cabdir=%_drv%\Updates"
 if "%_work:~0,2%"=="\\" set "_cabdir=%~dp0temp\Updates"
 for /f "skip=2 tokens=2*" %%a in ('reg.exe query "HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders" /v Desktop') do call set "_dsk=%%b"
 if exist "%PUBLIC%\Desktop\desktop.ini" set "_dsk=%PUBLIC%\Desktop"
-
-set psfnet=0
-if exist "%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\ngen.exe" set psfnet=1
-if exist "%SystemRoot%\Microsoft.NET\Framework\v2.0.50727\ngen.exe" set psfnet=1
-for %%# in (E F G H I J K L M N O P Q R S T U V W X Y Z) do (
-  set "_adr%%#=%%#"
-)
-if %_cwmi% equ 1 for /f "tokens=2 delims==:" %%# in ('"wmic path Win32_Volume where (DriveLetter is not NULL) get DriveLetter /value" ^| findstr ^=') do (
-  if defined _adr%%# set "_adr%%#="
-)
-if %_cwmi% equ 1 for /f "tokens=2 delims==:" %%# in ('"wmic path Win32_LogicalDisk where (DeviceID is not NULL) get DeviceID /value" ^| findstr ^=') do (
-  if defined _adr%%# set "_adr%%#="
-)
-if %_cwmi% equ 0 for /f "tokens=1 delims=:" %%# in ('%_psc% "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter is not NULL').Get()).DriveLetter; (([WMISEARCHER]'Select * from Win32_LogicalDisk where DeviceID is not NULL').Get()).DeviceID"') do (
-  if defined _adr%%# set "_adr%%#="
-)
-for %%# in (E F G H I J K L M N O P Q R S T U V W X Y Z) do (
-  if not defined _sdr (if defined _adr%%# set "_sdr=%%#:")
-)
-if not defined _sdr set psfnet=0
-set "_Pkt=31bf3856ad364e35"
-set "_OurVer=25.10.0.0"
-set "_SupCmp=microsoft-client-li..pplementalservicing"
-set "_EdgCmp=microsoft-windows-e..-firsttimeinstaller"
-set "_CedCmp=microsoft-windows-edgechromium"
-set "_EsuCmp=microsoft-windows-s..edsecurityupdatesai"
-set "_SupIdn=Microsoft-Client-Licensing-SupplementalServicing"
-set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
-set "_CedIdn=Microsoft-Windows-EdgeChromium"
-set "_EsuIdn=Microsoft-Windows-SLC-Component-ExtendedSecurityUpdatesAI"
-set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
-set "_CBS=Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages"
-set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
-set _MOifeo=0
+call :preVars
 setlocal EnableDelayedExpansion
 
 if %_Debug% equ 0 (
@@ -194,38 +161,11 @@ echo 当完成之后，此窗口将会关闭
 title UUP 生成 / ISO 更新
 set "_dLog=%SystemRoot%\Logs\DISM"
 set "_Dism=Dism.exe /ScratchDir:"!_cabdir!""
-
-:precheck
 set W10UI=0
 if %winbuild% geq 10240 (
   set W10UI=1
 )
-set SYSTEM=uiSYSTEM
-set SOFTWARE=uiSOFTWARE
-set COMPONENTS=uiCOMPONENTS
-set ERRTEMP=
-set PREPARED=0
-set EXPRESS=0
-set uwinpe=0
-set _skpd=0
-set _skpp=0
-set _nesd=0
-set _ndir=0
-set _nsum=0
-set _nupd=0
-set _niso=0
-set _reMSU=0
-set _wimEdge=0
-set _SrvESD=0
-set _Srvr=0
-set "_mount=%_drv%\Mount"
-set "_ntf=NTFS"
-if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
-if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 0 for /f %%# in ('%_psc% "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter=\"%_drv%\"').Get()).FileSystem"') do set "_ntf=%%#"
-if /i not "%_ntf%"=="NTFS" (
-  set "_mount=%SystemDrive%\Mount"
-)
-set "line============================================================="
+call :postVars
 
 :check
 pushd "!_work!"
@@ -2756,6 +2696,71 @@ if exist "%_mount%\Windows\System32\SMI\Store\Machine\*.regtrans-ms" (
 )
 goto :eof
 
+:preVars
+set psfnet=0
+if exist "%SystemRoot%\Microsoft.NET\Framework\v4.0.30319\ngen.exe" set psfnet=1
+if exist "%SystemRoot%\Microsoft.NET\Framework\v2.0.50727\ngen.exe" set psfnet=1
+for %%# in (E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+  set "_adr%%#=%%#"
+)
+if %_cwmi% equ 1 for /f "tokens=2 delims==:" %%# in ('"wmic path Win32_Volume where (DriveLetter is not NULL) get DriveLetter /value" ^| findstr ^=') do (
+  if defined _adr%%# set "_adr%%#="
+)
+if %_cwmi% equ 1 for /f "tokens=2 delims==:" %%# in ('"wmic path Win32_LogicalDisk where (DeviceID is not NULL) get DeviceID /value" ^| findstr ^=') do (
+  if defined _adr%%# set "_adr%%#="
+)
+if %_cwmi% equ 0 for /f "tokens=1 delims=:" %%# in ('%_psc% "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter is not NULL').Get()).DriveLetter; (([WMISEARCHER]'Select * from Win32_LogicalDisk where DeviceID is not NULL').Get()).DeviceID"') do (
+  if defined _adr%%# set "_adr%%#="
+)
+for %%# in (E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+  if not defined _sdr (if defined _adr%%# set "_sdr=%%#:")
+)
+if not defined _sdr set psfnet=0
+set "_Pkt=31bf3856ad364e35"
+set "_OurVer=25.10.0.0"
+set "_SupCmp=microsoft-client-li..pplementalservicing"
+set "_EdgCmp=microsoft-windows-e..-firsttimeinstaller"
+set "_CedCmp=microsoft-windows-edgechromium"
+set "_EsuCmp=microsoft-windows-s..edsecurityupdatesai"
+set "_SupIdn=Microsoft-Client-Licensing-SupplementalServicing"
+set "_EdgIdn=Microsoft-Windows-EdgeChromium-FirstTimeInstaller"
+set "_CedIdn=Microsoft-Windows-EdgeChromium"
+set "_EsuIdn=Microsoft-Windows-SLC-Component-ExtendedSecurityUpdatesAI"
+set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
+set "_CBS=Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages"
+set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
+set _MOifeo=0
+goto :eof
+
+:postVars
+set SYSTEM=uiSYSTEM
+set SOFTWARE=uiSOFTWARE
+set COMPONENTS=uiCOMPONENTS
+set ERRTEMP=
+set PREPARED=0
+set EXPRESS=0
+set uwinpe=0
+set _skpd=0
+set _skpp=0
+set _nesd=0
+set _ndir=0
+set _nsum=0
+set _nupd=0
+set _niso=0
+set _reMSU=0
+set _wimEdge=0
+set _SrvESD=0
+set _Srvr=0
+set "_mount=%_drv%\Mount"
+set "_ntf=NTFS"
+if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
+if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 0 for /f %%# in ('%_psc% "(([WMISEARCHER]'Select * from Win32_Volume where DriveLetter=\"%_drv%\"').Get()).FileSystem"') do set "_ntf=%%#"
+if /i not "%_ntf%"=="NTFS" (
+  set "_mount=%SystemDrive%\Mount"
+)
+set "line============================================================="
+goto :eof
+
 :DismHostON
 if %winbuild% lss 9200 exit /b
 if %_MOifeo% neq 0 exit /b
@@ -2844,16 +2849,12 @@ call :DismHostOFF
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 if exist temp\ rmdir /s /q temp\
 popd
-if exist "!_cabdir!\" (
-  if %AddUpdates% equ 1 (
-    echo.
-    echo %line%
-    echo 正在移除临时文件……
-    echo %line%
-    echo.
-  )
-  rmdir /s /q "!_cabdir!\" %_Nul3%
-)
+echo.
+echo %line%
+echo 正在清理临时文件……
+echo %line%
+echo.
+if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 if exist "!_cabdir!\" (
   mkdir %_drv%\_del286 %_Nul3%
