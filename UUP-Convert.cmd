@@ -269,7 +269,7 @@ goto :eof
 :ReadDone
 if defined _args for %%# in (%*) do if exist "%%~#\*.esd" (set "_DIR=%%~f#"&echo %%~#&goto :checkuup)
 
-echo.for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _nesd+=1&set "_DIR=%%~f#"&echo %%~#)
+for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do if exist "%%~#\*.esd" (set /a _nesd+=1&set "_DIR=%%~f#"&echo %%~#)
 if !_nesd! equ 1 if defined _DIR goto :checkuup
 
 :selectuup
