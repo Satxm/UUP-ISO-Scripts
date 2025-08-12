@@ -2321,9 +2321,11 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
 if %AddDrivers% neq 0 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddRegs% equ 1 call :DoReg
-if %_build% geq 26100 if %_build% leq 26200 for /f "tokens=7 delims=._" %%# in ('dir /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do (
-  if %%# equ 3912 %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
-)
+set pdfm=0
+set pdfj=0
+for /f "tokens=7 delims=._" %%# in ('dir /b /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do set pdfm=%%#
+for /f %%# in ('dir /a:d /b "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do for /f "tokens=4 delims=." %%i in ('type "%_mount%\Windows\WinSxS\%%#\prnms009.inf" ^| findstr /c:"DriverVer"') do set pdfj=%%i
+if %pdfm% neq %pdfj% %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
