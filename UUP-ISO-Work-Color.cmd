@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.07.31-114f"
+@set "uivr=v25.08.14-114f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -55,8 +55,11 @@ set AddAppxs=0
 :: 若安装应用包为存根版本，请将此参数更改为 1
 set AppsAsStub=0
 
-:: 生成并使用 .msu 更新包（Windows 11），请将此参数更改为 1
+:: 若（生成并）使用 .msu 更新包（Windows 11），请将此参数更改为 1
 set UseMSU=0
+
+:: 若修复全新安装后无 Microsoft Print to PDF 打印机，请将此参数更改为 1
+set FixPDF=0
 
 :: 添加智能应用控制（解决软件打开慢）及阻止微软推送软件自动安装的注册表，请将此参数更改为 1
 set AddRegs=0
@@ -111,7 +114,7 @@ set _pwsh=1
 for %%# in (powershell.exe) do @if "%%~$PATH:#"=="" set _pwsh=0
 cmd /c "%_psc% "$ExecutionContext.SessionState.LanguageMode"" | find /i "FullLanguage" 1>nul || (set _pwsh=0)
 call :pr_color
-if %_cwmi% equ 0 if %_pwsh% EQU 0 goto :E_PowerShell
+if %_cwmi% equ 0 if %_pwsh% equ 0 goto :E_PowerShell
 
 set _uac=-elevated
 %_Null% reg.exe query HKU\S-1-5-19 && goto :Passed || if defined _elev goto :E_Admin
@@ -150,7 +153,7 @@ set "_Nul6="
 set "_Nul3="
 copy /y nul "!_work!\#.rw" %_Null% && (if exist "!_work!\#.rw" del /f /q "!_work!\#.rw") || (set "_log=!_dsk!\%~n0")
 echo.
-echo 正在调试模式下运行……
+echo 正在调试模式下运行...
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
@@ -199,6 +202,7 @@ AddRegs
 AddDrivers
 AutoExit
 UseMSU
+FixPDF
 WIM2ESD
 WIM2SWM
 ) do (
@@ -250,7 +254,7 @@ if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
 if not exist "%_DIR%\*.esd" if not exist "%_DIR%\*Windows1*-KB*" (
   echo.
   %_err%
-  echo 指定的文件夹内无 UUP 文件或更新文件
+  call :dk_color1 %Red% "指定的文件夹内无 UUP 文件或更新文件"
   echo.
   goto :selectdir
 )
@@ -287,7 +291,7 @@ if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if not exist "%_ISO%" if not exist "%_ISO%\sources\install.wim" (
   echo.
   %_err%
-  echo 指定的文件（夹）非 ISO 文件或 install.wim 文件夹
+  call :dk_color1 %Red% "指定的文件（夹）非 ISO 文件或 install.wim 文件夹"
   echo.
   goto :selectdir
 )
@@ -297,7 +301,7 @@ goto :eof
 
 :copyisodir
 echo.
-call :dk_color1 %Gray% "正在复制 ISO 文件夹 %_ISO% ……" 4 5
+call :dk_color1 %Gray% "正在复制 ISO 文件夹 %_ISO% ..." 4 5
 if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 robocopy "%_ISO%" "ISOFOLDER" /E /A-:R %_Nul3%
@@ -306,18 +310,16 @@ goto :checkiso
 
 :extraciso
 echo.
-call :dk_color1 %Gray% "正在解压 ISO 文件 %_ISO% ……" 4 5
+call :dk_color1 %Gray% "正在解压 ISO 文件 %_ISO% ..." 4 5
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 7z.exe x "%_ISO%" -oISOFOLDER * -r %_Nul3%
 goto :checkiso
 
 :checkuup
 @cls
-echo.
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
-call :dk_color1 %Green% "UUPs 文件夹： !_DIR!" 4 5
-call :dk_color1 %Gray% "正在检查 ESD 文件信息……" 4 5
-echo.
+call :dk_color1 %_Green% "UUPs 文件夹： !_DIR!" 4
+call :dk_color1 %Gray% "正在检查 ESD 文件信息..." 4
 dir /b /ad "!_DIR!\*Package*" %_Nul3% && set EXPRESS=1
 for %%# in (
   Core,CoreSingleLanguage,CoreCountrySpecific,Professional,ProfessionalSingleLanguage,ProfessionalCountrySpecific,Education,ProfessionalEducation,ProfessionalWorkstation
@@ -336,11 +338,9 @@ goto :ISO
 
 :checkiso
 @cls
-echo.
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
-call :dk_color1 %Green% "更新文件夹： !_DIR!" 4 5
-call :dk_color1 %Gray% "正在检查 ISO 文件信息……" 4 5
-echo.
+call :dk_color1 %_Green% "更新文件夹： !_DIR!" 4
+call :dk_color1 %Gray% "正在检查 ISO 文件信息..." 4
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set _nsum=%%#
 if %_nsum% equ 0 goto :E_NotFind
 for /l %%# in (1,1,%_nsum%) do call :mediacheck %%#
@@ -378,7 +378,7 @@ if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (ca
 
 if not exist "!_DIR!\*.esd" goto :notuups
 call :uups_ref
-call :dk_color1 %Blue% "正在部署 ISO 安装文件……" 4 5
+call :dk_color1 %Blue% "=== 正在部署 ISO 安装文件..." 4
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
 wimlib-imagex.exe apply "!_DIR!\%uups_esd1%" 1 ISOFOLDER\ --no-acls --no-attributes %_Nul3%
@@ -388,13 +388,14 @@ if %ERRTEMP% neq 0 goto :E_Apply
 :notuups
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
 if exist ISOFOLDER\__chunk_data del /f /q ISOFOLDER\__chunk_data %_Nul3%
+if exist ISOFOLDER\sources\_manifest rmdir /s /q ISOFOLDER\sources\_manifest %_Nul3%
 if %_build% geq 18890 if %_build% lss 27500 (
   wimlib-imagex.exe extract %wimindex% Windows\Boot\Fonts\* --dest-dir=ISOFOLDER\boot\fonts --no-acls --no-attributes %_Nul3%
   xcopy /CRY ISOFOLDER\boot\fonts\* ISOFOLDER\efi\microsoft\boot\fonts\ %_Nul3%
 )
 
 if %AddUpdates% neq 1 goto :NoUpdate
-call :dk_color1 %Blue% "正在检查更新文件……" 4 5
+call :dk_color1 %Blue% "=== 正在检查更新文件..." 4 5
 if %UseMSU% neq 1 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :expand_dll dpx
 if %_reMSU% equ 1 if %UseMSU% equ 1 call :upd_msu
@@ -404,15 +405,15 @@ call :extract
 :NoUpdate
 if exist bin\ei.cfg copy /y bin\ei.cfg ISOFOLDER\sources\ei.cfg %_Nul3%
 if not defined isoupdate goto :NoSetupDU
-call :dk_color1 %Blue% "正在应用 ISO 安装文件更新……" 4 5
+call :dk_color1 %Blue% "=== 正在应用 ISO 安装文件更新..." 4 5
 mkdir "%_cabdir%\du" %_Nul3%
 for %%# in (!isoupdate!) do (
   echo %%~#
   expand.exe -r -f:* "!_DIR!\%%~#" "%_cabdir%\du" %_Nul1%
 )
-xcopy /CDRUY "%_cabdir%\du" "ISOFOLDER\sources\" %_Nul3%
+xcopy /CDRUY "%_cabdir%\du\" "ISOFOLDER\sources\" %_Nul3%
 if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "ISOFOLDER\sources\" %_Nul3%
-for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_cabdir%\du\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
+for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_cabdir%\du\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
 if exist "%_cabdir%\du\replacementmanifests\" xcopy /CERY "%_cabdir%\du\replacementmanifests" "ISOFOLDER\sources\replacementmanifests\" %_Nul3%
 rmdir /s /q "%_cabdir%\du\" %_Nul3%
 :NoSetupDU
@@ -433,7 +434,7 @@ if %SkipISO% neq 0 (
   call :dk_color1 %Green% "已完成要求的操作。你已选择不创建 .iso 文件。" 4
   goto :QUIT
 )
-call :dk_color1 %Blue% "正在创建 ISO ……" 4 5
+call :dk_color1 %Blue% "=== 正在创建 ISO ..." 4
 set "wimfile=ISOFOLDER\sources\install.wim"
 if exist "ISOFOLDER\sources\install.esd" set "wimfile=ISOFOLDER\sources\install.esd"
 if exist "ISOFOLDER\sources\install.swm" set "wimfile=ISOFOLDER\sources\install.swm"
@@ -445,13 +446,22 @@ if /i not %arch%==arm64 (
 )
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_ISOC
-echo.
 call :dk_color1 %Green% "完成。" 4
-echo.
 goto :QUIT
 
 :InstallWim
-if not exist "ISOFOLDER\sources\install.wim" call :CreateInstallWim
+if exist "ISOFOLDER\sources\install.wim" goto :NoCreate
+call :dk_color1 %Blue% "=== 正在创建 install.wim 文件..." 4 5
+if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
+for /L %%# in (1, 1,%_nsum%) do (
+  wimlib-imagex.exe export "!_DIR!\!uups_esd%%#!" 3 "ISOFOLDER\sources\install.wim" --ref="!_DIR!\*.esd" %_rrr% --compress=LZX
+  call set ERRTEMP=!ERRORLEVEL!
+  if !ERRTEMP! neq 0 goto :E_Export
+  set nedition=!edition%%#! && call :setname
+  wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
+  if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
+)
+:NoCreate
 if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
   imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
     %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
@@ -459,7 +469,7 @@ if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
 )
 if not exist "temp\Winre.wim" goto :SkipWinre
 if %SkipWinRE% equ 1 goto :SkipWinre
-call :dk_color1 %Blue% "正在将 Winre.wim 添加到 install.wim 中……" 4 5
+call :dk_color1 %Blue% "=== 正在将 Winre.wim 添加到 install.wim 中..." 4
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
@@ -475,6 +485,7 @@ for /L %%# in (1,1,%imgs%) do (
   wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
 if %AddEdition% equ 1 goto :ExportWim
+echo.
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
@@ -495,29 +506,17 @@ for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
   if !ERRTEMP! neq 0 goto :E_Export
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
+echo.
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
-:CreateInstallWim
-call :dk_color1 %Blue% "正在创建 install.wim 文件……" 4 5
-if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
-for /L %%# in (1, 1,%_nsum%) do (
-  wimlib-imagex.exe export "!_DIR!\!uups_esd%%#!" 3 "ISOFOLDER\sources\install.wim" --ref="!_DIR!\*.esd" %_rrr% --compress=LZX
-  call set ERRTEMP=!ERRORLEVEL!
-  if !ERRTEMP! neq 0 goto :E_Export
-  set nedition=!edition%%#! && call :setname
-  wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
-  if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
-)
-goto :eof
-
 :OneDrive
-call :dk_color1 %Blue% "正在更新 OneDrive 安装文件……" 4 5
+call :dk_color1 %Blue% "=== 正在更新 OneDrive 安装文件..." 4
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
 if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
 aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
 if %ERRORLEVEL% GTR 0 (
-  call :dk_color1 %_Yellow% "OneDrive 下载失败，将跳过操作"
+  call :dk_color1 %_Yellow% "OneDrive 下载失败，将跳过操作" 4
   goto :eof
 )
 type nul>temp\OneDrive.txt
@@ -537,7 +536,7 @@ if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :DoSWM
 goto :%_rtrn%
 
 :DoESD
-call :dk_color1 %Blue% "正在将 install.wim 转换为 install.esd……" 4 5
+call :dk_color1 %Blue% "=== 正在将 install.wim 转换为 install.esd..." 4 5
 wimlib-imagex.exe export ISOFOLDER\sources\install.wim all ISOFOLDER\sources\install.esd --compress=LZMS --solid
 call set ERRTEMP=!ERRORLEVEL!
 if !ERRTEMP! neq 0 (
@@ -548,7 +547,7 @@ if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim
 goto :%_rtrn%
 
 :DoSWM
-call :dk_color1 %Blue% "正在将 install.wim 拆分为多个 install*.swm……" 4 5
+call :dk_color1 %Blue% "=== 正在将 install.wim 拆分为多个 install*.swm..." 4 5
 wimlib-imagex.exe split ISOFOLDER\sources\install.wim ISOFOLDER\sources\install.swm 3500
 call set ERRTEMP=!ERRORLEVEL!
 if !ERRTEMP! neq 0 (
@@ -560,13 +559,27 @@ goto :%_rtrn%
 
 :WinreWim
 if %SkipWinRE% equ 1 goto :%_rtrn%
-call :dk_color1 %Blue% "正在导出 Winre.wim 文件……" 4 5
+call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4
 if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
-if not exist "temp\Winre.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
+if exist "ISOFOLDER\sources\install.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 0 if %CleanWinre% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
+if %uwinpe% equ 0 if %CleanWinre% equ 1 goto :CleanWinre
+if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 call :update "temp\Winre.wim"
+echo.
+wimlib-imagex.exe optimize "temp\Winre.wim"
+goto :%_rtrn%
+
+:CleanWinre
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "temp\Winre.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
+if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
+if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
+set "_inx=1"&call :DoMount "temp\Winre.wim"
+call :Cleanup
+call :DoWork
+call :DoUnmount
+echo.
 wimlib-imagex.exe optimize "temp\Winre.wim"
 goto :%_rtrn%
 
@@ -588,7 +601,7 @@ wimlib-imagex.exe update "ISOFOLDER\sources\boot.wim" 2 < temp\boot.txt %_Nul3%
 goto :BootDone
 
 :CreateBootWim
-call :dk_color1 %Blue% "正在创建 boot.wim 文件……" 4 5
+call :dk_color1 %Blue% "=== 正在创建 boot.wim 文件..." 4 5
 wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "ISOFOLDER\sources\boot.wim" "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)" --compress=LZX
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%arch%)" "Microsoft Windows PE (%arch%)" %_Nul3%
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 --image-property FLAGS=9 %_Nul3%
@@ -623,6 +636,7 @@ for /L %%# in (1,1,%imgs%) do (
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
   wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
+echo.
 wimlib-imagex.exe optimize "ISOFOLDER\sources\boot.wim"
 goto :%_rtrn%
 
@@ -672,7 +686,7 @@ del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
 goto :eof
 
 :PREPARE
-call :dk_color1 %Blue% "正在检查镜像信息……"
+call :dk_color1 %Gray% "正在检查镜像信息..." 4
 set PREPARED=1
 imagex /info %wimindex% >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
@@ -765,8 +779,7 @@ if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid
 :uups_ref
 if not exist "!_DIR!\*Package*.esd" exit /b
 if not exist "!_DIR!\*Package*.cab" exit /b
-echo.
-call :dk_color1 %Blue% "正在将 .cab 转换为 .esd 文件……" 4
+call :dk_color1 %Gray% "正在将 .cab 转换为 .esd 文件..." 4 5
 if %RefESD% neq 0 (set _level=LZMS) else (set _level=XPRESS)
 if exist "!_DIR!\*.xml.cab" if exist "!_DIR!\Metadata\*" move /y "!_DIR!\*.xml.cab" "!_DIR!\Metadata\" %_Nul3%
 if exist "!_DIR!\*.cab" (
@@ -816,7 +829,7 @@ exit /b
 
 :uups_backup
 if not exist "!_work!\temp\*.esd" exit /b
-call :dk_color1 %Blue% "正在备份 .esd 文件……" 4
+call :dk_color1 %Gray% "正在备份 .esd 文件..." 4 5
 if %EXPRESS% equ 1 (
 mkdir "!_work!\CanonicalUUP" %_Nul3%
 move /y "!_work!\temp\*.esd" "!_work!\CanonicalUUP\" %_Nul3%
@@ -842,14 +855,12 @@ set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% equ 73 (
   %_err%
   call :dk_color1 %Red% "%wimshow% 文件已损坏"
-  echo.
   set eWIMLIB=1
   exit /b
 )
 if %ERRTEMP% neq 0 (
   %_err%
   call :dk_color1 %Red% "无法解析来自文件 %wimshow% 的信息"
-  echo.
   set eWIMLIB=1
   exit /b
 )
@@ -887,7 +898,7 @@ if exist "!_DIR!\Drivers" (
 goto :eof
 
 :exd_msu
-call :dk_color1 %Gray% "解包更新 %package% 文件" 4 5
+call :dk_color1 %_White% "解包更新 %package% 文件" 4 5
 mkdir "!_DIR!\%pkgn%" %_Nul3%
 expand.exe -d -f:*Windows*.cab "!_DIR!\%package%" %_Nul2% | findstr /i cab %_Nul3% && (
   expand.exe -f:* "!_DIR!\%package%" "!_DIR!\%pkgn%" %_Nul2%) || (
@@ -931,7 +942,7 @@ if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "
 exit /b
 
 :upd_msu
-call :dk_color1 %Blue% "创建累积更新的 MSU 文件" 4
+call :dk_color1 %Blue% "创建累积更新的 MSU 文件" 4 5
 pushd "!_DIR!"
 set "_MSUdll=dpx.dll ReserveManager.dll TurboStack.dll UpdateAgent.dll UpdateCompression.dll wcp.dll"
 set "_MSUonf=onepackage.AggregatedMetadata.cab"
@@ -1036,7 +1047,7 @@ if %IncludeSSU% equ 1 echo "_tMSU\%_MSUsdb%" "%_MSUsdb%"
 )>>zzz.ddf
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %Red% "makecab.exe 对 %_MSUonf% 操作失败，将跳过操作。" 4
+  call :dk_color1 %_Yellow% "makecab.exe 对 %_MSUonf% 操作失败，将跳过操作。" 4
   goto :eof
 )
 if %xmf%==wim goto :msu_wim
@@ -1050,7 +1061,7 @@ echo "%_MSUpsf%" "%_MSUkbf%.psf"
 )>>zzz.ddf
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=OFF
 if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %Red% "makecab.exe 对 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
+  call :dk_color1 %_Yellow% "makecab.exe 对 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
   goto :eof
 )
 goto :eof
@@ -1068,14 +1079,14 @@ copy /y "%_MSUcab%" "_tWIM\%_MSUkbf%.wim" %_Nul3%
 copy /y "%_MSUpsf%" "_tWIM\%_MSUkbf%.psf" %_Nul3%
 %_Nul3% wimlib-imagex.exe capture _tWIM\ %_MSUkbf%.msu content --compress=none --nocheck --no-acls
 if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %Red% "捕获 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
+  call :dk_color1 %_Yellow% "捕获 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
   goto :eof
 )
 goto :eof
 
 :DDCAB
 echo.
-echo 正在解压所需文件……
+echo 正在解压所需文件...
 if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
 mkdir "_tSSU\000" %_Nul3%
 if not defined _MSUssu goto :ssuinner64
@@ -1096,7 +1107,7 @@ call :crDDF %_MSUddc%
 call :apDDF _tSSU\000
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %Red% "由于 makecab.exe 对 %_MSUddc% 操作失败，将跳过操作。" 4
+  call :dk_color1 %_Yellow% "由于 makecab.exe 对 %_MSUddc% 操作失败，将跳过操作。" 4
   set _mcfail=1
   exit /b
 )
@@ -1107,7 +1118,7 @@ exit /b
 
 :DDC86
 echo.
-echo 正在解压所需文件……
+echo 正在解压所需文件...
 if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
 mkdir "_tSSU\111" %_Nul3%
 if not defined _MSUssu goto :ssuinner86
@@ -1127,7 +1138,7 @@ call :crDDF %_MSUddd%
 call :apDDF _tSSU\111
 %_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
 if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %Red% "由于 makecab.exe 对 %_MSUddd% 操作失败，将跳过操作。" 4
+  call :dk_color1 %_Yellow% "由于 makecab.exe 对 %_MSUddd% 操作失败，将跳过操作。" 4
   set _mcfail=1
   exit /b
 )
@@ -1227,11 +1238,11 @@ if not exist "!dest!\update.mum" (
 7z.exe e "!_DIR!\%package%" -o"!dest!" *.psf.cix.xml -aoa %_Nul3%
 if exist "!dest!\*.psf.cix.xml" (
   if not exist "!_DIR!\%pkgn%.psf" if not exist "!_DIR!\*%pkgid%*%arch%*.psf" (
-    echo [%count%/%_cab%] %package% / PSF 文件丢失
+    call :dk_color1 %Red% "[%count%/%_cab%] %package% / PSF 文件丢失"
     goto :eof
   )
   if %psfnet% equ 0 (
-    echo [%count%/%_cab%] %package% / PSFExtractor 不可用
+    call :dk_color1 %Red% "[%count%/%_cab%] %package% / PSFExtractor 不可用"
     goto :eof
   )
   set psf_%pkgn%=1
@@ -1377,7 +1388,7 @@ for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadat
 )
 if exist "!_cabdir!\lcu\HotpatchCompDB*.cab" (
 if %count% equ 0 echo.
-echo 不支持的更新：%package% [热修复更新]
+call :dk_color1 %_Yellow% "不支持的更新：%package% [热修复更新]" 4
 rmdir /s /q "!_cabdir!\lcu\" %_Nul3%
 goto :eof
 )
@@ -1617,7 +1628,7 @@ if defined basekbn call :RegBase
 if defined lcupkg call :ReLCU
 if defined callclean call :Cleanup
 if defined mpamfe (
-  call :dk_color1 %Blue% "正在添加 Defender 更新……" 4 5
+  call :dk_color1 %Blue% "=== 正在添加 Defender 更新..." 4 5
   call :defender_update
 )
 if not defined edge goto :eof
@@ -1678,7 +1689,7 @@ goto :eof
 set mounterr=1
 set "msgerr=Dism.exe 操作失败"
 if defined idpkg set "msgerr=Dism.exe 添加 %idpkg% 更新失败"
-call :dk_color1 %Red% "%msgerr%。正在丢弃当前挂载镜像……"
+call :dk_color1 %Red% "%msgerr%。正在丢弃当前挂载镜像..."
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
@@ -1963,7 +1974,6 @@ set "mpamfe=!dest!"
 goto :eof
 
 :defender_update
-echo.
 if exist "!dest!\*defender*.xml" for /f %%i in ('dir /b /a:-d "!dest!\*defender*.xml"') do (
   for /f "tokens=3 delims=<> " %%# in ('type "!dest!\%%i" ^| find /i "platform"') do echo Platform  : %%#
   for /f "tokens=3 delims=<> " %%# in ('type "!dest!\%%i" ^| find /i "engine"') do echo Engine    : %%#
@@ -2198,7 +2208,6 @@ if %_build% geq 19041 if %winbuild% lss 17133 if exist "%SysPath%\ext-ms-win-sec
   del /f /q %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
   if /i not %xOS%==x86 del /f /q %SystemRoot%\SysWOW64\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
 )
-echo.
 echo %_target% | findstr "install" %_Nul3% || exit /b
 if %vermin% lss %revmin% set verver=%revver%
 if %vermaj% lss %revmaj% set verver=%revver%
@@ -2209,7 +2218,7 @@ exit /b
 :DoMount
 set _www=%~1
 set _nnn=%~nx1
-call :dk_color1 %Blue% "正在更新 %_nnn% [%_inx%/%imgcount%]" 4
+call :dk_color1 %Blue% "=== 正在更新 %_nnn% [%_inx%/%imgcount%]" 4
 %_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 call :Discard
@@ -2235,17 +2244,19 @@ call :updatewim
 if defined mounterr goto :eof
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
   set isoupdate=
-  xcopy /CDRUY "%_mount%\sources" "ISOFOLDER\sources\" %_Nul3%
-  for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" copy /y "%_mount%\sources\%%#\*" "ISOFOLDER\sources\%%#\" %_Nul3%
+  xcopy /CDRUY "%_mount%\sources\" "ISOFOLDER\sources\" %_Nul3%
+  for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_mount%\sources\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if %AddDrivers% neq 0 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddRegs% equ 1 call :DoReg
+if %FixPDF% neq 1 goto :nofixpdf
 set pdfm=0
 set pdfj=0
 for /f "tokens=7 delims=._" %%# in ('dir /b /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do set pdfm=%%#
 for /f %%# in ('dir /a:d /b "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do for /f "tokens=4 delims=." %%i in ('type "%_mount%\Windows\WinSxS\%%#\prnms009.inf" ^| findstr /c:"DriverVer"') do set pdfj=%%i
 if %pdfm% neq %pdfj% %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
+:nofixpdf
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
@@ -2294,7 +2305,7 @@ if exist "%_mount%\Windows\System32\UpdateAgent.dll" if not exist "%SystemRoot%\
 if exist "%_mount%\Windows\System32\Facilitator.dll" if not exist "%SystemRoot%\temp\Facilitator.dll" copy /y "%_mount%\Windows\System32\Facilitator.dll" %SystemRoot%\temp\ %_Nul1%
 if exist "%_mount%\inetpub" attrib +h "%_mount%\inetpub" %_Nul3%
 if %AddEdition% neq 1 goto :Done
-call :dk_color1 %Blue% "正在转换 Windows 版本……" 4
+call :dk_color1 %Blue% "=== 正在转换 Windows 版本..." 4
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=%%i && call :setedition)
 if /i %editionid%==Professional for %%i in (Professional, Education, ProfessionalEducation, ProfessionalWorkstation) do ( set nedition=%%i && call :setedition)
@@ -2305,26 +2316,44 @@ call :CleanReg
 goto :eof
 
 :DoReg
-reg.exe load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
-if %_build% geq 22621 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
-if %_build% geq 26100 reg.exe add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe unload HKLM\%SYSTEM% %_Nul3%
-reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
-if %_SrvESD% equ 1 ( reg.exe unload HKLM\%SOFTWARE% %_Nul3% & goto :eof )
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
-reg.exe unload HKLM\%SOFTWARE% %_Nul3%
-reg load HKLM\uUSER "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
-reg add "HKLM\uUSER\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t REG_DWORD /d 1 /f %_Nul3%
-reg unload HKLM\uUSER %_Nul3%
+reg load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
+if %_build% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
+if %_build% geq 26100 (
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2792562829" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2792562829" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\734731404" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\734731404" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\905601679" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\905601679" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+)
+reg unload HKLM\%SYSTEM% %_Nul3%
+reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
+if %_SrvESD% equ 1 goto :SkipReg
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
+:SkipReg
+reg unload HKLM\%SOFTWARE% %_Nul3%
+reg load HKLM\%USER% "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
+reg add "HKLM\%USER%\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%USER%\Software\Microsoft\Windows\CurrentVersion\Start" /v "AllAppsViewMode" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%USER%\Software\Microsoft\Windows\CurrentVersion\Start" /v "ShowAllPinsList" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%USER%\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "ShowSecondsInSystemClock" /t REG_DWORD /d 1 /f %_Nul3%
+reg unload HKLM\%USER% %_Nul3%
 goto :eof
 
 :AddEdge
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" goto :eof
-call :dk_color1 %Blue% "正在添加 Microsoft Edge……" 4 5
+call :dk_color1 %Blue% "=== 正在添加 Microsoft Edge..." 4
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 call :dk_color1 %Red% "添加 Edge.wim 失败" 4
 goto :eof
@@ -2336,13 +2365,13 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
   if defined DrvSrcPE %_Dism% /LogPath:"%_dLog%\DrvPE.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcPE!" /Recurse
   goto :eof
 )
-call :dk_color1 %Blue% "正在添加驱动" 4 5
+call :dk_color1 %Blue% "=== 正在添加驱动" 4 5
 if defined DrvSrcAll %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcAll!" /Recurse
 if defined DrvSrcOS %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcOS!" /Recurse
 goto :eof
 
 :appx_sort
-call :dk_color1 %Blue% "正在解析应用 CompDB 信息……" 4 5
+call :dk_color1 %Blue% "=== 正在解析应用 CompDB 信息..." 4 5
 if %_pwsh% equ 0 (
 call :dk_color1 %_Yellow% "未检测到 Windows PowerShell，将跳过操作。"
 goto :eof
@@ -2384,7 +2413,7 @@ popd
 goto :eof
 
 :AddAppx
-call :dk_color1 %Blue% "正在安装 Appxs 软件包……" 4
+call :dk_color1 %Blue% "=== 正在安装 Appxs 软件包..." 4 5
 pushd "!_DIR!\Apps"
 copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
 if exist Custom_Appxs.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs.txt) do call :AddAppxs "%%i"
@@ -2419,7 +2448,7 @@ for /f "delims=" %%i in ('dir /b /a:-d "*TargetCompDB_App_*.xml" %_Nul6%') do (
 goto :eof
 
 :RemoveAppx
-call :dk_color1 %Blue% "正在卸载 Appxs 软件包……" 4
+call :dk_color1 %Blue% "=== 正在卸载 Appxs 软件包..." 4 5
 for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') do (
   %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
@@ -2437,7 +2466,7 @@ goto :eof
 
 :setedition
 call :setname
-call :dk_color1 %Gray% "正在处理 !_nameb!" 4 5
+call :dk_color1 %_Green% "正在处理 !_nameb!" 4
 if exist "%_mount%\Windows\Core.xml" del /f /q "%_mount%\Windows\Core.xml" %_Nul3%
 if exist "%_mount%\Windows\CoreSingleLanguage.xml" del /f /q "%_mount%\Windows\CoreSingleLanguage.xml" %_Nul3%
 if exist "%_mount%\Windows\CoreCountrySpecific.xml" del /f /q "%_mount%\Windows\CoreCountrySpecific.xml" %_Nul3%
@@ -2453,7 +2482,6 @@ if /i not %editionid%==%nedition% goto :dochange
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%"
 wimlib-imagex.exe info "%_www%" %_inx% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
-echo.
 goto :eof
 
 :dochange
@@ -2461,7 +2489,6 @@ goto :eof
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_www%" ^| findstr /c:"Image Count"') do set nimg=%%# %_Nul3%
 wimlib-imagex.exe info "%_www%" %nimg% "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=%nedition% %_Nul3%
 if %_SrvESD% equ 1 wimlib-imagex.exe info "%_www%" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
-echo.
 goto :eof
 
 :setname
@@ -2500,7 +2527,7 @@ if exist "%_mount%\Windows\WinSxS\pending.xml" call :CleanManual&goto :eof
 set "_Nul8="
 if %_build% geq 25380 if %_build% lss 26000 (
   set "_Nul8=1>nul 2>nul"
-  call :dk_color1 %Gray% "正在运行 Dism 清理……" 4 5
+  call :dk_color1 %Gray% "正在运行 Dism 清理..." 4 5
 )
 if %ResetBase% equ 0 (
   call :SBSConfig %savc% 1 9
@@ -2631,6 +2658,7 @@ set _MOifeo=0
 goto :eof
 
 :postVars
+set USER=uiUSER
 set SYSTEM=uiSYSTEM
 set SOFTWARE=uiSOFTWARE
 set COMPONENTS=uiCOMPONENTS
@@ -2697,7 +2725,7 @@ set _NCS=1
 if %winbuild% LSS 10586 set _NCS=0
 if %winbuild% GEQ 10586 reg.exe query HKCU\Console /v ForceV2 2>nul | find /i "0x0" %_Null% && (set _NCS=0)
 
-if %_NCS% EQU 1 (
+if %_NCS% equ 1 (
 for /F %%a in ('echo prompt $E ^| cmd.exe') do set "_esc=%%a"
 set     "Red="41;97m" "pad""
 set    "Gray="100;97m" "pad""
@@ -2720,14 +2748,10 @@ set "_err=echo: &call :dk_color1 %Red% "==== 出现错误 ====" &echo:"
 exit /b
 
 :dk_color1
-if /i "%_Exit%"=="rem." (
-echo %~3
-exit /b
-)
 if not "%4"=="" if "%4"=="4" echo:
-if %_NCS% EQU 1 (
+if %_NCS% equ 1 (
 echo %_esc%[%~1%~3%_esc%[0m
-) else if %_pwsh% EQU 1 (
+) else if %_pwsh% equ 1 (
 %_psc% write-host -back '%1' -fore '%2' '%3'
 ) else (
 echo %~3
@@ -2736,14 +2760,10 @@ if not "%5"=="" echo:
 exit /b
 
 :dk_color2
-if /i "%_Exit%"=="rem." (
-echo %~3 %~6
-exit /b
-)
 if not "%7"=="" if "%7"=="7" echo:
-if %_NCS% EQU 1 (
+if %_NCS% equ 1 (
 echo %_esc%[%~1%~3%_esc%[%~4%~6%_esc%[0m
-) else if %_pwsh% EQU 1 (
+) else if %_pwsh% equ 1 (
 %_psc% write-host -back '%1' -fore '%2' '%3' -NoNewline; write-host -back '%4' -fore '%5' '%6'
 ) else (
 echo %~3 %~6
@@ -2754,22 +2774,19 @@ exit /b
 :E_NotFind
 %_err%
 call :dk_color1 %Red% "在指定的路径中未找到所需文件（夹）。" 4 5
-echo.
 goto :QUIT
 
 :E_Admin
 %_err%
-call :dk_color1 %_Yellow% "此脚本需要以管理员权限运行。" 4 5
-call :dk_color1 %_Yellow% "若要继续执行，请在脚本上右键单击并选择“以管理员权限运行”。" 4 5
-echo.
+call :dk_color1 %_Yellow% "此脚本需要以管理员权限运行。" 4
+call :dk_color1 %_Yellow% "若要继续执行，请在脚本上右键单击并选择“以管理员权限运行”。"
 call :dk_color1 %_Yellow% "请按任意键退出脚本。" 4 5
 pause >nul
 exit /b
 
 :E_PowerShell
 %_err%
-call :dk_color1 %_Yellow% "此脚本的工作需要 Windows PowerShell。" 4 5
-echo.
+call :dk_color1 %_Yellow% "此脚本的工作需要 Windows PowerShell。" 4
 call :dk_color1 %_Yellow% "请按任意键退出脚本。" 4 5
 pause >nul
 exit /b
@@ -2777,23 +2794,19 @@ exit /b
 :E_BinMiss
 %_err%
 call :dk_color1 %Red% "所需的文件 %_bin% 丢失。" 4 5
-echo.
 goto :QUIT
 
 :E_Apply
 call :dk_color1 %Red% "在应用映像的时候出现错误。" 4 5
-echo.
 goto :QUIT
 
 :E_Export
 call :dk_color1 %Red% "在导出映像的时候出现错误。" 4 5
-echo.
 goto :QUIT
 
 :E_ISOC
 ren ISOFOLDER %DVDISO%
 call :dk_color1 %Red% "在创建ISO映像的时候出现错误。" 4 5
-echo.
 goto :QUIT
 
 :QUIT
@@ -2803,7 +2816,7 @@ call :DismHostOFF
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 if exist temp\ rmdir /s /q temp\
 popd
-call :dk_color1 %Blue% "=== 正在清理临时文件……" 4
+call :dk_color1 %Blue% "=== 正在清理临时文件..." 4 5
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 if exist "!_cabdir!\" (
