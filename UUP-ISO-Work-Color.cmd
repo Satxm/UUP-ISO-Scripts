@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.08.21-115"
+@set "uivr=v25.08.22-115"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -29,8 +29,11 @@ set WIM2SWM=0
 :: 若不需要创建 ISO 文件，保留原始文件夹，请将此参数更改为 1
 set SkipISO=0
 
-:: 若不添加 Winre.wim 到 install.wim，请将此参数更改为 1
-set SkipWinRE=0
+:: 若不添加更新到 Winre.wim 或不创建 Winre.wim，请将此参数更改为 1
+set SkipWinRE=1
+
+:: 若不添加更新到 Boot.wim ，请将此参数更改为 1
+set SkipBoot=0
 
 :: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
 :: 在 Build 26052 及以上版本将会忽略并自动禁用
@@ -191,6 +194,7 @@ CleanWinre
 ResetBase
 SkipISO
 SkipWinRE
+SkipBoot
 LCUWinRE
 UpdtBootFiles
 UpdtOneDrive
@@ -304,7 +308,6 @@ call :dk_color1 %Gray% "正在复制 ISO 文件夹 %_ISO% ..." 4 5
 if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 robocopy "%_ISO%" "ISOFOLDER" /E /A-:R %_Nul3%
-pause
 goto :checkiso
 
 :extraciso
@@ -400,10 +403,10 @@ if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dl
 if %_reMSU% equ 1 if %UseMSU% equ 1 call :upd_msu
 set directcab=0
 call :extract
-
 :NoUpdate
 if exist bin\ei.cfg copy /y bin\ei.cfg ISOFOLDER\sources\ei.cfg %_Nul3%
-if not defined isoupdate goto :NoSetupDU
+if not defined isoupdate goto :SkipSetup
+if %SkipBoot% equ 1 goto :SkipSetup
 call :dk_color1 %Blue% "=== 正在应用 ISO 安装文件更新..." 4 5
 mkdir "%_cabdir%\du" %_Nul3%
 for %%# in (!isoupdate!) do (
@@ -415,7 +418,7 @@ if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "ISOFOLDER\source
 for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_cabdir%\du\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
 if exist "%_cabdir%\du\replacementmanifests\" xcopy /CERY "%_cabdir%\du\replacementmanifests" "ISOFOLDER\sources\replacementmanifests\" %_Nul3%
 rmdir /s /q "%_cabdir%\du\" %_Nul3%
-:NoSetupDU
+:SkipSetup
 set _rtrn=WinreRet
 goto :WinreWim
 :WinreRet
@@ -583,6 +586,7 @@ wimlib-imagex.exe optimize "temp\Winre.wim"
 goto :%_rtrn%
 
 :BootWim
+if %SkipBoot% equ 1 goto :%_rtrn%
 if not exist "ISOFOLDER\sources\boot.wim" goto :CreateBootWim
 if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 call :update "ISOFOLDER\sources\boot.wim"
@@ -2335,7 +2339,7 @@ if %_mver% geq 26100 if %_jvar% geq 3915 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
-if %_mver% geq 26200 if %_jvar% geq 5751 (
+if %_mver% geq 26100 if %_jvar% geq 5061 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
