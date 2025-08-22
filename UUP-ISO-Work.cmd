@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.08.14-114f"
+@set "uivr=v25.08.21-115"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -407,6 +407,7 @@ if %ERRTEMP% neq 0 goto :E_Apply
 :notuups
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
 if exist ISOFOLDER\__chunk_data del /f /q ISOFOLDER\__chunk_data %_Nul3%
+if exist ISOFOLDER\_manifest rmdir /s /q ISOFOLDER\_manifest %_Nul3%
 if exist ISOFOLDER\sources\_manifest rmdir /s /q ISOFOLDER\sources\_manifest %_Nul3%
 if %_build% geq 18890 if %_build% lss 27500 (
   wimlib-imagex.exe extract %wimindex% Windows\Boot\Fonts\* --dest-dir=ISOFOLDER\boot\fonts --no-acls --no-attributes %_Nul3%
@@ -1509,6 +1510,7 @@ copy /y "!dest!\update.mum" %SystemRoot%\temp\ %_Nul1%
 goto :eof
 
 :chkssu
+if %_build% leq 10586 exit /b
 set latest=0
 set chvr_aa=0
 set chvr_bl=0
@@ -2406,10 +2408,12 @@ call :CleanReg
 goto :eof
 
 :DoReg
+set _mver=0&set _jver=0
+for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest"') do (set _mver=%%i&set _jver=%%j)
 reg load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
-if %_build% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
-if %_build% geq 26100 (
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
+if %_mver% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
+if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
+if %_mver% geq 26100 if %_jvar% geq 3915 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
@@ -2422,6 +2426,10 @@ if %_build% geq 26100 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\905601679" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+)
+if %_mver% geq 26200 if %_jvar% geq 5751 (
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
 reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
