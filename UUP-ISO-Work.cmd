@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.08.22-115"
+@set "uivr=v25.09.03-116"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -30,7 +30,7 @@ set WIM2SWM=0
 set SkipISO=0
 
 :: 若不添加更新到 Winre.wim 或不创建 Winre.wim，请将此参数更改为 1
-set SkipWinRE=1
+set SkipWinRE=0
 
 :: 若不添加更新到 Boot.wim ，请将此参数更改为 1
 set SkipBoot=0
@@ -799,7 +799,7 @@ if exist "temp\*_microsoft-windows-coreos-revision*.manifest" for /f "tokens=%to
 if %_build% geq 15063 (
   wimlib-imagex.exe extract %wimindex% Windows\System32\config\SOFTWARE --dest-dir=temp --no-acls --no-attributes %_Nul3%
   set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-  for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r ".*\.OS""') do if not errorlevel 1 (
+  for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS""') do if not errorlevel 1 (
     for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe temp\SOFTWARE "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !revmaj! (
       set "revver=%%~A.%%B
       set revmaj=%%~A
@@ -1591,9 +1591,9 @@ set lcumsu=
 set mpamfe=
 set servicingstack=
 set cumulative=
+set ekbpack=
 set netupdt=
 set netpack=
-set netroll=
 set netlcu=
 set netmsu=
 set msulcu=
@@ -1632,6 +1632,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
   call :SBSConfig 9 9 1
 )
 if defined netpack set "ldr=!netpack! !ldr!"
+if defined ekbpack set "ldr=!ekbpack! !ldr!"
 for %%# in (dupdt,cupdt,supdt,fupdt,safeos,secureboot,edge,ldr,cumulative,lcumsu) do if defined %%# set overall=1
 if not defined overall if not defined mpamfe if not defined servicingstack goto :eof
 if defined servicingstack (
@@ -1899,9 +1900,6 @@ findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (findstr /i
   ))
 )
 if %_build% geq 17763 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (findstr /i /m "Microsoft-Windows-NetFx" "!dest!\*.mum" %_Nul3% && (
-    if not exist "!dest!\*_microsoft-windows-servicingstack_*.manifest" if not exist "!dest!\*_netfx4clientcorecomp.resources*.manifest" if not exist "!dest!\*_netfx4-netfx_detectionkeys_extended*.manifest" if not exist "!dest!\*_microsoft-windows-n..35wpfcomp.resources*.manifest" (if exist "!dest!\*_*10.0.*.manifest" (set "netroll=!netroll! /PackagePath:!dest!\update.mum") else (if exist "!dest!\*_*11.0.*.manifest" set "netroll=!netroll! /PackagePath:!dest!\update.mum"))
-  ))
   findstr /i /m "Package_for_OasisAsset" "!dest!\update.mum" %_Nul3% && (if not exist "%_mount%\Windows\Servicing\packages\*OasisAssets-Package*.mum" goto :eof)
   findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
     %_Nul3% findstr /i /m "Edition\"" "!dest!\update.mum"
@@ -1921,7 +1919,7 @@ if exist "!dest!\*_microsoft-windows-servicingstack_*.manifest" (
   if not defined s_pkg set "servicingstack=!servicingstack! /PackagePath:!dest!\update.mum"
   goto :eof
 )
-if exist "!dest!\*_netfx4-netfx_detectionkeys_extended*.manifest" (
+if exist "!dest!\*_netfx4-netfx_detectionkeys_extended*.manifest" findstr /i /m "Package_for_DotNetRollup" "!dest!\update.mum" %_Nul3% || (
   if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
   set "netpack=!netpack! /PackagePath:!dest!\update.mum"
   goto :eof
@@ -1985,6 +1983,8 @@ if exist "!dest!\*enablement-package*.mum" (
   for /f "tokens=3 delims== " %%# in ('findstr /i "Edition" "!dest!\update.mum" %_Nul6%') do if exist "%_mount%\Windows\Servicing\packages\%%~#*.mum" set epkb=1
   if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && set epkb=1
   if "!epkb!"=="0" goto :eof
+  set "ekbpack=!ekbpack! /PackagePath:!dest!\update.mum"
+  goto :eof
 )
 for %%# in (%directcab%) do (
   if /i "%package%"=="%%~#" (
@@ -2390,7 +2390,7 @@ set handle2=1
 set vermin=0
 for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest"') do (set verver=%%i.%%j&set vermaj=%%i&set vermin=%%j)
 set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r ".*\.OS""') do if not errorlevel 1 (
+for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS""') do if not errorlevel 1 (
   for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !vermaj! (
     set "revver=%%~A.%%B
     set revmaj=%%~A
@@ -2422,7 +2422,7 @@ for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinS
 reg load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_mver% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
-if %_mver% geq 26100 if %_jvar% geq 3915 (
+if %_mver% geq 26100 if %_jver% geq 3915 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
@@ -2436,7 +2436,7 @@ if %_mver% geq 26100 if %_jvar% geq 3915 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
-if %_mver% geq 26100 if %_jvar% geq 5061 (
+if %_mver% geq 26100 if %_jver% geq 5061 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
