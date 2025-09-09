@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.09.03-116"
+@set "uivr=v25.09.03-117"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -515,12 +515,19 @@ goto :%_rtrn%
 :OneDrive
 call :dk_color1 %Blue% "=== 正在更新 OneDrive 安装文件..." 4
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
+if exist "bin\OneDriveSetup.exe" copy /y "bin\OneDriveSetup.exe" "temp\OneDriveSetup.exe" %_Nul3%
+if exist "temp\OneDriveSetup.exe" goto :DoneDown
+set onedown=1
+:ReDown
+set /a onedown+=1
 if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
 aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
 if %ERRORLEVEL% GTR 0 (
+  if %onedown% leq 5 goto :ReDown
   call :dk_color1 %_Yellow% "OneDrive 下载失败，将跳过操作" 4
   goto :eof
 )
+:DoneDown
 type nul>temp\OneDrive.txt
 set sysdir=System32
 if %_build% lss 22563 set sysdir=SysWOW64
@@ -623,7 +630,7 @@ call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
 call :BootRemove
-if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootAddCab) else (call :BootFileCopy)
+if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootCabsAdd) else (call :BootFileAdd)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
 copy ISOFOLDER\sources\lang.ini %_mount%\sources\lang.ini %_Nul3%
 call :Cleanup
@@ -658,7 +665,7 @@ if not exist "%_mount%\Windows\Globalization\Sorting\SortDefault.nls" (
 )
 goto :eof
 
-:BootAddCab
+:BootCabsAdd
 set "cabadd="
 for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
 for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup_*.cab"') do set "cabadd=!cabadd! /PackagePath:!_DIR!\WinPE-Setup\%%#"
@@ -666,7 +673,7 @@ for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\WinPE-Setup\*WinPE-Setup-*.cab"')
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Add-Package !cabadd!
 goto :eof
 
-:BootFileCopy
+:BootFileAdd
 wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\system32\xmllite.dll --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 copy /y ISOFOLDER\setup.exe %_mount%\setup.exe %_Nul3%
 copy /y ISOFOLDER\sources\inf\setup.cfg %_mount%\sources\inf\setup.cfg %_Nul3%
@@ -2201,8 +2208,6 @@ set directcab=0
 set _target=%~1
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "%_target%" ^| findstr /c:"Image Count"') do set imgcount=%%#
 if not exist "%SystemRoot%\temp\" mkdir "%SystemRoot%\temp" %_Nul3%
-if exist "%SystemRoot%\temp\UpdateAgent.dll" del /f /q "%SystemRoot%\temp\UpdateAgent.dll" %_Nul3%
-if exist "%SystemRoot%\temp\Facilitator.dll" del /f /q "%SystemRoot%\temp\Facilitator.dll" %_Nul3%
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 for %%# in (handle1,handle2) do set %%#=0
@@ -2246,6 +2251,10 @@ goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
 if defined mounterr goto :eof
+if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
+  xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "ISOFOLDER\sources\" %_Nul3%
+  xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "%_mount%\sources\" %_Nul3%
+)
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
   set isoupdate=
   xcopy /CDRUY "%_mount%\sources\" "ISOFOLDER\sources\" %_Nul3%
@@ -2305,8 +2314,6 @@ for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!is
   )
 )
 :Skiphand2
-if exist "%_mount%\Windows\System32\UpdateAgent.dll" if not exist "%SystemRoot%\temp\UpdateAgent.dll" copy /y "%_mount%\Windows\System32\UpdateAgent.dll" %SystemRoot%\temp\ %_Nul1%
-if exist "%_mount%\Windows\System32\Facilitator.dll" if not exist "%SystemRoot%\temp\Facilitator.dll" copy /y "%_mount%\Windows\System32\Facilitator.dll" %SystemRoot%\temp\ %_Nul1%
 if exist "%_mount%\inetpub" attrib +h "%_mount%\inetpub" %_Nul3%
 if %AddEdition% neq 1 goto :Done
 call :dk_color1 %Blue% "=== 正在转换 Windows 版本..." 4
