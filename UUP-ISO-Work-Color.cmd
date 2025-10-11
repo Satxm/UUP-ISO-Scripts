@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.09.03-117"
+@set "uivr=v25.09.03-117f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -570,7 +570,7 @@ goto :%_rtrn%
 if %SkipWinRE% equ 1 goto :%_rtrn%
 call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4
 if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
-if exist "ISOFOLDER\sources\install.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
+if not exist "temp\Winre.wim" if exist "ISOFOLDER\sources\install.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
 if %uwinpe% equ 0 if %CleanWinre% equ 1 goto :CleanWinre
@@ -594,6 +594,7 @@ goto :%_rtrn%
 
 :BootWim
 if %SkipBoot% equ 1 goto :%_rtrn%
+if not exist "ISOFOLDER\sources\boot.wim" if exist "!_DIR!\boot.wim" copy /y "!_DIR!\boot.wim" "ISOFOLDER\sources\boot.wim" %_Nul3%
 if not exist "ISOFOLDER\sources\boot.wim" goto :CreateBootWim
 if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 call :update "ISOFOLDER\sources\boot.wim"
@@ -1662,13 +1663,13 @@ set _c_=0
 if defined cumulative for %%# in (%cumulative%) do (
   %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%%#
   call set /a _c_+=1
-  if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
+  if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
 )
 if defined lcumsu for %%# in (%lcumsu%) do (
   echo.&echo %%~nx#
   %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%%#
   call set /a _c_+=1
-  if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
+  if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
 )
 call :chkEC !errorlevel!
 if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
@@ -2332,7 +2333,7 @@ for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinS
 reg load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_mver% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
-if %_mver% geq 26100 if %_jver% geq 3915 (
+if %_mver% geq 26100 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
@@ -2345,15 +2346,21 @@ if %_mver% geq 26100 if %_jver% geq 3915 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\905601679" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-)
-if %_mver% geq 26100 if %_jver% geq 5061 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2479876749" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2479876749" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
 reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
+@REM reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
+@REM reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\DevHomeUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
+@REM reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
+@REM reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
 if %_SrvESD% equ 1 goto :SkipReg
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
@@ -2581,6 +2588,9 @@ if exist "%_mount%\Windows\WinSxS\Backup\*" (
 )
 if exist "%_mount%\Windows\inf\*.log" (
   del /f /q "%_mount%\Windows\inf\*.log" %_Nul3%
+)
+if exist "%_mount%\Windows\DtcInstall.log" (
+  del /f /q "%_mount%\Windows\DtcInstall.log" %_Nul3%
 )
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\assembly\*NativeImages*" %_Nul6%') do rmdir /s /q "%_mount%\Windows\assembly\%%#" %_Nul3%
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\CbsTemp\%%#\" %_Nul3%
