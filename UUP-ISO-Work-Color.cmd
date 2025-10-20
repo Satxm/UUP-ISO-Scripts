@@ -50,7 +50,15 @@ set UpdtOneDrive=0
 set RefESD=0
 
 :: 若使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
-set AddEdition=0
+set MultiEdition=0
+
+:: 若仅更新选定镜像，请将此参数更改为所需更新的镜像标志（Edition ID）
+:: 例如: Core,Professional 等
+set ChoiceEdition=
+
+:: 若对更新后的镜像进行排序，请将此参数更改为镜像标志（Edition ID）顺序
+:: 例如: Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
+set SortEditions=Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
 
 :: 若安装或升级合应用包，请将此参数更改为 1
 set AddAppxs=0
@@ -199,7 +207,7 @@ LCUWinRE
 UpdtBootFiles
 UpdtOneDrive
 RefESD
-AddEdition
+MultiEdition
 AddAppxs
 AppsAsStub
 AddRegs
@@ -212,6 +220,8 @@ WIM2SWM
 ) do (
 call :Readini %%#
 )
+findstr /b /i ChoiceEdition Config.ini %_Nul1% && for /f "tokens=1* delims==" %%A in ('findstr /b /i ChoiceEdition Config.ini') do set "ChoiceEdition=%%B"
+findstr /b /i SortEditions Config.ini %_Nul1% && for /f "tokens=1* delims==" %%A in ('findstr /b /i SortEditions Config.ini') do set "SortEditions=%%B"
 goto :findargs
 
 :Readini
@@ -361,7 +371,8 @@ if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 if %_build% lss 26052 set LCUWinRE=1
 if %LCUWinRE% equ 2 set LCUWinRE=0
 if %_build% geq 26052 set LCUWinRE=0
-if %_SrvESD% equ 1 set AddEdition=0 && set UpdtOneDrive=0
+if defined ChoiceEdition set MultiEdition=0
+if %_SrvESD% equ 1 set MultiEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
 if %AddUpdates% equ 1 set _DismHost=1
 if %AddAppxs% equ 1 set _DismHost=1
@@ -452,10 +463,10 @@ call :dk_color1 %Green% "完成。" 4
 goto :QUIT
 
 :InstallWim
-if exist "ISOFOLDER\sources\install.wim" goto :NoCreate
+if exist "ISOFOLDER\sources\install.wim" goto :SkipCreate
 call :dk_color1 %Blue% "=== 正在创建 install.wim 文件..." 4 5
 if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
-for /L %%# in (1, 1,%_nsum%) do (
+for /l %%# in (1, 1,%_nsum%) do (
   wimlib-imagex.exe export "!_DIR!\!uups_esd%%#!" 3 "ISOFOLDER\sources\install.wim" --ref="!_DIR!\*.esd" %_rrr% --compress=LZX
   call set ERRTEMP=!ERRORLEVEL!
   if !ERRTEMP! neq 0 goto :E_Export
@@ -463,8 +474,17 @@ for /L %%# in (1, 1,%_nsum%) do (
   wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
   if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
 )
-:NoCreate
-if %AddEdition% equ 1 for /L %%# in (%_nsum%,-1,1) do (
+:SkipCreate
+if not defined ChoiceEdition goto :SkipChoice
+set _choice=
+for %%A in (%ChoiceEdition%) do for /l %%# in (1,1,%_nsum%) do (
+  imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>%%A</EDITIONID>"  %_Nul3% && set _choice=!_choice!,%%#
+)
+for /l %%# in (%_nsum%,-1,1) do (
+  echo !_choice! | findstr /i "%%#" %_Nul3% || %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
+)
+:SkipChoice
+if %MultiEdition% equ 1 for /l %%# in (%_nsum%,-1,1) do (
   imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
     %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
   )
@@ -473,39 +493,32 @@ if not exist "temp\Winre.wim" goto :SkipWinre
 if %SkipWinRE% equ 1 goto :SkipWinre
 call :dk_color1 %Blue% "=== 正在将 Winre.wim 添加到 install.wim 中..." 4
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
+for /l %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 :SkipWinre
-if %UpdtOneDrive% equ 1 call :OneDrive
 if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %AddEdition% neq 1 if %_wimEdge% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %MultiEdition% neq 1 if %_wimEdge% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
 call :update "ISOFOLDER\sources\install.wim"
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
-for /L %%# in (1,1,%imgs%) do (
+for /l %%# in (1,1,%imgs%) do (
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
   wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-if %AddEdition% equ 1 goto :ExportWim
+if %UpdtOneDrive% equ 1 call :OneDrive
+if %MultiEdition% equ 1 goto :ExportWim
 echo.
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
 :ExportWim
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
-for /l %%# in (1,1,%imgs%) do (
-  imagex /info "ISOFOLDER\sources\install.wim" %%# >temp\newinfo.txt 2>&1
-  findstr /i "<EDITIONID>Core</EDITIONID>" temp\newinfo.txt %_Nul3% && set i1=%%#
-  findstr /i "<EDITIONID>CoreSingleLanguage</EDITIONID>" temp\newinfo.txt %_Nul3% && set i2=%%#
-  findstr /i "<EDITIONID>Education</EDITIONID>" temp\newinfo.txt %_Nul3% && set i3=%%#
-  findstr /i "<EDITIONID>Professional</EDITIONID>" temp\newinfo.txt %_Nul3% && set i4=%%#
-  findstr /i "<EDITIONID>ProfessionalEducation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i5=%%#
-  findstr /i "<EDITIONID>ProfessionalWorkstation</EDITIONID>" temp\newinfo.txt %_Nul3% && set i6=%%#
-)
-for %%# in (%i1%,%i2%,%i3%,%i4%,%i5%,%i6%) do (
-  wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
-  set ERRTEMP=!ERRORLEVEL!
-  if !ERRTEMP! neq 0 goto :E_Export
+for %%A in (%SortEditions%) do for /l %%# in (1,1,%imgs%) do (
+  imagex /info "ISOFOLDER\sources\install.wim" %%# | find /i "<EDITIONID>%%A</EDITIONID>" %_Nul3% && (
+    wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
+    set ERRTEMP=!ERRORLEVEL!
+    if !ERRTEMP! neq 0 goto :E_Export
+  )
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
 echo.
@@ -534,7 +547,7 @@ if %_build% lss 22563 set sysdir=SysWOW64
 if exist "temp\OneDriveSetup.exe" >>temp\OneDrive.txt echo add 'temp\OneDriveSetup.exe' '^\Windows^\%sysdir%^\OneDriveSetup.exe'
 if exist "temp\OneDrive.ico" >>temp\OneDrive.txt echo add 'temp\OneDrive.ico' '^\Windows^\%sysdir%^\OneDrive.ico'
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info ISOFOLDER\sources\install.wim ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /L %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\install.wim %%# < temp\OneDrive.txt %_Nul3%
+for /l %%# in (1,1,%imgcount%) do wimlib-imagex.exe update ISOFOLDER\sources\install.wim %%# < temp\OneDrive.txt %_Nul3%
 goto :eof
 
 :WimWork
@@ -642,7 +655,7 @@ goto :BootDone
 
 :BootDone
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
-for /L %%# in (1,1,%imgs%) do (
+for /l %%# in (1,1,%imgs%) do (
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
   for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
   wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
@@ -780,12 +793,12 @@ exit /b
 
 :isosingle
 for /f "tokens=3 delims=<>" %%# in ('imagex /info "ISOFOLDER\sources\install.wim" 1 ^| find /i "<EDITIONID>"') do set "editionid=%%#"
-if /i %editionid%==Core set DVDLABEL=CCRA_%archl%FRE_%langid%_DV9%&exit /b
-if /i %editionid%==CoreSingleLanguage set DVDLABEL=CSLA_%archl%FREO_%langid%_DV9&exit /b
-if /i %editionid%==Education set DVDLABEL=CEDA_%archl%FRE_%langid%_DV9&exit /b
-if /i %editionid%==Professional set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&exit /b
-if /i %editionid%==ProfessionalEducation set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&exit /b
-if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
+if /i %editionid%==Core set DVDISO=%_label%.%arch%.Home&set DVDLABEL=CCRA_%archl%FRE_%langid%_DV9%&exit /b
+if /i %editionid%==CoreSingleLanguage set DVDISO=%_label%.%arch%.HomeSingle&set DVDLABEL=CSLA_%archl%FREO_%langid%_DV9&exit /b
+if /i %editionid%==Education set DVDISO=%_label%.%arch%.Eud&set DVDLABEL=CEDA_%archl%FRE_%langid%_DV9&exit /b
+if /i %editionid%==Professional set DVDISO=%_label%.%arch%.Pro&set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&exit /b
+if /i %editionid%==ProfessionalEducation set DVDISO=%_label%.%arch%.ProEdu&set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&exit /b
+if /i %editionid%==ProfessionalWorkstation set DVDISO=%_label%.%arch%.ProWork&set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
 
 :uups_ref
 if not exist "!_DIR!\*Package*.esd" exit /b
@@ -844,7 +857,7 @@ call :dk_color1 %Gray% "正在备份 .esd 文件..." 4 5
 if %EXPRESS% equ 1 (
 mkdir "!_work!\CanonicalUUP" %_Nul3%
 move /y "!_work!\temp\*.esd" "!_work!\CanonicalUUP\" %_Nul3%
-for /L %%# in (1,1,%uups_esd_num%) do copy /y "!_DIR!\!uups_esd%%#!" "!_work!\CanonicalUUP\" %_Nul3%
+for /l %%# in (1,1,%uups_esd_num%) do copy /y "!_DIR!\!uups_esd%%#!" "!_work!\CanonicalUUP\" %_Nul3%
 for /f %%# in ('dir /b /a:-d "!_DIR!\*Package*.esd" %_Nul6%') do if not exist "!_work!\CanonicalUUP\%%#" (copy /y "!_DIR!\%%#" "!_work!\CanonicalUUP\" %_Nul3%)
 exit /b
 )
@@ -2212,7 +2225,7 @@ if not exist "%SystemRoot%\temp\" mkdir "%SystemRoot%\temp" %_Nul3%
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 for %%# in (handle1,handle2) do set %%#=0
-for /L %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :DoMount "%_target%"&call :DoWork&call :DoUnmount
+for /l %%# in (1,1,%imgcount%) do set "_inx=%%#"&call :DoMount "%_target%"&call :DoWork&call :DoUnmount
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if %_build% geq 19041 if %winbuild% lss 17133 if exist "%SysPath%\ext-ms-win-security-slc-l1-1-0.dll" (
   del /f /q %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul3%
@@ -2316,7 +2329,7 @@ for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!is
 )
 :Skiphand2
 if exist "%_mount%\inetpub" attrib +h "%_mount%\inetpub" %_Nul3%
-if %AddEdition% neq 1 goto :Done
+if %MultiEdition% neq 1 goto :Done
 call :dk_color1 %Blue% "=== 正在转换 Windows 版本..." 4
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=%%i && call :setedition)
@@ -2333,6 +2346,11 @@ for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinS
 reg load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_mver% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
+@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 0 /f %_Nul3%
+@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /t REG_DWORD /d 0 /f %_Nul3%
+@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /t REG_DWORD /d 0 /f %_Nul3%
+@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f %_Nul3%
+@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\Lsa" /v "LsaCfgFlags" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
@@ -2357,10 +2375,12 @@ reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
-@REM reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
-@REM reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\DevHomeUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
-@REM reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
-@REM reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\CrossDeviceUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\DevHomeUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
+reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\CrossDeviceUpdate" /f %_Nul3%
+reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
+reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
 if %_SrvESD% equ 1 goto :SkipReg
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
