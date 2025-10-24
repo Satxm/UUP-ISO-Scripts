@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.09.03-117f"
+@set "uivr=v25.10.23-117f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -53,7 +53,7 @@ set RefESD=0
 set MultiEdition=0
 
 :: 若仅更新选定镜像，请将此参数更改为所需更新的镜像标志（Edition ID）
-:: 例如: Core,Professional 等
+:: 例如: Core,Professional,ServerDatacenter 等
 set ChoiceEdition=
 
 :: 若对更新后的镜像进行排序，请将此参数更改为镜像标志（Edition ID）顺序
@@ -333,8 +333,14 @@ call :dk_color1 %_Green% "UUPs 文件夹： !_DIR!" 4
 call :dk_color1 %Gray% "正在检查 ESD 文件信息..." 4
 dir /b /ad "!_DIR!\*Package*" %_Nul3% && set EXPRESS=1
 for %%# in (
-  Core,CoreSingleLanguage,CoreCountrySpecific,Professional,ProfessionalSingleLanguage,ProfessionalCountrySpecific,Education,ProfessionalEducation,ProfessionalWorkstation
+  Core,CoreN,CoreSingleLanguage,CoreCountrySpecific
+  Professional,ProfessionalN,ProfessionalEducation,ProfessionalEducationN,ProfessionalWorkstation,ProfessionalWorkstationN
+  Education,EducationN,Enterprise,EnterpriseN,EnterpriseG,EnterpriseGN,EnterpriseS,EnterpriseSN,ServerRdsh
+  PPIPro,IoTEnterprise,IoTEnterpriseK,IoTEnterpriseS,IoTEnterpriseSK
+  Cloud,CloudN,CloudE,CloudEN,CloudEdition,CloudEditionN,CloudEditionL,CloudEditionLN
+  Starter,StarterN,ProfessionalCountrySpecific,ProfessionalSingleLanguage
   ServerStandardCore,ServerStandard,ServerDatacenterCore,ServerDatacenter,ServerTurbineCore,ServerTurbine,ServerAzureStackHCICor
+  WNC
 ) do (
   if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%
   ) else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%
@@ -463,23 +469,10 @@ call :dk_color1 %Green% "完成。" 4
 goto :QUIT
 
 :InstallWim
-if exist "ISOFOLDER\sources\install.wim" goto :SkipCreate
-call :dk_color1 %Blue% "=== 正在创建 install.wim 文件..." 4 5
-if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
-for /l %%# in (1, 1,%_nsum%) do (
-  wimlib-imagex.exe export "!_DIR!\!uups_esd%%#!" 3 "ISOFOLDER\sources\install.wim" --ref="!_DIR!\*.esd" %_rrr% --compress=LZX
-  call set ERRTEMP=!ERRORLEVEL!
-  if !ERRTEMP! neq 0 goto :E_Export
-  set nedition=!edition%%#! && call :setname
-  wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
-  if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
-)
-:SkipCreate
+if not exist "ISOFOLDER\sources\install.wim" call :CreateInstallWim
 if not defined ChoiceEdition goto :SkipChoice
 set _choice=
-for %%A in (%ChoiceEdition%) do for /l %%# in (1,1,%_nsum%) do (
-  imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>%%A</EDITIONID>"  %_Nul3% && set _choice=!_choice!,%%#
-)
+for %%A in (%ChoiceEdition%) do for /l %%# in (1,1,%_nsum%) do if "!edition%%#!"=="%%A" set _choice=!_choice!,%%#
 for /l %%# in (%_nsum%,-1,1) do (
   echo !_choice! | findstr /i "%%#" %_Nul3% || %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
 )
@@ -507,9 +500,20 @@ for /l %%# in (1,1,%imgs%) do (
 )
 if %UpdtOneDrive% equ 1 call :OneDrive
 if %MultiEdition% equ 1 goto :ExportWim
-echo.
-wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
-goto :%_rtrn%
+goto :InstallDone
+
+:CreateInstallWim
+call :dk_color1 %Blue% "=== 正在创建 install.wim 文件..." 4 5
+if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
+for /l %%# in (1, 1,%_nsum%) do (
+  wimlib-imagex.exe export "!_DIR!\!uups_esd%%#!" 3 "ISOFOLDER\sources\install.wim" --ref="!_DIR!\*.esd" %_rrr% --compress=LZX
+  call set ERRTEMP=!ERRORLEVEL!
+  if !ERRTEMP! neq 0 goto :E_Export
+  set nedition=!edition%%#! && call :setname
+  wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_nameb!" --image-property FLAGS=!edition%%#! %_Nul3%
+  if !_ESDSrv%%#! equ 1 wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# "!_namea!" "!_namea!" --image-property DISPLAYNAME="!_nameb!" --image-property DISPLAYDESCRIPTION="!_namec!" --image-property FLAGS=!edition%%#! %_Nul3%
+)
+goto :eof
 
 :ExportWim
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
@@ -521,6 +525,9 @@ for %%A in (%SortEditions%) do for /l %%# in (1,1,%imgs%) do (
   )
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
+goto :InstallDone
+
+:InstallDone
 echo.
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
@@ -581,17 +588,20 @@ goto :%_rtrn%
 
 :WinreWim
 if %SkipWinRE% equ 1 goto :%_rtrn%
+if not exist "temp\Winre.wim" if exist "!_DIR!\Winre.wim" copy /y "!_DIR!\Winre.wim" "temp\Winre.wim" %_Nul3%
+if not exist "temp\Winre.wim" call :CreateWinreWim
+if %uwinpe% equ 0 if %CleanWinre% equ 1 goto :CleanWinre
+if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
+call :update "temp\Winre.wim"
+goto :WinreDone
+
+:CreateWinreWim
 call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4
 if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
 if not exist "temp\Winre.wim" if exist "ISOFOLDER\sources\install.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-if %uwinpe% equ 0 if %CleanWinre% equ 1 goto :CleanWinre
-if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
-call :update "temp\Winre.wim"
-echo.
-wimlib-imagex.exe optimize "temp\Winre.wim"
-goto :%_rtrn%
+goto:eof
 
 :CleanWinre
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "temp\Winre.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
@@ -601,6 +611,9 @@ set "_inx=1"&call :DoMount "temp\Winre.wim"
 call :Cleanup
 call :DoWork
 call :DoUnmount
+goto :WinreDone
+
+:WinreDone
 echo.
 wimlib-imagex.exe optimize "temp\Winre.wim"
 goto :%_rtrn%
@@ -783,22 +796,53 @@ if /i %arch%==x86 set archl=X86
 if /i %arch%==x64 set archl=X64
 if /i %arch%==arm64 set archl=A64
 set DVDLABEL=CCSA_%archl%FRE_%langid%_DV9
-if %_SrvESD% equ 1 set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&exit /b
+if %_SrvESD% equ 1 set DVDLABEL=SSS_%archl%FRE_%langid%_DV9
 if not exist "ISOFOLDER\sources\install.wim" exit /b
 set images=0
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set images=%%#
+if %images% geq 4 if %_SrvESD% equ 1 (set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&exit /b) else (set DVDLABEL=CCCOMA_%archl%FRE_%langid%_DV9&exit /b)
 if %images% equ 1 call :isosingle
-if %images% geq 4 set DVDLABEL=CCCOMA_%archl%FRE_%langid%_DV9
 exit /b
 
 :isosingle
 for /f "tokens=3 delims=<>" %%# in ('imagex /info "ISOFOLDER\sources\install.wim" 1 ^| find /i "<EDITIONID>"') do set "editionid=%%#"
-if /i %editionid%==Core set DVDISO=%_label%.%arch%.Home&set DVDLABEL=CCRA_%archl%FRE_%langid%_DV9%&exit /b
-if /i %editionid%==CoreSingleLanguage set DVDISO=%_label%.%arch%.HomeSingle&set DVDLABEL=CSLA_%archl%FREO_%langid%_DV9&exit /b
-if /i %editionid%==Education set DVDISO=%_label%.%arch%.Eud&set DVDLABEL=CEDA_%archl%FRE_%langid%_DV9&exit /b
-if /i %editionid%==Professional set DVDISO=%_label%.%arch%.Pro&set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&exit /b
-if /i %editionid%==ProfessionalEducation set DVDISO=%_label%.%arch%.ProEdu&set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&exit /b
-if /i %editionid%==ProfessionalWorkstation set DVDISO=%_label%.%arch%.ProWork&set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&exit /b
+if %_SrvESD% equ 1 imagex /info "ISOFOLDER\sources\install.wim" 1 | findstr /i /c:"Server Core" %_Nul3% && (
+  if /i "%editionid%"=="ServerStandard" set "editionid=ServerStandardCore"
+  if /i "%editionid%"=="ServerDatacenter" set "editionid=ServerDatacenterCore"
+  if /i "%editionid%"=="ServerTurbine" set "editionid=ServerTurbineCore"
+)
+if /i %editionid%==Core set DVDLABEL=CCRA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.Home&exit /b
+if /i %editionid%==CoreN set DVDLABEL=CCRNA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.HomeN&exit /b
+if /i %editionid%==CoreSingleLanguage set DVDLABEL=CSLA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.HomeSingle&exit /b
+if /i %editionid%==CoreCountrySpecific set DVDLABEL=CCHA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.HomeChina&exit /b
+if /i %editionid%==Professional set DVDLABEL=CPRA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.Pro&exit /b
+if /i %editionid%==ProfessionalN set DVDLABEL=CPRNA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ProN&exit /b
+if /i %editionid%==Education set DVDLABEL=CEDA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.Edu&exit /b
+if /i %editionid%==EducationN set DVDLABEL=CEDNA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.EduN&exit /b
+if /i %editionid%==Enterprise set DVDLABEL=CENA_%archl%FREV_%langid%_DV9&set DVDISO=%_label%.%arch%.Ent&exit /b
+if /i %editionid%==EnterpriseN set DVDLABEL=CENNA_%archl%FREV_%langid%_DV9&set DVDISO=%_label%.%arch%.EntN&exit /b
+if /i %editionid%==Cloud set DVDLABEL=CWCA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.Cloud&exit /b
+if /i %editionid%==CloudN set DVDLABEL=CWCNNA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.CloudN&exit /b
+if /i %editionid%==PPIPro set DVDLABEL=CPPIA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.PPIPro&exit /b
+if /i %editionid%==EnterpriseG set DVDLABEL=CENG_%archl%FREV_%langid%_DV9&set DVDISO=%_label%.%arch%.EntG&exit /b
+if /i %editionid%==EnterpriseGN set DVDLABEL=CENGN_%archl%FREV_%langid%_DV9&set DVDISO=%_label%.%arch%.EntGN&exit /b
+if /i %editionid%==EnterpriseS set DVDLABEL=CES_%archl%FREV_%langid%_DV9&set DVDISO=%_label%.%arch%.EntS&exit /b
+if /i %editionid%==EnterpriseSN set DVDLABEL=CESNN_%archl%FREV_%langid%_DV9&set DVDISO=%_label%.%arch%.EntSN&exit /b
+if /i %editionid%==ProfessionalEducation set DVDLABEL=CPREA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ProEdu&exit /b
+if /i %editionid%==ProfessionalEducationN set DVDLABEL=CPRENA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ProEduN&exit /b
+if /i %editionid%==ProfessionalWorkstation set DVDLABEL=CPRWA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ProWork&exit /b
+if /i %editionid%==ProfessionalWorkstationN set DVDLABEL=CPRWNA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ProWorkN&exit /b
+if /i %editionid%==ProfessionalSingleLanguage set DVDLABEL=CPRSLA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.ProSingle&exit /b
+if /i %editionid%==ProfessionalCountrySpecific set DVDLABEL=CPRCHA_%archl%FREO_%langid%_DV9&set DVDISO=%_label%.%arch%.ProChina&exit /b
+if /i %editionid%==CloudEdition set DVDLABEL=CWCA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.Cloud&exit /b
+if /i %editionid%==CloudEditionN set DVDLABEL=CWCNNA_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.CloudN&exit /b
+if /i %editionid%==ServerStandard set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerStandard&exit /b
+if /i %editionid%==ServerStandardCore set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerStandardCore&exit /b
+if /i %editionid%==ServerDatacenter set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerDatacenter&exit /b
+if /i %editionid%==ServerDatacenterCore set DVDLABEL=SSS_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerDatacenterCore&exit /b
+if /i %editionid%==ServerTurbine set DVDLABEL=SADC_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerTurbine&exit /b
+if /i %editionid%==ServerTurbineCore set DVDLABEL=SADC_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerTurbineCore&exit /b
+if /i %editionid%==ServerAzureStackHCICor set DVDLABEL=SASH_%archl%FRE_%langid%_DV9&set DVDISO=%_label%.%arch%.ServerAzure&exit /b
 
 :uups_ref
 if not exist "!_DIR!\*Package*.esd" exit /b
@@ -2277,13 +2321,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
 if %AddDrivers% neq 0 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddRegs% equ 1 call :DoReg
-if %FixPDF% neq 1 goto :nofixpdf
-set pdfm=0
-set pdfj=0
-for /f "tokens=7 delims=._" %%# in ('dir /b /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do set pdfm=%%#
-for /f %%# in ('dir /a:d /b "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do for /f "tokens=4 delims=." %%i in ('type "%_mount%\Windows\WinSxS\%%#\prnms009.inf" ^| findstr /c:"DriverVer"') do set pdfj=%%i
-if %pdfm% neq %pdfj% %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
-:nofixpdf
+if %FixPDF% equ 1 call :FixPDF
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
@@ -2346,11 +2384,11 @@ for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinS
 reg load HKLM\%SYSTEM% "%_mount%\Windows\System32\Config\SYSTEM" %_Nul3%
 if %_mver% geq 22621 reg add "HKLM\%SYSTEM%\ControlSet001\Control\CI\Policy" /v "VerifiedAndReputablePolicyState" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d 1 /f %_Nul3%
-@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 0 /f %_Nul3%
-@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /t REG_DWORD /d 0 /f %_Nul3%
-@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /t REG_DWORD /d 0 /f %_Nul3%
-@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f %_Nul3%
-@rem reg add "HKLM\%SYSTEM%\ControlSet001\Control\Lsa" /v "LsaCfgFlags" /t REG_DWORD /d 0 /f %_Nul3%
+if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "EnableVirtualizationBasedSecurity" /t REG_DWORD /d 0 /f %_Nul3%
+if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "HypervisorEnforcedCodeIntegrity" /t REG_DWORD /d 0 /f %_Nul3%
+if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /t REG_DWORD /d 0 /f %_Nul3%
+if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f %_Nul3%
+if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\Lsa" /v "LsaCfgFlags" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
@@ -2412,6 +2450,14 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
 call :dk_color1 %Blue% "=== 正在添加驱动" 4 5
 if defined DrvSrcAll %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcAll!" /Recurse
 if defined DrvSrcOS %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcOS!" /Recurse
+goto :eof
+
+:FixPDF
+set pdfm=0
+set pdfj=0
+for /f "tokens=7 delims=._" %%# in ('dir /b /a:d "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do set pdfm=%%#
+for /f %%# in ('dir /a:d /b "%_mount%\Windows\WinSxS\amd64_microsoft-windows-printing-printtopdf*"') do for /f "tokens=4 delims=." %%i in ('type "%_mount%\Windows\WinSxS\%%#\prnms009.inf" ^| findstr /c:"DriverVer"') do set pdfj=%%i
+if %pdfm% neq %pdfj% %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"%_mount%\Windows\System32\spool\tools\Microsoft Print To PDF" /Recurse
 goto :eof
 
 :appx_sort
@@ -2537,21 +2583,50 @@ goto :eof
 
 :setname
 for %%# in (
+  "Cloud:%_wtx% S:%_wtx% S"
+  "CloudN:%_wtx% S N:%_wtx% S N"
+  "CloudE:%_wtx% Lean:%_wtx% Lean"
+  "CloudEN:%_wtx% Lean N:%_wtx% Lean N"
+  "CloudEdition:%_wtx% SE:%_wtx% SE"
+  "CloudEditionN:%_wtx% SE N:%_wtx% SE N"
+  "CloudEditionL:%_wtx% LE:%_wtx% LE"
+  "CloudEditionLN:%_wtx% LE N:%_wtx% LE N"
   "Core:%_wtx% Home:%_wtx% 家庭版"
+  "CoreN:%_wtx% Home N:%_wtx% 家庭版 N"
   "CoreSingleLanguage:%_wtx% Home Single Language:%_wtx% 家庭单语言版"
   "CoreCountrySpecific:%_wtx% Home China:%_wtx% 家庭中文版"
-  "Education:%_wtx% Education:%_wtx% 教育版"
   "Professional:%_wtx% Pro:%_wtx% 专业版"
+  "ProfessionalN:%_wtx% Pro N:%_wtx% 专业版 N"
+  "ProfessionalEducation:%_wtx% Pro Education:%_wtx% 专业教育版"
+  "ProfessionalEducationN:%_wtx% Pro Education N:%_wtx% 专业教育版 N"
+  "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% 专业工作站版"
+  "ProfessionalWorkstationN:%_wtx% Pro N for Workstations:%_wtx% 专业工作站版 N"
   "ProfessionalSingleLanguage:%_wtx% Pro Single Language:%_wtx% 专业单语言版"
   "ProfessionalCountrySpecific:%_wtx% Pro China:%_wtx% 专业中文版"
-  "ProfessionalEducation:%_wtx% Pro Education:%_wtx% 专业教育版"
-  "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% 专业工作站版"
+  "PPIPro:%_wtx% Team:%_wtx% 协同版"
+  "Education:%_wtx% Education:%_wtx% 教育版"
+  "EducationN:%_wtx% Education N:%_wtx% 教育版 N"
+  "Enterprise:%_wtx% Enterprise:%_wtx% 企业版"
+  "EnterpriseN:%_wtx% Enterprise N:%_wtx% 企业版 N"
+  "EnterpriseG:%_wtx% Enterprise G:%_wtx% 企业版 G"
+  "EnterpriseGN:%_wtx% Enterprise G N:%_wtx% 企业版 G N"
+  "EnterpriseS:%_wtx% Enterprise LTSC:%_wtx% 企业版 LTSC"
+  "EnterpriseSN:%_wtx% Enterprise N LTSC:%_wtx% 企业版 N LTSC"
+  "IoTEnterprise:%_wtx% IoT Enterprise:%_wtx% IoT 企业版"
+  "IoTEnterpriseS:%_wtx% IoT Enterprise LTSC:%_wtx% IoT 企业版 LTSC"
+  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT 企业版 LTSC"
+  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT 企业版 LTSC 订阅"
+  "ServerRdsh:%_wtx% Enterprise Multi-Session:%_wtx% 企业版多会话"
+  "Starter:%_wtx% Starter:%_wtx% 入门版"
+  "StarterN:%_wtx% Starter N:%_wtx% 入门版 N"
+  "WNC:%_wtx% Cloud PC:%_wtx% Cloud PC"
   "ServerStandardCore:%_wsr% SERVERSTANDARDCORE:%_wsr% Standard:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
   "ServerStandard:%_wsr% SERVERSTANDARD:%_wsr% Standard (桌面体验):此选项将安装的完整的 Windows 图形环境，占用额外的驱动器空间。如果你想要使用 Windows 桌面或需要桌面的应用，则它会很有用。"
   "ServerDatacenterCore:%_wsr% SERVERDATACENTERCORE:%_wsr% Datacenter:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
   "ServerDatacenter:%_wsr% SERVERDATACENTER:%_wsr% Datacenter (桌面体验):此选项将安装的完整的 Windows 图形环境，占用额外的驱动器空间。如果你想要使用 Windows 桌面或需要桌面的应用，则它会很有用。"
   "ServerTurbineCore:%_wsr% SERVERTURBINECORE:%_wsr% Datacenter Azure Edition:（推荐）此选项忽略大部分 Windows 图形环境。通过命令提示符和 PowerShell，或者远程使用 Windows Admin Center 或其他工具进行管理。"
   "ServerTurbine:%_wsr% SERVERTURBINE:%_wsr% Datacenter Azure Edition (桌面体验):此选项将安装的完整的 Windows 图形环境，占用额外的驱动器空间。如果你想要使用 Windows 桌面或需要桌面的应用，则它会很有用。"
+  "ServerAzureStackHCICor:Azure Stack HCI:此选项安装 Azure Stack HCI。"
 ) do for /f "tokens=1,2,3,4 delims=:" %%A in ("%%~#") do (
   if /i %nedition%==%%A set "_namea=%%B"&set "_nameb=%%C"&set "_namec=%%D"
 )
