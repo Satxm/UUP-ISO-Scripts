@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.10.23-117f"
+@set "uivr=v25.10.26-117f"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -50,7 +50,7 @@ set UpdtOneDrive=0
 set RefESD=0
 
 :: 若使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
-set MultiEdition=0
+set UpgradeEdition=0
 
 :: 若仅更新选定镜像，请将此参数更改为所需更新的镜像标志（Edition ID）
 :: 例如: Core,Professional,ServerDatacenter 等
@@ -207,7 +207,7 @@ LCUWinRE
 UpdtBootFiles
 UpdtOneDrive
 RefESD
-MultiEdition
+UpgradeEdition
 AddAppxs
 AppsAsStub
 AddRegs
@@ -377,8 +377,8 @@ if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
 if %_build% geq 22000 if %_build% lss 26052 set LCUWinRE=1
 if %LCUWinRE% equ 2 set LCUWinRE=0
 if %_build% geq 26052 set LCUWinRE=0
-if defined ChoiceEdition set MultiEdition=0
-if %_SrvESD% equ 1 set MultiEdition=0 && set UpdtOneDrive=0
+if defined ChoiceEdition set UpgradeEdition=0
+if %_SrvESD% equ 1 set UpgradeEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
 if %AddUpdates% equ 1 set _DismHost=1
 if %AddAppxs% equ 1 set _DismHost=1
@@ -470,36 +470,21 @@ goto :QUIT
 
 :InstallWim
 if not exist "ISOFOLDER\sources\install.wim" call :CreateInstallWim
-if not defined ChoiceEdition goto :SkipChoice
-set _choice=
-for %%A in (%ChoiceEdition%) do for /l %%# in (1,1,%_nsum%) do if "!edition%%#!"=="%%A" set _choice=!_choice!,%%#
-for /l %%# in (%_nsum%,-1,1) do (
-  echo !_choice! | findstr /i "%%#" %_Nul3% || %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
-)
-:SkipChoice
-if %MultiEdition% equ 1 for /l %%# in (%_nsum%,-1,1) do (
-  imagex /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
-    %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
-  )
-)
-if not exist "temp\Winre.wim" goto :SkipWinre
-if %SkipWinRE% equ 1 goto :SkipWinre
-call :dk_color1 %Blue% "=== 正在将 Winre.wim 添加到 install.wim 中..." 4
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-for /l %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
-:SkipWinre
-if %_SrvESD% equ 1 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
-if %AddUpdates% neq 1 if %AddAppxs% neq 1 if %MultiEdition% neq 1 if %_wimEdge% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS goto :SkipUpdate
+if defined ChoiceEdition call :ChoiceEdition
+if %_SrvESD% neq 1 if %UpgradeEdition% equ 1 call :UpgradeEdition
+if %SkipWinRE% neq 1 call :AddWinre
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS if %_SrvESD% equ 1 goto :SkipUpdate
+if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS if %UpgradeEdition% neq 1 if %_wimEdge% neq 1 goto :SkipUpdate
 call :update "ISOFOLDER\sources\install.wim"
 :SkipUpdate
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /l %%# in (1,1,%imgs%) do (
-  for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
-  for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
+  for /f "tokens=3 delims=<>" %%A in ('imagex.exe /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
+  for /f "tokens=3 delims=<>" %%A in ('imagex.exe /info "ISOFOLDER\sources\install.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
   wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
-if %UpdtOneDrive% equ 1 call :OneDrive
-if %MultiEdition% equ 1 goto :ExportWim
+if %UpdtOneDrive% equ 1 call :AddOneDrive
+if %UpgradeEdition% equ 1 call :SortEditions
 goto :InstallDone
 
 :CreateInstallWim
@@ -515,24 +500,47 @@ for /l %%# in (1, 1,%_nsum%) do (
 )
 goto :eof
 
-:ExportWim
+:ChoiceEdition
+set _choice=
+for %%A in (%ChoiceEdition%) do for /l %%# in (1,1,%_nsum%) do if "!edition%%#!"=="%%A" set _choice=!_choice!,%%#
+if defined _choice for /l %%# in (%_nsum%,-1,1) do echo !_choice! | findstr /i "%%#" %_Nul3% || (
+  %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
+)
+goto :eof
+
+:UpgradeEdition
+for /l %%# in (%_nsum%,-1,1) do imagex.exe /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>Core</EDITIONID> <EDITIONID>Professional</EDITIONID>" %_Nul3% || (
+  %_Dism% /LogPath:"%_dLog%\DismDelete.log" /Delete-Image /ImageFile:"ISOFOLDER\sources\install.wim" /Index:%%# %_Nul3%
+)
+goto :eof
+
+:SortEditions
+call :dk_color1 %Blue% "=== 正在排序 install.wim 文件的 SKU 版本……" 4 5
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
-for %%A in (%SortEditions%) do for /l %%# in (1,1,%imgs%) do (
-  imagex /info "ISOFOLDER\sources\install.wim" %%# | find /i "<EDITIONID>%%A</EDITIONID>" %_Nul3% && (
-    wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
-    set ERRTEMP=!ERRORLEVEL!
-    if !ERRTEMP! neq 0 goto :E_Export
-  )
+set tcount=0
+for %%A in (%SortEditions%) do for /l %%# in (1,1,%imgs%) do imagex.exe /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>%%A</EDITIONID>" %_Nul3% && (
+  set /a tcount+=1
+  echo !tcount!. %%A
+  wimlib-imagex.exe export "ISOFOLDER\sources\install.wim" %%# "ISOFOLDER\sources\installnew.wim" %_Nul3%
+  set ERRTEMP=!ERRORLEVEL!
+  if !ERRTEMP! neq 0 goto :E_Export
 )
 if exist "ISOFOLDER\sources\installnew.wim" del /f /q "ISOFOLDER\sources\install.wim"&ren "ISOFOLDER\sources\installnew.wim" install.wim %_Nul3%
-goto :InstallDone
+goto :eof
 
 :InstallDone
 echo.
 wimlib-imagex.exe optimize "ISOFOLDER\sources\install.wim"
 goto :%_rtrn%
 
-:OneDrive
+:AddWinre
+if not exist "temp\Winre.wim" goto :eof
+call :dk_color1 %Blue% "=== 正在将 Winre.wim 添加到 install.wim 中..." 4
+for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
+for /l %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
+goto :eof
+
+:AddOneDrive
 call :dk_color1 %Blue% "=== 正在更新 OneDrive 安装文件..." 4
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
 if exist "bin\OneDriveSetup.exe" copy /y "bin\OneDriveSetup.exe" "temp\OneDriveSetup.exe" %_Nul3%
@@ -669,8 +677,8 @@ goto :BootDone
 :BootDone
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 for /l %%# in (1,1,%imgs%) do (
-  for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
-  for /f "tokens=3 delims=<>" %%A in ('imagex /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
+  for /f "tokens=3 delims=<>" %%A in ('imagex.exe /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<HIGHPART>"') do call set "HIGHPART%%#=%%A"
+  for /f "tokens=3 delims=<>" %%A in ('imagex.exe /info "ISOFOLDER\sources\boot.wim" %%# ^| find /i "<LOWPART>"') do call set "LOWPART%%#=%%A"
   wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" %%# --image-property CREATIONTIME/HIGHPART=!HIGHPART%%#! --image-property CREATIONTIME/LOWPART=!LOWPART%%#! %_Nul1%
 )
 echo.
@@ -725,7 +733,7 @@ goto :eof
 :PREPARE
 call :dk_color1 %Gray% "正在检查镜像信息..." 4
 set PREPARED=1
-imagex /info %wimindex% >temp\info.txt 2>&1
+imagex.exe /info %wimindex% >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
 for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch=x86") else if %%# equ 9 (set "arch=x64") else (set "arch=arm64"))
 for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _build=%%#
@@ -805,8 +813,8 @@ if %images% equ 1 call :isosingle
 exit /b
 
 :isosingle
-for /f "tokens=3 delims=<>" %%# in ('imagex /info "ISOFOLDER\sources\install.wim" 1 ^| find /i "<EDITIONID>"') do set "editionid=%%#"
-if %_SrvESD% equ 1 imagex /info "ISOFOLDER\sources\install.wim" 1 | findstr /i /c:"Server Core" %_Nul3% && (
+for /f "tokens=3 delims=<>" %%# in ('imagex.exe /info "ISOFOLDER\sources\install.wim" 1 ^| find /i "<EDITIONID>"') do set "editionid=%%#"
+if %_SrvESD% equ 1 imagex.exe /info "ISOFOLDER\sources\install.wim" 1 | findstr /i /c:"Server Core" %_Nul3% && (
   if /i "%editionid%"=="ServerStandard" set "editionid=ServerStandardCore"
   if /i "%editionid%"=="ServerDatacenter" set "editionid=ServerDatacenterCore"
   if /i "%editionid%"=="ServerTurbine" set "editionid=ServerTurbineCore"
@@ -2367,7 +2375,7 @@ for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!is
 )
 :Skiphand2
 if exist "%_mount%\inetpub" attrib +h "%_mount%\inetpub" %_Nul3%
-if %MultiEdition% neq 1 goto :Done
+if %UpgradeEdition% neq 1 goto :Done
 call :dk_color1 %Blue% "=== 正在转换 Windows 版本..." 4
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /LogPath:"%_dLog%\DismEdition.log" /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
 if /i %editionid%==Core for %%i in (Core, CoreSingleLanguage) do ( set nedition=%%i && call :setedition)
