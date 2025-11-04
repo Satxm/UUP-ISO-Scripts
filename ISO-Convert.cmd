@@ -4,8 +4,8 @@ title Windows ISO 转换 ESD
 set "SysPath=%SystemRoot%\System32"
 set "Path=%~dp0bin;%~dp0temp;%SysPath%;%SystemRoot%;%SysPath%\Wbem;%SysPath%\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\"
 if exist "%SystemRoot%\Sysnative\reg.exe" (
-    set "SysPath=%SystemRoot%\Sysnative"
-    set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
+  set "SysPath=%SystemRoot%\Sysnative"
+  set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
 set "_psc=powershell -nop -c"
 set "_args="
@@ -23,53 +23,42 @@ call setlocal EnableDelayedExpansion
 for %%# in (wt.exe) do @if "%%~$PATH:#"=="" %_Null% %_psc% "start cmd.exe -arg '/c !_PSarg!' -verb runas" && exit /b || goto :E_Admin
 %_Null% %_psc% "start wt -arg '!_PSarg!' -verb runas" && exit /b || goto :E_Admin
 
-
 :Passed
-SET ISOFILE=
-SET ESDFILE=
-SET ERRORTEMP=
+@cls
+set ISOFILE=
+set ESDFILE=
+set ERRORTEMP=
 
-for %%# in (%*) do if exist "%%#" (echo %%#&set "ISOFILE=%~1"&set "ISOFILEN=%~nx1"&goto :check)
+for %%# in (%*) do if exist "%%#" ( set "ISOFILE=%%~f#" & echo %%# & goto :check )
 set _iso=0
-if exist "*.iso" (for /f "delims=" %%i in ('dir /b "*.iso"') do (call set /a _iso+=1))
-if !_iso! equ 0 goto :prompt1
-if !_iso! gtr 1 goto :prompt2
-for /f "delims=" %%i in ('dir /b "*.iso"') do (echo %%i&set "ISOFILE=%%i"&set "ISOFILEN=%%i"&goto :check)
+if exist "*.iso" for /f "delims=" %%i in ('dir /b "*.iso"') do call set /a _iso+=1
+if !_iso! equ 1 for /f "delims=" %%i in ('dir /b "*.iso"') do ( set "ISOFILE=%%~fi" & echo %%i & goto :check )
 
-:prompt1
-echo.
-echo ============================================================
-echo 请输入或粘贴 ISO 镜像文件的完整路径
-echo （ 文件路径中允许存在空格，不允许含有引号""）
-echo ============================================================
-echo.
-set /p ISOFILE=
-if [%ISOFILE%]==[] goto :QUIT
-call :setvar "%ISOFILE%"
-goto :check
-
-:setvar
-SET "ISOFILEN=%~nx1"
-goto :eof
-
-:prompt2
+:prompt
 for /f "delims=" %%i in ('dir /b "*.iso"') do echo %%i
 echo.
 echo ============================================================
-echo 在当前的目录下找到的 ISO 文件数量多于一个
-echo 请输入或使用“Tab”键来进行选择
+echo 请输入 ISO 镜像文件路径，亦或使用“Tab”键来选择 ISO 镜像
 echo ============================================================
 echo.
 set /p ISOFILE=
-if [%ISOFILE%]==[] goto :QUIT
-SET "ISOFILEN=%ISOFILE%"
-goto :check
+if not defined ISOFILE goto :prompt
+set "ISOFILE=%ISOFILE:"=%"
 
 :check
-SET "ESDFILE=%ISOFILEN:~0,-4%.esd"
+if /i not "%ISOFILE:~-4%"==".iso" (
+  echo 指定的文件非 ISO 文件
+  echo.
+  goto :prompt
+)
+for %%# in ("%ISOFILE%") do (
+  set "ISOFILE=%%~f#"
+  set "ESDFILE=%%~n#.esd"
+)
+goto :ISO
 
 :ISO
-%_psc% "Set-Date (Get-Item %ISOFILEN%).LastWriteTime" 1>nul 2>nul
+%_psc% "Set-Date (Get-Item '%ISOFILE%').LastWriteTime" 1>nul 2>nul
 echo.
 echo ============================================================
 echo 正在解压 ISO 文件……
@@ -88,35 +77,35 @@ echo ============================================================
 echo 正在捕获安装镜像布局……
 echo ============================================================
 echo.
-wimlib-imagex.exe capture "temp\ISOFOLDER" "ESDFILE.esd" "Windows Setup Media" "Windows Setup Media"  --config "temp\wimscript.ini" --compress=LZMS --solid --no-acls
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (echo.&echo 在捕获映像的时候出现错误。&PAUSE&GOTO :QUIT)
+wimlib-imagex.exe capture "temp\ISOFOLDER" "ESDFILE.esd" "Windows setup Media" "Windows setup Media"  --config "temp\wimscript.ini" --compress=LZMS --solid --no-acls
+set ERRORTEMP=%ERRORLEVEL%
+IF %ERRORTEMP% NEQ 0 ( echo. & echo 在捕获映像的时候出现错误。& pause & goto :QUIT )
 echo.
 echo ============================================================
 echo 正在导出 boot.wim 文件……
 echo ============================================================
 echo.
 wimlib-imagex.exe export "temp\ISOFOLDER\sources\boot.wim" all "ESDFILE.esd" --compress=LZMS --solid
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (echo.&echo 在导出映像的时候出现错误。&PAUSE&GOTO :QUIT)
+set ERRORTEMP=%ERRORLEVEL%
+IF %ERRORTEMP% NEQ 0 ( echo. & echo 在导出映像的时候出现错误。& pause & goto :QUIT )
 echo.
 echo ============================================================
 echo 正在导出 %WIMFILE% 文件……
 echo ============================================================
 echo.
 wimlib-imagex.exe export "temp\ISOFOLDER\sources\%WIMFILE%" all "ESDFILE.esd" --compress=LZMS --solid
-SET ERRORTEMP=%ERRORLEVEL%
-IF %ERRORTEMP% NEQ 0 (echo.&echo 在导出映像的时候出现错误。&PAUSE&GOTO :QUIT)
+set ERRORTEMP=%ERRORLEVEL%
+IF %ERRORTEMP% NEQ 0 ( echo. & echo 在导出映像的时候出现错误。& pause & goto :QUIT )
 echo.
 echo ============================================================
 echo 已完成要求的操作。
 echo ============================================================
-ren ESDFILE.esd %ESDFILE%
+ren ESDFILE.esd "%ESDFILE%"
 rmdir /s /q temp\
 echo.
 echo 请按任意键退出脚本。
 pause >nul
-GOTO :QUIT
+goto :QUIT
 
 :E_Admin
 echo ========== 错误 =========

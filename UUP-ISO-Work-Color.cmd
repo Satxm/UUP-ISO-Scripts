@@ -11,13 +11,13 @@ set AddUpdates=0
 :: 若要清理映像以增量压缩已取代的组件，请将此参数更改为 1（警告：在 18362 及以上版本中，这将会删除基础 RTM 版本程序包）
 set Cleanup=0
 
-:: 若要在无 Winre 更新情况下清理 Winre 映像，请将此参数更改为 1
-set CleanWinre=0
-
 :: 若要重置操作系统映像（ResetBase），请将此参数更改为 1（快于默认的增量压缩）
-:: 需要首先设置参数 Cleanup=1
+:: 需要前置参数  Cleanup 为 1
 :: 在 26052 及更高版本每个累积更新后重置操作系统映像，请将此参数更改为 2
 set ResetBase=0
+
+:: 若要在无 Winre 更新情况下清理 Winre 映像，请将此参数更改为 1
+set CleanWinre=0
 
 :: 若将 install.wim 转换为 install.esd，请将此参数更改为 1
 set WIM2ESD=0
@@ -30,14 +30,14 @@ set WIM2SWM=0
 set SkipISO=0
 
 :: 若不添加更新到 Winre.wim 或不创建 Winre.wim，请将此参数更改为 1
-set SkipWinRE=0
+set SkipWinre=0
 
 :: 若不添加更新到 Boot.wim ，请将此参数更改为 1
 set SkipBoot=0
 
 :: 若在即使检测到 SafeOS 更新的情况下，也强制使用累积更新来更新 winre.wim，请将此参数更改为 1
 :: 在 Build 26052 及以上版本将会忽略并自动禁用
-set LCUWinRE=0
+set LCUWinre=0
 
 :: 若从累积更新更新 ISO 启动文件 bootmgr/memtest/efisys.bin，请将此参数更改为 1
 :: 如果检测到新的 UEFI CA 2023 启动文件，还会将其更新
@@ -49,14 +49,15 @@ set UpdtOneDrive=0
 :: 若要保留关联 ESD 文件，请将此参数更改为 1
 set RefESD=0
 
-:: 若使用现有镜像升级 Windows 版本并保存，请将此参数更改为 1
-set UpgradeEdition=0
-
 :: 若仅更新选定镜像，请将此参数更改为所需更新的镜像标志（Edition ID）
 :: 例如: Core,Professional,ServerDatacenter 等
 set ChoiceEdition=
 
+:: 若使用现有镜像升级 Windows 版本并保存（不适用于 Windows Server），请将此参数更改为 1
+set UpgradeEdition=0
+
 :: 若对更新后的镜像进行排序，请将此参数更改为镜像标志（Edition ID）顺序
+:: 不适用于 Windows Server，需要前置参数 UpgradeEdition 为 1
 :: 例如: Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
 set SortEditions=Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
 
@@ -201,9 +202,9 @@ Cleanup
 CleanWinre
 ResetBase
 SkipISO
-SkipWinRE
+SkipWinre
 SkipBoot
-LCUWinRE
+LCUWinre
 UpdtBootFiles
 UpdtOneDrive
 RefESD
@@ -374,9 +375,9 @@ if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %_build% geq 22000 if %_build% lss 26052 set LCUWinRE=1
-if %LCUWinRE% equ 2 set LCUWinRE=0
-if %_build% geq 26052 set LCUWinRE=0
+if %_build% geq 22000 if %_build% lss 26052 set LCUWinre=1
+if %LCUWinre% equ 2 set LCUWinre=0
+if %_build% geq 26052 set LCUWinre=0
 if defined ChoiceEdition set UpgradeEdition=0
 if %_SrvESD% equ 1 set UpgradeEdition=0 && set UpdtOneDrive=0
 if %_build% lss 21382 set UseMSU=0
@@ -472,7 +473,7 @@ goto :QUIT
 if not exist "ISOFOLDER\sources\install.wim" call :CreateInstallWim
 if defined ChoiceEdition call :ChoiceEdition
 if %_SrvESD% neq 1 if %UpgradeEdition% equ 1 call :UpgradeEdition
-if %SkipWinRE% neq 1 call :AddWinre
+if %SkipWinre% neq 1 call :AddWinre
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS if %_SrvESD% equ 1 goto :SkipUpdate
 if %AddUpdates% neq 1 if %AddAppxs% neq 1 if not defined DrvSrcAll if not defined DrvSrcOS if %UpgradeEdition% neq 1 if %_wimEdge% neq 1 goto :SkipUpdate
 call :update "ISOFOLDER\sources\install.wim"
@@ -595,7 +596,7 @@ if exist ISOFOLDER\sources\install*.swm del /f /q ISOFOLDER\sources\install.wim
 goto :%_rtrn%
 
 :WinreWim
-if %SkipWinRE% equ 1 goto :%_rtrn%
+if %SkipWinre% equ 1 goto :%_rtrn%
 if not exist "temp\Winre.wim" if exist "!_DIR!\Winre.wim" copy /y "!_DIR!\Winre.wim" "temp\Winre.wim" %_Nul3%
 if not exist "temp\Winre.wim" call :CreateWinreWim
 if %uwinpe% equ 0 if %CleanWinre% equ 1 goto :CleanWinre
@@ -1631,19 +1632,19 @@ if defined servicingstack (
 )
 if not defined overall if not defined mpamfe goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" goto :skipsafeos
-if not defined safeos if %LCUWinRE% equ 0 (
+if not defined safeos if %LCUWinre% equ 0 (
   %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
   goto :%_rtrn%
 )
 if defined safeos (
   set idpkg=SafeOS
   set callclean=1
-  %_Dism% /LogPath:"%_dLog%\DismWinRE.log" /Image:"%_mount%" /Add-Package %safeos%
+  %_Dism% /LogPath:"%_dLog%\DismWinre.log" /Image:"%_mount%" /Add-Package %safeos%
   call :chkEC !errorlevel!
   if !_ec!==1 goto :errmount
   if not defined lcumsu call :Cleanup
   if not defined lcumsu if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
-  if %LCUWinRE% equ 0 goto :eof
+  if %LCUWinre% equ 0 goto :eof
 )
 :skipsafeos
 if not defined cumulative if not defined lcumsu goto :scbt
@@ -1721,7 +1722,7 @@ goto :eof
 :updtlcu
 set "_DsmLog=DismLCU.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
-if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinRE.log"
+if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinre.log"
 set idpkg=LCU
 set callclean=1
 set _c_=0
@@ -1738,7 +1739,7 @@ if defined lcumsu for %%# in (%lcumsu%) do (
 )
 call :chkEC !errorlevel!
 if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinRE% equ 1 call :Cleanup
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinre% equ 1 call :Cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :%_gobk%
 if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :%_gobk%
 if not defined lcumsu goto :%_gobk%
@@ -2326,7 +2327,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
   xcopy /CDRUY "%_mount%\sources\" "ISOFOLDER\sources\" %_Nul3%
   for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_mount%\sources\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
-if %AddDrivers% neq 0 call :AddDrivers
+if %AddDrivers% equ 1 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :Done
 if %AddRegs% equ 1 call :DoReg
 if %FixPDF% equ 1 call :FixPDF
@@ -2400,20 +2401,6 @@ if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\Lsa" /v "LsaCf
 if %_mver% geq 26100 (
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2792562829" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2792562829" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\734731404" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\734731404" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\905601679" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\905601679" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2024945807" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2479876749" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\2479876749" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
   reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
@@ -2424,14 +2411,16 @@ reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIc
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\CrossDeviceUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\DevHomeUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\PCManagerUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\CrossDeviceUpdate" /f %_Nul3%
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
-if %_SrvESD% equ 1 goto :SkipReg
+reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
+if %_SrvESD% equ 1 goto :SkipOOBE
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
-:SkipReg
+:SkipOOBE
 reg unload HKLM\%SOFTWARE% %_Nul3%
 reg load HKLM\%USER% "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
 reg add "HKLM\%USER%\SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\Advanced" /v "LaunchTo" /t REG_DWORD /d 1 /f %_Nul3%
