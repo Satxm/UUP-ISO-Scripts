@@ -77,7 +77,7 @@ echo ============================================================
 echo 正在捕获安装镜像布局……
 echo ============================================================
 echo.
-wimlib-imagex.exe capture "temp\ISOFOLDER" "ESDFILE.esd" "Windows setup Media" "Windows setup Media"  --config "temp\wimscript.ini" --compress=LZMS --solid --no-acls
+wimlib-imagex.exe capture "temp\ISOFOLDER" "ESDFILE.esd" "Windows Setup Media" "Windows Setup Media"  --config "temp\wimscript.ini" --compress=LZMS --solid --no-acls
 set ERRORTEMP=%ERRORLEVEL%
 IF %ERRORTEMP% NEQ 0 ( echo. & echo 在捕获映像的时候出现错误。& pause & goto :QUIT )
 echo.
