@@ -557,7 +557,7 @@ goto :eof
 :AddOneDrive
 set sysdir=System32
 if %_build% lss 22563 set sysdir=SysWOW64
-wimlib-imagex.exe dir "ISOFOLDER\sources\install.wim" 1 --path="\Windows\%sysdir%\OneDriveSetup.exe" | findstr /c:"OneDrive"' %_Nul3% || goto :eof
+wimlib-imagex.exe dir "ISOFOLDER\sources\install.wim" 1 --path="\Windows\%sysdir%\OneDriveSetup.exe" | findstr /i "OneDrive" %_Nul3% || goto :eof
 call :dk_color1 %Blue% "=== 正在更新 OneDrive 安装文件..." 4
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
 if exist "bin\OneDriveSetup.exe" copy /y "bin\OneDriveSetup.exe" "temp\OneDriveSetup.exe" %_Nul3%
