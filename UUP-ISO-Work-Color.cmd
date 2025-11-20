@@ -409,13 +409,14 @@ if %ERRTEMP% neq 0 goto :E_Apply
 :notuups
 if exist ISOFOLDER\MediaMeta.xml del /f /q ISOFOLDER\MediaMeta.xml %_Nul3%
 if exist ISOFOLDER\__chunk_data del /f /q ISOFOLDER\__chunk_data %_Nul3%
+if exist ISOFOLDER\sources\product.ini del /f /q ISOFOLDER\sources\product.ini %_Nul3%
 if exist ISOFOLDER\_manifest rmdir /s /q ISOFOLDER\_manifest %_Nul3%
 if exist ISOFOLDER\sources\_manifest rmdir /s /q ISOFOLDER\sources\_manifest %_Nul3%
+for /f %%# in ('dir /b /ad "ISOFOLDER\sources\*-*"') do if /i not "%%#"=="%langid%" rmdir /s /q "ISOFOLDER\sources\%%#" %_Nul3%
 if %_build% geq 18890 if %_build% lss 27500 (
   wimlib-imagex.exe extract %wimindex% Windows\Boot\Fonts\* --dest-dir=ISOFOLDER\boot\fonts --no-acls --no-attributes %_Nul3%
   xcopy /CRY ISOFOLDER\boot\fonts\* ISOFOLDER\efi\microsoft\boot\fonts\ %_Nul3%
 )
-
 if %AddUpdates% neq 1 goto :NoUpdate
 call :dk_color1 %Blue% "=== 正在检查更新文件..." 4 5
 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
