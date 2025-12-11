@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.11.20-120"
+@set "uivr=v25.12.10-120"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -344,9 +344,8 @@ for %%# in (
   ServerStandardCore,ServerStandard,ServerDatacenterCore,ServerDatacenter,ServerTurbineCore,ServerTurbine,ServerAzureStackHCICor
   WNC
 ) do (
-  if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%
-  ) else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%
-  )
+  if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%)
+  else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%)
 )
 for /f "tokens=3 delims=: " %%# in ('find /v /c "" temp\uups_esd.txt %_Nul6%') do set _nsum=%%#
 if %_nsum% equ 0 goto :E_NotFind
@@ -436,8 +435,8 @@ echo.
 echo [VL]
 if %_LTSC% equ 1 (echo 1) else (echo 0)
 )>ISOFOLDER\sources\ei.cfg
-if not defined isoupdate goto :SkipSetup
-if %SkipBoot% equ 1 goto :SkipSetup
+if not defined isoupdate goto :NoSetupDU
+if %SkipBoot% equ 1 goto :NoSetupDU
 call :dk_color1 %Blue% "=== 正在应用 ISO 安装文件更新..." 4 5
 mkdir "%_cabdir%\du" %_Nul3%
 for %%# in (!isoupdate!) do (
@@ -449,7 +448,7 @@ if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "ISOFOLDER\source
 for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_cabdir%\du\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
 if exist "%_cabdir%\du\replacementmanifests\" xcopy /CERY "%_cabdir%\du\replacementmanifests" "ISOFOLDER\sources\replacementmanifests\" %_Nul3%
 rmdir /s /q "%_cabdir%\du\" %_Nul3%
-:SkipSetup
+:NoSetupDU
 set _rtrn=WinreRet
 goto :WinreWim
 :WinreRet
@@ -567,7 +566,7 @@ set onedown=1
 :ReDown
 set /a onedown+=1
 if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
-aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false -d"temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
+aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false -d "temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
 if %ERRORLEVEL% GTR 0 (
   if %onedown% leq 5 goto :ReDown
   call :dk_color1 %_Yellow% "OneDrive 下载失败，将跳过操作" 4
@@ -596,7 +595,7 @@ if !ERRTEMP! neq 0 (
   call :dk_color1 %Red% "在导出映像的时候出现错误。正在丢弃 install.esd" 4
   del /f /q ISOFOLDER\sources\install.esd %_Nul3%
 )
-if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim
+if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim %_Nul3%
 goto :%_rtrn%
 
 :DoSWM
@@ -620,9 +619,9 @@ call :update "temp\Winre.wim"
 goto :WinreDone
 
 :CreateWinreWim
-call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4
+call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4 5
 if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
-if not exist "temp\Winre.wim" if exist "ISOFOLDER\sources\install.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
+if not exist "temp\Winre.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
 goto:eof
@@ -788,7 +787,7 @@ if exist "temp\*_microsoft-windows-coreos-revision*.manifest" for /f "tokens=%to
 if %_build% geq 15063 (
   wimlib-imagex.exe extract %wimindex% Windows\System32\config\SOFTWARE --dest-dir=temp --no-acls --no-attributes %_Nul3%
   set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-  for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS""') do if not errorlevel 1 (
+  for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS WNC\.OS WCOSDevice""') do if not errorlevel 1 (
     for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe temp\SOFTWARE "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !revmaj! (
       set "revver=%%~A.%%B
       set revmaj=%%~A
@@ -1033,7 +1032,7 @@ if defined uupmsu if not exist "temp\%_ddc%" (
 if %msuwim% equ 0 expand.exe -f:%_ddc% "!_DIR!\%uupmsu%" .\temp %_Nul3%
 if %msuwim% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 %_ddc% --dest-dir=.\temp %_Nul3%
 )
-if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\SysWOW64\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
+if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wimlib-imagex.exe extract "%wimindex%" Windows\SysWOW64\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
 :expand_end
 if exist "temp\%_f_%" if "%_f_%"=="dpx.dll" copy /y %SystemRoot%\%_dsp%\expand.exe temp\ %_Nul3%
 if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "bin\MSDelta.dll" %_Nul3%
@@ -1193,7 +1192,7 @@ goto :ssuouter64
 :ssuinner64
 popd
 for /f %%# in ('wimlib-imagex.exe dir %wimindex% --path=Windows\WinSxS\Manifests ^| find /i "_microsoft-windows-servicingstack_"') do (
-wimlib-imagex.exe extract %wimindex% Windows\WinSxS\%%~n# --dest-dir="!_DIR!\_tSSU" --no-acls --no-attributes %_Nul3%
+  wimlib-imagex.exe extract %wimindex% Windows\WinSxS\%%~n# --dest-dir="!_DIR!\_tSSU" --no-acls --no-attributes %_Nul3%
 )
 pushd "!_DIR!"
 :ssuouter64
@@ -1225,7 +1224,7 @@ goto :ssuouter86
 :ssuinner86
 popd
 for /f %%# in ('wimlib-imagex.exe dir %wimindex% --path=Windows\WinSxS\Manifests ^| find /i "x86_microsoft-windows-servicingstack_"') do (
-wimlib-imagex.exe extract %wimindex% Windows\WinSxS\%%~n# --dest-dir="!_DIR!\_tSSU" --no-acls --no-attributes %_Nul3%
+  wimlib-imagex.exe extract %wimindex% Windows\WinSxS\%%~n# --dest-dir="!_DIR!\_tSSU" --no-acls --no-attributes %_Nul3%
 )
 pushd "!_DIR!"
 :ssuouter86
@@ -2503,7 +2502,7 @@ set handle2=1
 set vermin=0
 for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest"') do (set verver=%%i.%%j&set vermaj=%%i&set vermin=%%j)
 set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS""') do if not errorlevel 1 (
+for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS WNC\.OS WCOSDevice""') do if not errorlevel 1 (
   for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !vermaj! (
     set "revver=%%~A.%%B
     set revmaj=%%~A
@@ -2555,9 +2554,9 @@ reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
 if %_Srvr% equ 1 goto :SkipOOBE
-reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
+:: reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
-reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
+:: reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
 :SkipOOBE
 reg unload HKLM\%SOFTWARE% %_Nul3%
 reg load HKLM\%USER% "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
@@ -2680,6 +2679,8 @@ for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') d
 goto :eof
 
 :RegAppx
+if not exist "%_mount%\Program Files\WindowsApps\*MSTeams*" if exist "%_mount%\ProgramData\Microsoft\Windows\ClipSVC\Install\Apps\microsoft.microsoftteamsapp_8wekyb3d8bbwe.xml" (
+  del /f /q "%_mount%\ProgramData\Microsoft\Windows\ClipSVC\Install\Apps\microsoft.microsoftteamsapp_8wekyb3d8bbwe.xml")
 reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.ZuneMusic_8wekyb3d8bbwe" /f %_Nul3%
 reg.exe query "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" %_Nul3% && reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Appx\AppxAllUserStore\Deprovisioned\Microsoft.WindowsAlarms_8wekyb3d8bbwe" /f %_Nul3%
@@ -2762,8 +2763,8 @@ for %%# in (
   "EnterpriseSN:%_wtx% Enterprise N LTSC:%_wtx% 企业版 N LTSC"
   "IoTEnterprise:%_wtx% IoT Enterprise:%_wtx% IoT 企业版"
   "IoTEnterpriseS:%_wtx% IoT Enterprise LTSC:%_wtx% IoT 企业版 LTSC"
-  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT 企业版 LTSC"
-  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT 企业版 LTSC 订阅"
+  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT 企业版订阅"
+  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT 企业版订阅 LTSC"
   "ServerRdsh:%_wtx% Enterprise Multi-Session:%_wtx% 企业版多会话"
   "Starter:%_wtx% Starter:%_wtx% 入门版"
   "StarterN:%_wtx% Starter N:%_wtx% 入门版 N"
