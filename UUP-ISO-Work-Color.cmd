@@ -12,7 +12,7 @@ set AddUpdates=0
 set Cleanup=0
 
 :: 若要重置操作系统映像（ResetBase），请将此参数更改为 1（快于默认的增量压缩）
-:: 需要前置参数  Cleanup 为 1
+:: 需要前置参数 Cleanup 为 1
 :: 在 26052 及更高版本每个累积更新后重置操作系统映像，请将此参数更改为 2
 set ResetBase=0
 
@@ -170,7 +170,7 @@ echo 正在调试模式下运行...
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
-@call :Begin %_args% >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
+@call :Begin %_args% >"!_log!_Debug.log" 2>&1
 @exit /b
 
 :Begin
@@ -624,7 +624,7 @@ if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Wi
 if not exist "temp\Winre.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-goto:eof
+goto :eof
 
 :CleanWinre
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "temp\Winre.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
@@ -1713,8 +1713,14 @@ if defined servicingstack (
 if not defined overall if not defined mpamfe goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" goto :skipsafeos
 if not defined safeos if %LCUWinre% equ 0 (
-  %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
-  goto :%_rtrn%
+  call :DoUnmount
+  if %CleanWinre% equ 0 (
+    set mounterr=1
+    goto :eof
+  ) else (
+    call :DoMount "%_target%"
+    goto :eof
+  )
 )
 if defined safeos (
   set idpkg=SafeOS
@@ -2436,6 +2442,7 @@ call :CleanReg
 goto :eof
 
 :DoUnmount
+if defined mounterr goto :eof
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 call :Discard
