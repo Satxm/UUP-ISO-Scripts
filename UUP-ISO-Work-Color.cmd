@@ -1719,6 +1719,7 @@ if not defined safeos if %LCUWinre% equ 0 (
     goto :eof
   ) else (
     call :DoMount "%_target%"
+    call :Cleanup
     goto :eof
   )
 )
