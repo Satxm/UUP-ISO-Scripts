@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.12.10-120"
+@set "uivr=v25.12.17-120"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -1471,8 +1471,8 @@ if defined psf_%pkgn% (
 )
 for /f "tokens=5-8 delims==. " %%H in ('findstr /i Package_for_RollupFix "!dest!\update.mum"') do set "cver=%%~H.%%I.%%J.%%K
 findstr /i Baseline "!dest!\update.mum" %_Nul1% && (
-set "basekbn=!basekbn! %pkgid%"
-set "basepkg=!basepkg! Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%"
+  set "basekbn=!basekbn! %pkgid%"
+  set "basepkg=!basepkg! Package_for_RollupFix~%_Pkt%~%_ss%~~%cver%"
 )
 goto :eof
 
@@ -1549,7 +1549,6 @@ if !errorlevel! neq 0 (
   goto :eof
 )
 if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
-
 for /f "tokens=5-8 delims==. " %%H in ('findstr /i Package_for_RollupFix "!dest!\update.mum"') do set "cver=%%~H.%%I.%%J.%%K
 findstr /i Baseline "!dest!\update.mum" %_Nul1% && (
   set "basekbn=!basekbn! %pkgid%"
@@ -1882,7 +1881,6 @@ if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" go
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 set "_k_=HKEY_LOCAL_MACHINE\%SOFTWARE%\%_CBS%"
-
 reg.exe query "%_k_%" /s /v Baseline | findstr /i HKEY_LOCAL_MACHINE | findstr /i /v Package_for_RollupFix >>"temp\Reg-Baseline.txt"
 type nul>"temp\Reg-Similar.txt"
 if exist "temp\Reg-Baseline.txt" for /f "usebackq tokens=8 delims=\." %%G in ("temp\Reg-Baseline.txt") do (
@@ -1902,12 +1900,10 @@ if exist "temp\Reg-Matched.txt" for /f "usebackq tokens=1 delims= " %%G in ("tem
 for %%# in (%basepkg%) do (
   reg.exe add "%_k_%\%%#" /v Baseline /t REG_DWORD /d 1 /f %_Nul1%
 )
-
 call :RggUnload
 goto :eof
 
 :SBSConfig
-if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
 if %1 neq 9 if %_build% geq 26052 reg.exe delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide" /v DecompressOverride /f %_Nul3%
 if %1 neq 9 reg.exe add "HKLM\%SOFTWARE%\%_SxsCfg%" /v SupersededActions /t REG_DWORD /d %1 /f %_Nul3%
@@ -2796,10 +2792,10 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
   if %Cleanup% neq 0 (
     if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean_PE.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
   )
-  call :CleanManual&goto :eof
+  goto :FinalClean
 )
-if %Cleanup% equ 0 call :CleanManual&goto :eof
-if exist "%_mount%\Windows\WinSxS\pending.xml" call :CleanManual&goto :eof
+if %Cleanup% equ 0 goto :FinalClean
+if exist "%_mount%\Windows\WinSxS\pending.xml" goto :FinalClean
 set "_Nul8="
 if %_build% geq 25380 if %_build% lss 26000 (
   set "_Nul8=1>nul 2>nul"
@@ -2815,7 +2811,8 @@ call :SBSConfig %savr% %rbvr% 9
 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
 if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
 :FinalClean
-call :CleanManual&goto :eof
+call :CleanManual
+goto :eof
 
 :CleanManual
 if exist "%_mount%\Windows\WinSxS\ManifestCache\*.bin" (
