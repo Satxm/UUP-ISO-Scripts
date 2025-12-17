@@ -27,6 +27,7 @@ echo.
 set /p id=
 
 if not defined id goto :setid
+if "%id:~,4%" == "http" for /f "tokens=2 delims==&" %%i in ("%id%") do set id=%%i
 
 set "_batf=%~f0"
 set "_batp=%_batf:'=''%"
@@ -53,6 +54,17 @@ if defined server set "files=%files%.Server.txt"
 set "Dir=UUPs.%build%"
 if defined server set "Dir=%Dir%.Server"
 
+:DOWNLOAD_APPS
+echo.
+echo %line%
+echo 正在检索完整 Apps aria2 脚本……
+echo %line%
+echo.
+if exist %files% del /f /q %files%
+"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=neutral&edition=app&aria2=2"
+if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
+if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
+
 :DOWNLOAD_UUPS
 echo.
 echo %line%
@@ -64,17 +76,6 @@ if exist %files% del /f /q %files%
 if defined server "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=serverdatacenter;serverdatacentercore;serverstandard;serverstandardcore&aria2=2"
 if not exist %files% goto :DOWNLOAD_UUPS
 if exist %files% %psc% "(Get-Content %files%).Replace('cabs_','').Replace('MetadataESD_','').Replace('Wim_','').Replace('.ESD','.esd').Replace('-kb','-KB').Replace('windows1','Windows1').Replace('-ndp','-NDP') | Out-File %files% -Encoding ASCII"
-if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
-if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
-
-:DOWNLOAD_APPS
-echo.
-echo %line%
-echo 正在检索完整 Apps aria2 脚本……
-echo %line%
-echo.
-if exist %files% del /f /q %files%
-"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=neutral&edition=app&aria2=2"
 if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
 if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 

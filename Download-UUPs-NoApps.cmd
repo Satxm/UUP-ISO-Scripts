@@ -27,6 +27,7 @@ echo.
 set /p id=
 
 if not defined id goto :setid
+if "%id:~,4%" == "http" for /f "tokens=2 delims==&" %%i in ("%id%") do set id=%%i
 
 set "_batf=%~f0"
 set "_batp=%_batf:'=''%"

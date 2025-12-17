@@ -470,7 +470,7 @@ call :dk_color1 %Blue% "=== 正在创建 ISO ..." 4
 set "wimfile=ISOFOLDER\sources\install.wim"
 if exist "ISOFOLDER\sources\install.esd" set "wimfile=ISOFOLDER\sources\install.esd"
 if exist "ISOFOLDER\sources\install.swm" set "wimfile=ISOFOLDER\sources\install.swm"
-for /f %%a in ('%_psc% "(dir %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
+for /f %%a in ('%_psc% "(Get-item %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
 if /i not %arch%==arm64 (
   oscdimg.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -m -u2 -udfver102 -t%isotime% -l%DVDLABEL% ISOFOLDER %DVDISO%.iso
 ) else (

@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.11.20-120"
+@set "uivr=v25.12.17-120"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -144,12 +144,7 @@ if defined _args for %%# in (%*) do (
   if exist "%%~#\*.esd" ( set "_DIR=%%~f#" & echo %%~# & goto :checkuup)
   if exist "%%~#\*Windows1*-KB*" ( set "_DIR=%%~f#" & echo %%~# )
 )
-if defined _DIR if defined _args for %%# in (%*) do (
-  if exist "%%~#\sources\install.wim" ( set "_ISO=%%~f#" & echo %%~#  & goto :copyisodir )
-  if /i "%%~x#"==".iso" if exist "%%~#" ( set "_ISO=%%~f#" & echo %%~#  & goto :extraciso )
-)
 if not defined _DIR goto :selectdir
-if not defined _ISO goto :selectiso
 
 :selectdir
 echo.
@@ -183,58 +178,6 @@ if not exist "%_DIR%\*.esd" if not exist "%_DIR%\*Windows1*-KB*" (
   goto :selectdir
 )
 if exist "%_DIR%\*.esd" goto :checkuup
-if exist "%_DIR%\*Windows1*-KB*" if defined _ISO goto :ISO
-
-:selectiso
-echo.
-for /f "tokens=* delims=" %%# in ('dir /b /ad "!_work!"') do (
-  if exist "%%~#\sources\install.wim" ( set /a _niso+=1 & set _ISO=%%~# & echo %%# )
-)
-if exist "*.iso" for /f "tokens=* delims=" %%# in ('dir /b /a:-d *.iso') do (
-  set /a _niso+=1 & set _ISO=%%~# & echo %%~#
-)
-if !_niso! equ 1 if defined _DIR if defined _ISO (
-  if exist "%_ISO%\sources\install.wim" goto :copyisodir
-  if /i "%_ISO:~-4%"==".iso" goto :extraciso
-)
-set _ISO=
-echo.
-echo 使用 Tab 键选择或输入 ISO 文件或 install.wim 文件夹
-echo %line%
-echo.
-set /p _ISO=
-if not defined _ISO (
-  echo.
-  %_err%
-  call :dk_color1 %Red% "未指定文件（夹）"
-  echo.
-  goto :selectiso
-)
-set "_ISO=%_ISO:"=%"
-if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
-if not exist "%_ISO%" if not exist "%_ISO%\sources\install.wim" (
-  echo.
-  %_err%
-  call :dk_color1 %Red% "指定的文件（夹）非 ISO 文件或 install.wim 文件夹"
-  echo.
-  goto :selectdir
-)
-if exist "%_ISO%\sources\install.wim" goto :copyisodir
-if /i "%_ISO:~-4%"==".iso" goto :extraciso
-goto :eof
-
-:copyisodir
-call :dk_color1 %Gray% "正在复制 ISO 文件夹 %_ISO% ..." 4 5
-if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
-if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
-robocopy "%_ISO%" "ISOFOLDER" /E /A-:R %_Nul3%
-goto :checkiso
-
-:extraciso
-call :dk_color1 %Gray% "正在解压 ISO 文件 %_ISO% ..." 4 5
-if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
-7z.exe x "%_ISO%" -oISOFOLDER * -r %_Nul3%
-goto :checkiso
 
 :checkuup
 @cls
@@ -252,26 +195,13 @@ for %%# in (
   ServerStandardCore,ServerStandard,ServerDatacenterCore,ServerDatacenter,ServerTurbineCore,ServerTurbine,ServerAzureStackHCICor
   WNC
 ) do (
-  if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%
-  ) else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%
-  )
+  if exist "!_DIR!\%%#_*.esd" (dir /b /a:-d "!_DIR!\%%#_*.esd">>temp\uups_esd.txt %_Nul2%)
+  else if exist "!_DIR!\MetadataESD_%%#_*.esd" (dir /b /a:-d "!_DIR!\MetadataESD_%%#_*.esd">>temp\uups_esd.txt %_Nul2%)
 )
 for /f "tokens=3 delims=: " %%# in ('find /v /c "" temp\uups_esd.txt %_Nul6%') do set _nsum=%%#
 if %_nsum% equ 0 goto :E_NotFind
 for /l %%# in (1,1,%_nsum%) do call :mediacheck %%#
 set "wimindex="!_DIR!\%uups_esd1%" 3"
-if defined eWIMLIB goto :QUIT
-goto :ISO
-
-:checkiso
-@cls
-if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
-call :dk_color1 %_Green% "更新文件夹： !_DIR!" 4
-call :dk_color1 %Gray% "正在检查 ISO 文件信息..." 4
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set _nsum=%%#
-if %_nsum% equ 0 goto :E_NotFind
-for /l %%# in (1,1,%_nsum%) do call :mediacheck %%#
-set "wimindex="ISOFOLDER\sources\install.wim" 1"
 if defined eWIMLIB goto :QUIT
 goto :ISO
 
@@ -315,10 +245,7 @@ set _rtrn=InstallRet
 goto :InstallWim
 :InstallRet
 call :dk_color1 %Blue% "=== 正在创建 ISO ..." 4
-set "wimfile=ISOFOLDER\sources\install.wim"
-if exist "ISOFOLDER\sources\install.esd" set "wimfile=ISOFOLDER\sources\install.esd"
-if exist "ISOFOLDER\sources\install.swm" set "wimfile=ISOFOLDER\sources\install.swm"
-for /f %%a in ('%_psc% "(dir %wimfile%).LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
+for /f %%a in ('%_psc% "(Get-item "ISOFOLDER\sources\install.wim").LastWriteTime.ToString('MM/dd/yyyy,HH:mm:ss')"') do set isotime=%%a
 if /i not %arch%==arm64 (
   oscdimg.exe -bootdata:2#p0,e,b"ISOFOLDER\boot\etfsboot.com"#pEF,e,b"ISOFOLDER\efi\Microsoft\boot\efisys.bin" -o -m -u2 -udfver102 -t%isotime% -l%DVDLABEL% ISOFOLDER %DVDISO%.iso
 ) else (
@@ -340,6 +267,7 @@ if %UpgradeEdition% equ 1 call :SortEditions
 goto :InstallDone
 
 :CreateInstallWim
+set "_www=!_DIR!\!uups_esd%_nsum%!" & set _inx=%_nsum% & call :WimDate
 call :dk_color1 %Blue% "=== 正在创建 install.wim 文件..." 4 5
 if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
 for /l %%# in (1, 1,%_nsum%) do (
@@ -402,9 +330,9 @@ call :update "temp\Winre.wim"
 goto :WinreDone
 
 :CreateWinreWim
-call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4
-if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
-if not exist "temp\Winre.wim" if exist "ISOFOLDER\sources\install.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
+set "_www=!_DIR!\%uups_esd1%" & set _inx=2 & call :WimDate
+call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4 5
+wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
 goto:eof
@@ -705,8 +633,7 @@ exit /b
 set _ESDSrv%1=0
 if exist temp\uups_esd.txt for /f "tokens=2 delims=]" %%# in ('find /v /n "" temp\uups_esd.txt ^| find "[%1]"') do set uups_esd=%%#
 set "uups_esd%1=%uups_esd%"
-set "wimshow=install.wim" & set "wimindex="ISOFOLDER\sources\install.wim" %1"
-if exist "!_DIR!\*.esd" set "wimshow=%uups_esd%" & set "wimindex="!_DIR!\%uups_esd%" 3"
+set "wimshow=%uups_esd%" & set "wimindex="!_DIR!\%uups_esd%" 3"
 wimlib-imagex.exe info %wimindex% %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% equ 73 (
@@ -822,7 +749,7 @@ goto :eof
 :DoCommit
 set "_apd="
 if "%~1"=="Append" set "_apd=/Append"
-call :CleanReg
+if %Cleanup% equ 1 call :CleanReg
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%" %_apd%
 goto :eof
 
@@ -947,8 +874,8 @@ for %%# in (
   "EnterpriseSN:%_wtx% Enterprise N LTSC:%_wtx% 企业版 N LTSC"
   "IoTEnterprise:%_wtx% IoT Enterprise:%_wtx% IoT 企业版"
   "IoTEnterpriseS:%_wtx% IoT Enterprise LTSC:%_wtx% IoT 企业版 LTSC"
-  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT 企业版 LTSC"
-  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT 企业版 LTSC 订阅"
+  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT 企业版订阅"
+  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT 企业版订阅 LTSC"
   "ServerRdsh:%_wtx% Enterprise Multi-Session:%_wtx% 企业版多会话"
   "Starter:%_wtx% Starter:%_wtx% 入门版"
   "StarterN:%_wtx% Starter N:%_wtx% 入门版 N"
