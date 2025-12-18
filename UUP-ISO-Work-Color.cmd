@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.12.17-120"
+@set "uivr=v25.12.18-120"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -767,6 +767,7 @@ if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if exist "!_DIR!\*Deskto
 )
 if %_dpx% equ 1 (
   for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" temp %_Nul3%
+  for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:UpdateCompression.dll "!_DIR!\%%#" temp %_Nul3%
   copy /y %SysPath%\expand.exe temp\ %_Nul3%
 )
 if not exist "ISOFOLDER\sources\setuphost.exe" (
@@ -1017,22 +1018,22 @@ set _nat=0
 if /i %arch%==%xOS% set _nat=1
 if /i %arch%==x64 if /i %xOS%==amd64 set _nat=1
 if %_nat% equ 0 (
-set _ddc=DesktopDeployment_x86.cab
-set _dsp=SysWOW64
-set _wow=1
+  set _ddc=DesktopDeployment_x86.cab
+  set _dsp=SysWOW64
+  set _wow=1
 )
 if exist "temp\%_f_%" goto :expand_end
 set msuwim=0
 set "uupmsu="
 if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (
-expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#")
-wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
+  expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#")
+  wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
 )
 if defined uupmsu if not exist "temp\%_ddc%" (
-if %msuwim% equ 0 expand.exe -f:%_ddc% "!_DIR!\%uupmsu%" .\temp %_Nul3%
-if %msuwim% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 %_ddc% --dest-dir=.\temp %_Nul3%
+  if %msuwim% equ 0 expand.exe -f:%_ddc% "!_DIR!\%uupmsu%" .\temp %_Nul3%
+  if %msuwim% equ 1 wimlib-imagex.exe extract "!_DIR!\%uupmsu%" 1 %_ddc% --dest-dir=.\temp %_Nul3%
 )
-if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wimlib-imagex.exe extract "%wimindex%" Windows\SysWOW64\dpx.dll --dest-dir=temp --no-acls --no-attributes %_Nul3%)
+if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wimlib-imagex.exe extract %wimindex% Windows\%_dsp%\%_f_% --dest-dir=temp --no-acls --no-attributes %_Nul3%)
 :expand_end
 if exist "temp\%_f_%" if "%_f_%"=="dpx.dll" copy /y %SystemRoot%\%_dsp%\expand.exe temp\ %_Nul3%
 if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "bin\MSDelta.dll" %_Nul3%
@@ -1459,7 +1460,7 @@ if defined wim_%pkgn% (
 )
 if defined psf_%pkgn% (
   if not exist "!dest!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!dest!\*.psf.cix.xml"') do rename "!dest!\%%#" express.psf.cix.xml %_Nul3%
-  if exist "%SysPath%\UpdateCompression.dll" (copy /y "%SysPath%\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
+  if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
   PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
   if !errorlevel! neq 0 (
     call :dk_color1 %Red% "出现错误：解压 PSF 更新包失败"
@@ -1540,7 +1541,7 @@ call set /a _cab+=1
 echo [%count%/%_cab%] %package% [累积更新]
 wimlib-imagex.exe apply "!_cabdir!\%pkgn%.wim" 1 "!dest!" --no-acls --no-attributes %_Null%
 if not exist "!dest!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!dest!\*.psf.cix.xml"') do rename "!dest!\%%#" express.psf.cix.xml %_Nul3%
-if exist "%SysPath%\UpdateCompression.dll" (copy /y "%SysPath%\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
+if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
 PSFExtractor.exe -v2 "!_cabdir!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
 if !errorlevel! neq 0 (
   call :dk_color1 %Red% "出现错误：解压 PSF 更新包失败"
@@ -1812,6 +1813,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=
 set idpkg=LCU
 set callclean=1
 set _c_=0
+set _e_=0
 if defined cumulative for %%# in (%cumulative%) do (
   %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%%#
   call set /a _c_+=1
@@ -1822,10 +1824,11 @@ if defined lcumsu for %%# in (%lcumsu%) do (
   set ppath=%%#
   if exist "!_cabdir!\LCUbase\%%~nx#" set ppath="!_cabdir!\LCUbase\%%~nx#"
   %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:!ppath!
+  call set _e_=!errorlevel!
   call set /a _c_+=1
   if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
 )
-call :chkEC !errorlevel!
+call :chkEC %_e_%
 if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinre% equ 1 call :Cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :%_gobk%
@@ -1938,7 +1941,7 @@ if exist "!lcudir!\*cablist.ini" (
 )
 if exist "!lcudir!\*.psf.cix.xml" (
   if not exist "!lcudir!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!lcudir!\*.psf.cix.xml"') do rename "!lcudir!\%%#" express.psf.cix.xml %_Nul3%
-  if exist "%SysPath%\UpdateCompression.dll" (copy /y "%SysPath%\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
+  if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
   PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!lcudir!" %_Nul3%
   if !errorlevel! neq 0 (
     call :dk_color1 %Red% "出现错误：解压 PSF 更新包失败"
@@ -2953,6 +2956,8 @@ set _reMSU=0
 set _wimEdge=0
 set _Srvr=0
 set _LTSC=0
+set basekbn=
+set basepkg=
 set "_mount=%_drv%\Mount"
 set "_ntf=NTFS"
 if /i not "%_drv%"=="%SystemDrive%" if %_cwmi% equ 1 for /f "tokens=2 delims==" %%# in ('"wmic volume where DriveLetter='%_drv%' get FileSystem /value"') do set "_ntf=%%#"
