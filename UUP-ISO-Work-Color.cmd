@@ -2473,7 +2473,6 @@ if %AddDrivers% equ 1 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :DoCommit
 if %AddRegs% equ 1 call :DoReg
 if %FixPDF% equ 1 call :FixPDF
-if !handle1! neq 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" set DVDISO=%DVDISO%.MS
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
