@@ -109,7 +109,7 @@ if /i "%PROCESSOR_ARCHITECTURE%"=="arm64" set "xOS=arm64"
 if /i "%PROCESSOR_ARCHITECTURE%"=="x86" if "%PROCESSOR_ARCHITEW6432%"=="" set "xOS=x86"
 if /i "%PROCESSOR_ARCHITEW6432%"=="amd64" set "xOS=amd64"
 if /i "%PROCESSOR_ARCHITEW6432%"=="arm64" set "xOS=arm64"
-set "SysPath=%SystemRoot%\System32"
+set "SysPath=%SystemRoot%\system32"
 set "Path=%~dp0bin;%~dp0temp;%SysPath%;%SystemRoot%;%SysPath%\Wbem;%SysPath%\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\"
 if exist "%SystemRoot%\Sysnative\reg.exe" (
   set "SysPath=%SystemRoot%\Sysnative"
@@ -195,8 +195,8 @@ if exist temp\ rmdir /s /q temp\
 mkdir temp
 
 :ReadConfig
-if not exist "Config.ini" goto :checkdone
-findstr /i \[Config\] Config.ini %_Nul1% || goto :checkdone
+if not exist "Config.ini" goto :findargs
+findstr /i \[Config\] Config.ini %_Nul1% || goto :findargs
 for %%# in (
 AddUpdates
 Cleanup
@@ -2473,6 +2473,7 @@ if %AddDrivers% equ 1 call :AddDrivers
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :DoCommit
 if %AddRegs% equ 1 call :DoReg
 if %FixPDF% equ 1 call :FixPDF
+if !handle1! neq 1 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" set DVDISO=%DVDISO%.MS
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
 if exist "%_mount%\Program Files\WindowsApps\*_8wekyb3d8bbwe" if exist "!_DIR!\Apps\Remove_Appxs.txt" call :RemoveAppx
 if %AddAppxs% equ 1 call :RegAppx
@@ -2550,6 +2551,7 @@ if %_mver% geq 26100 (
 )
 reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+reg add "HKLM\%SOFTWARE%\Policies\Microsoft\Windows\CloudContent" /v "DisableCloudOptimizedContent" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\CrossDeviceUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
@@ -2647,10 +2649,11 @@ goto :eof
 call :dk_color1 %Blue% "=== 正在安装 Appxs 软件包..." 4 5
 pushd "!_DIR!\Apps"
 copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
-if exist Custom_Appxs.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs.txt) do call :AddAppxs "%%i"
+if %_LTSC% equ 1 if exist Custom_Appxs_LTSC.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs_LTSC.txt) do call :AddAppxs "%%i"
+if %_LTSC% neq 1 if exist Custom_Appxs.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs.txt) do call :AddAppxs "%%i"
 for /f "tokens=3 delims=: " %%# in ('%_Dism% /English /Image:"%_mount%" /Get-CurrentEdition ^| findstr /c:"Current Edition"') do set editionid=%%#
-if not exist Custom_Appxs.txt if exist Apps_%editionid%.txt for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
-if not exist Custom_Appxs.txt if not exist Apps_*.txt for /f %%i in ('dir /b *') do if /i not "%%i"=="MSIXFramework" call :AddAppxs "%%i"
+if not exist Custom_Appxs*.txt if exist Apps_%editionid%.txt for /f "eol=# tokens=* delims=" %%i in (Apps_%editionid%.txt) do call :AddAppxs "%%i"
+if not exist Custom_Appxs*.txt if not exist Apps_*.txt for /f %%i in ('dir /b *') do if /i not "%%i"=="MSIXFramework" call :AddAppxs "%%i"
 del /f /q CompDB_App.* %_Nul3%
 popd
 goto :eof
