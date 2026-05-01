@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.12.18-120"
+@set "uivr=v26.03.25-121"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -69,7 +69,7 @@ set AppsAsStub=0
 
 :: 若展开.msu 更新包并通过 update.mum 安装更新，请将此参数更改为 1
 :: 在 Build 26052 及更高版本将会自动启用，若需禁用此项，请将此参数更改为 2
-set LCUExpand=0
+set LCUmsuExpand=0
 
 :: 若修复全新安装后无 Microsoft Print to PDF 打印机，请将此参数更改为 1
 set FixPDF=0
@@ -215,7 +215,7 @@ AppsAsStub
 AddRegs
 AddDrivers
 AutoExit
-LCUExpand
+LCUmsuExpand
 FixPDF
 WIM2ESD
 WIM2SWM
@@ -379,9 +379,9 @@ if %_build% geq 22000 if %_build% lss 26052 if %LCUWinre% equ 2 (set LCUWinre=0)
 if defined ChoiceEdition set UpgradeEdition=0
 if %_Srvr% equ 1 set UpgradeEdition=0 & set UpdtOneDrive=0
 if %_LTSC% equ 1 set UpdtOneDrive=0
-if %_build% lss 21382 set LCUExpand=0
-if %_build% geq 26052 if %LCUExpand% equ 2 (set LCUExpand=0) else (set LCUExpand=1)
-if %LCUExpand% equ 2 set LCUExpand=0
+if %_build% lss 21382 set LCUmsuExpand=0
+if %_build% geq 26052 if %LCUmsuExpand% equ 2 (set LCUmsuExpand=0) else (set LCUmsuExpand=1)
+if %LCUmsuExpand% equ 2 set LCUmsuExpand=0
 if %AddUpdates% equ 1 set _DismHost=1
 if %AddAppxs% equ 1 set _DismHost=1
 if defined _DismHost call :DismHostON
@@ -420,7 +420,7 @@ if %AddUpdates% neq 1 goto :NoUpdate
 call :dk_color1 %Blue% "=== 正在检查更新文件..." 4 5
 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :expand_dll dpx
-if %_reMSU% equ 1 if %LCUExpand% neq 1 call :upd_msu
+if %_reMSU% equ 1 if %LCUmsuExpand% neq 1 call :upd_msu
 set directcab=0
 call :extract
 :NoUpdate
@@ -672,6 +672,7 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\b
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 set "_inx=1"&call :DoMount "ISOFOLDER\sources\boot.wim"
+call :wds_add
 call :BootRemove
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\ %_Nul3%
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -679,6 +680,7 @@ call :Cleanup
 call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
+call :wds_add
 call :BootRemove
 if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootCabsAdd) else (call :BootFileAdd)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -728,6 +730,7 @@ wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\system32\xmllite.dll --
 copy /y ISOFOLDER\setup.exe %_mount%\setup.exe %_Nul3%
 copy /y ISOFOLDER\sources\inf\setup.cfg %_mount%\sources\inf\setup.cfg %_Nul3%
 set "_bkimg="
+if exist "ISOFOLDER\sources\winpe.jpg" del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
 wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Nul3%
 for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png) do if exist "ISOFOLDER\sources\%%#" set "_bkimg=%%#"
 for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png, winpe.jpg) do (if exist "ISOFOLDER\sources\%%#" if not defined _bkimg set "_bkimg=%%#")
@@ -999,7 +1002,7 @@ goto :eof
 mkdir "!_DIR!\%pkgn%" %_Nul3%
 expand.exe -d -f:*Windows* "!_DIR!\%package%" %_Nul2% | findstr /i cab %_Nul3% && (
   expand.exe -f:* "!_DIR!\%package%" "!_DIR!\%pkgn%" %_Nul3%)
-if exist "!_DIR!\%pkgn%\*SSU-*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*SSU-*.cab"') do (
+if %_build% leq 26052 if exist "!_DIR!\%pkgn%\*SSU-*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*SSU-*.cab"') do (
   if not exist "!_DIR!\%%i" move /y "!_DIR!\%pkgn%\%%i" "!_DIR!\%%i" %_Nul3%
 )
 if exist "!_DIR!\%pkgn%\*Windows*.cab" for /f "tokens=* delims=" %%i in ('dir /b /on "!_DIR!\%pkgn%\*Windows*.cab"') do (
@@ -1480,7 +1483,7 @@ goto :eof
 :msu2
 if defined msu_%pkgn% goto :eof
 for /f "tokens=2 delims=-" %%V in ('echo %pkgn%') do set pkgid=%%V
-if %LCUExpand% equ 1 if exist "!_cabdir!\*Windows1*%pkgid%*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*%pkgid%*.wim"') do (set "pkgw=%%~n#")
+if %LCUmsuExpand% equ 1 if exist "!_cabdir!\*Windows1*%pkgid%*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*%pkgid%*.wim"') do (set "pkgw=%%~n#")
 if defined psf_%pkgw% goto :eof
 if exist "!dest!\" rmdir /s /q "!dest!\"
 mkdir "!dest!" %_Nul3%
@@ -1507,17 +1510,17 @@ if %msuwim% equ 0 (
   wimlib-imagex.exe extract "!_DIR!\%package%" 1 *Windows*.wim --dest-dir="!_cabdir!\lcu" %_Nul3%
   wimlib-imagex.exe extract "!_DIR!\%package%" 1 SSU-*%arch%*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
   if %_build% geq 26100 wimlib-imagex.exe extract "!_DIR!\%package%" 1 RCU-*%arch%*.cab --dest-dir="!_cabdir!\lcu" %_Nul3%
-  if %LCUExpand% equ 1 wimlib-imagex.exe extract "!_DIR!\%package%" 1 *Windows*.psf --dest-dir="!_cabdir!" %_Nul3%
+  if %LCUmsuExpand% equ 1 wimlib-imagex.exe extract "!_DIR!\%package%" 1 *Windows*.psf --dest-dir="!_cabdir!" %_Nul3%
 )
 for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*Windows1*-KB*.*"') do set "compkg=%%#"
 7z.exe e "!_cabdir!\lcu\%compkg%" -o"!dest!" update.mum -aoa %_Nul3%
 if exist "!_cabdir!\lcu\RCU-*baseless*.*" del /f /q "!_cabdir!\lcu\RCU-*baseless*.*" %_Nul3%
 if exist "!_cabdir!\lcu\RCU-*%arch%*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\RCU-*%arch%*.cab"') do (
   set _rcu=%pkgid%
-  if %LCUExpand% equ 1 set "compkg=%%#"&call :inrenmsu
+  if %LCUmsuExpand% equ 1 set "compkg=%%#"&call :inrenmsu
 )
 if exist "!_cabdir!\lcu\SSU-*%arch%*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\SSU-*%arch%*.cab"') do (set "compkg=%%#"&call :inrenmsu)
-if %msuwim% equ 1 if %LCUExpand% equ 1 move /y "!_cabdir!\lcu\*.wim" "!_cabdir!\" %_Nul3%
+if %msuwim% equ 1 if %LCUmsuExpand% equ 1 move /y "!_cabdir!\lcu\*.wim" "!_cabdir!\" %_Nul3%
 rmdir /s /q "!_cabdir!\lcu\" %_Nul3%
 set msu_%pkgn%=1
 findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && call :chklcu "!dest!" Package_for_RollupFix
@@ -1539,7 +1542,7 @@ set psf_%pkgn%=1
 set /a count+=1
 call set /a _cab+=1
 echo [%count%/%_cab%] %package% [累积更新]
-wimlib-imagex.exe apply "!_cabdir!\%pkgn%.wim" 1 "!dest!" --no-acls --no-attributes %_Null%
+wimlib-imagex.exe apply "!_cabdir!\%package%" 1 "!dest!" --no-acls --no-attributes %_Null%
 if not exist "!dest!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!dest!\*.psf.cix.xml"') do rename "!dest!\%%#" express.psf.cix.xml %_Nul3%
 if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
 PSFExtractor.exe -v2 "!_cabdir!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
@@ -1565,11 +1568,11 @@ for /f "tokens=5-8 delims==. " %%H in ('findstr /i %kbnm% "%~1\update.mum"') do 
 if %_build% geq 22621 (
   if not exist "!_cabdir!\LCUmum\%kbnm%~%_Pkt%~%_ss%~~%cver%.mum" copy /y "%~1\update.mum" "!_cabdir!\LCUmum\%kbnm%~%_Pkt%~%_ss%~~%cver%.mum" %_Nul1%
 )
-if %LCUExpand% equ 0 if %_build% geq 26052 (
+if %LCUmsuExpand% equ 0 if %_build% geq 26052 (
 if not exist "!_cabdir!\LCUall\*Windows*%pkgid%*.msu" if not exist "!_cabdir!\LCUall\%package%" (
   copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
 )
-if %LCUExpand% equ 0 echo %package% |findstr /i "KB5043080" %_Nul1% && if not exist "!_cabdir!\LCUbase\%package%" (
+if %LCUmsuExpand% equ 0 echo %package% |findstr /i "KB5043080" %_Nul1% && if not exist "!_cabdir!\LCUbase\%package%" (
   mkdir "!_cabdir!\LCUbase" %_Nul3%
   copy /y "!_DIR!\%package%" "!_cabdir!\LCUbase\%package%" %_Nul1%
   )
@@ -1650,7 +1653,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*~arm64~~*.mum" (
 )
 for /f "tokens=4,5,6 delims=_" %%H in ('dir /b "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-foundation_*.manifest"') do set "_Fnd=microsoft-w..-foundation_%_Pkt%_%%H_%%~nJ"
 if %_build% geq 14393 if %_build% lss 19041 if not exist "%_mount%\Windows\WinSxS\Manifests\%_SupCom%.manifest" call :Latent _Sup %_Nul3%
-if %_build% geq 19041 if %_build% lss 19046 if not exist "%_mount%\Windows\WinSxS\Manifests\%_EsuCom%.manifest" call :Latent _Esu %_Nul3%
+if %_build% geq 14393 if %_build% lss 19046 if not exist "%_mount%\Windows\WinSxS\Manifests\%_EsuCom%.manifest" call :Latent _Esu %_Nul3%
 set lcuall=
 set lcumsu=
 set mpamfe=
@@ -1678,9 +1681,10 @@ if exist "!_DIR!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_D
 if exist "!_DIR!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
 if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do if defined msu_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
 if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.wim"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
-if %LCUExpand% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*-KB*.wim"') do if defined psf_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
-if %LCUExpand% equ 1 if exist "!_DIR!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\RCU-*-*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
+if %LCUmsuExpand% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*-KB*.wim"') do if defined psf_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+if %LCUmsuExpand% equ 1 if exist "!_DIR!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\RCU-*-*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if exist "!_DIR!\*defender-dism*%_bit%*.cab" (for /f "tokens=* delims=" %%# in ('dir /b "!_DIR!\*defender-dism*%_bit%*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+call :wds_add
 if %_build% geq 22621 if %winbuild% lss 10240 reg.exe query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentMajorVersionNumber %_Nul3% || (
 reg.exe add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentMajorVersionNumber /t REG_DWORD /d 10 /f
 reg.exe add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentMinorVersionNumber /t REG_DWORD /d 0 /f
@@ -1928,6 +1932,19 @@ if /i %xOS%==x86 if /i not %arch%==x86 reg.exe save HKLM\%SOFTWARE% "%_mount%\Wi
 reg.exe unload HKLM\%SOFTWARE% %_Nul1%
 if /i %xOS%==x86 if /i not %arch%==x86 move /y "%_mount%\Windows\System32\Config\SOFTWARE2" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
 goto :eof
+
+:wds_add
+if %_build% geq 29550 if %winbuild% lss 20348 if /i not %xOS%==x86 (
+if /i %arch%==%xOS% copy /y %SysPath%\wdscore.dll "%_mount%\Windows\System32\downlevel\" %_Nul1%
+if /i %arch%==x64 if /i %xOS%==amd64 copy /y %SysPath%\wdscore.dll "%_mount%\Windows\System32\downlevel\" %_Nul1%
+if exist "%SystemRoot%\SysWOW64\wdscore.dll" if exist "%_mount%\Windows\SysWOW64\downlevel\*.dll" copy /y %SystemRoot%\SysWOW64\wdscore.dll "%_mount%\Windows\SysWOW64\downlevel\" %_Nul1%
+)
+exit /b
+
+:wds_rem
+if exist "%_mount%\Windows\System32\downlevel\wdscore.dll" del /f /q "%_mount%\Windows\System32\downlevel\wdscore.dll" %_Nul3%
+if exist "%_mount%\Windows\SysWOW64\downlevel\wdscore.dll" del /f /q "%_mount%\Windows\SysWOW64\downlevel\wdscore.dll" %_Nul3%
+exit /b
 
 :ReLCU
 if exist "!lcudir!\update.mum" if exist "!lcudir!\*.manifest" goto :eof
@@ -2438,7 +2455,9 @@ goto :eof
 set "_apd="
 if "%~1"=="Append" set "_apd=/Append"
 call :CleanReg
+call :wds_rem
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%" %_apd%
+call :wds_add
 goto :eof
 
 :DoUnmount
@@ -2550,8 +2569,11 @@ if %_mver% geq 26100 (
 )
 reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
-reg add "HKLM\%SOFTWARE%\Policies\Microsoft\Windows\CloudContent" /v "DisableCloudOptimizedContent" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
+:: reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\ReserveManager" /v "ShippedWithReserves" /t REG_DWORD /d 0 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Policies\Microsoft\Windows\CloudContent" /v "DisableConsumerAccountStateContent" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Policies\Microsoft\Windows\CloudContent" /v "DisableCloudOptimizedContent" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Policies\Microsoft\Windows\CloudContent" /v "DisableWindowsConsumerFeatures" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel" /v {20D04FE0-3AEA-1069-A2D8-08002B30309D} /t REG_DWORD /d 0 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\CrossDeviceUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\WindowsUpdate\Orchestrator\UScheduler\OutlookUpdate" /v "workCompleted" /t REG_DWORD /d 1 /f %_Nul3%
@@ -2561,10 +2583,12 @@ reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\OutlookUpdate" /f %_Nul3%
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\DevHomeUpdate" /f %_Nul3%
 reg delete "HKLM\%SOFTWARE%\Microsoft\WindowsUpdate\Orchestrator\UScheduler_Oobe\PCManagerUpdate" /f %_Nul3%
+reg delete "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Explorer\Desktop\NameSpace\DelegateFolders\{F5FB2C77-0E2F-4A16-A381-3E560C68BC83}" /f %_Nul3%
 if %_Srvr% equ 1 goto :SkipOOBE
 :: reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "BypassNRO" /t REG_DWORD /d 1 /f %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideOnlineAccountScreens" /t REG_DWORD /d 1 /f %_Nul3%
-:: reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
+reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "HideWirelessSetupInOOBE" /t REG_DWORD /d 1 /f %_Nul3%
+:: reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\OOBE" /v "ProtectYourPC" /t REG_DWORD /d 3 /f %_Nul3%
 :SkipOOBE
 reg unload HKLM\%SOFTWARE% %_Nul3%
 reg load HKLM\%USER% "%_mount%\Users\Default\NTUSER.DAT" %_Nul3%
