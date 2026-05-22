@@ -42,8 +42,9 @@ echo %line%
 echo.
 for /f "delims=' tokens=*" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuup\:.*';$id = \"%id%\";iex ($f[1]);"') do set info=%%a
 for /f "tokens=1 delims=. " %%b in ("%info%") do set build=%%b
+for /f "tokens=1,2 delims=. " %%b in ("%info%") do set buildfull=%%b.%%c
 echo %info% | find /i "Server" 1>nul 2>nul && set server=1
-echo 此 UUPID 对应的系统版本为：%build%
+echo 此 UUPID 对应的系统版本为：%buildfull%
 
 :START_PROCESS
 set "files=files.%random%.txt"
@@ -85,7 +86,7 @@ goto :EOF
 
 :getuup:
 $url = "https://api.uupdump.net/listlangs.php?id="+$id
-$json = (Invoke-WebRequest $url).content | ConvertFrom-Json
+$json = (Invoke-WebRequest $url -UseBasicParsing).content | ConvertFrom-Json
 $build = $json.response.updateInfo.build
 $name = $json.response.updateInfo.title
 Write-Host $build $name

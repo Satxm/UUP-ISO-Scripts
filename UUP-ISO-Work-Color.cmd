@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.03.25-121"
+@set "uivr=v26.05.21-121"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -420,7 +420,6 @@ if %AddUpdates% neq 1 goto :NoUpdate
 call :dk_color1 %Blue% "=== 正在检查更新文件..." 4 5
 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :expand_dll dpx
-if %_reMSU% equ 1 if %LCUmsuExpand% neq 1 call :upd_msu
 set directcab=0
 call :extract
 :NoUpdate
@@ -755,10 +754,6 @@ imagex.exe /info %wimindex% >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
 for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch=x86") else if %%# equ 9 (set "arch=x64") else (set "arch=arm64"))
 for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _build=%%#
-if %_build% geq 21382 if %_build% lss 26052 if exist "!_DIR!\*.AggregatedMetadata*.cab" (
-  if exist "!_DIR!\*Windows1*-KB*.cab" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
-  if exist "!_DIR!\*Windows1*-KB*.wim" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
-)
 if %_build% geq 22621 if exist "!_DIR!\*Edge*.wim" (
   set _wimEdge=1
   if not exist "!_DIR!\Edge.wim" for /f %%# in ('dir /b /a:-d "!_DIR!\*Edge*.wim"') do rename "!_DIR!\%%#" Edge.wim %_Nul3%
@@ -1040,235 +1035,6 @@ if exist "temp\%_ddc%" (expand.exe -f:%_f_% "temp\%_ddc%" temp %_Nul3%) else (wi
 :expand_end
 if exist "temp\%_f_%" if "%_f_%"=="dpx.dll" copy /y %SystemRoot%\%_dsp%\expand.exe temp\ %_Nul3%
 if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "bin\MSDelta.dll" %_Nul3%
-exit /b
-
-:upd_msu
-call :dk_color1 %Blue% "创建累积更新的 MSU 文件" 4 5
-pushd "!_DIR!"
-set "_MSUdll=dpx.dll ReserveManager.dll TurboStack.dll UpdateAgent.dll UpdateCompression.dll wcp.dll"
-set "_MSUonf=onepackage.AggregatedMetadata.cab"
-set /a _rnd=%random%
-for /f %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do if /i "%%#"=="%_MSUonf%" (
-  set /a _rnd+=1
-  ren "%%#" "org!_rnd!.cab"
-)
-for /f %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (set "metaf=%%#"&call :MakeMSU)
-if exist "zzz.ddf" del /f /q "zzz.ddf"
-if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
-if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
-if exist "_tMSU\" rmdir /s /q "_tMSU\" %_Nul3%
-popd
-exit /b
-
-:MakeMSU
-set "_MSUssu="
-set IncludeSSU=1
-set _mcfail=0
-if exist "_tMSU\" rmdir /s /q "_tMSU\" %_Nul3%
-mkdir "_tMSU" %_Nul3%
-expand.exe -f:LCUCompDB*.xml.cab "%metaf%" "_tMSU" %_Nul3%
-expand.exe -f:SSUCompDB*.xml.cab "%metaf%" "_tMSU" %_Nul3%
-expand.exe -f:*.AggregatedMetadata*.cab "%metaf%" "_tMSU" %_Nul3%
-if not exist "_tMSU\LCUCompDB*.xml.cab" if not exist "_tMSU\*.AggregatedMetadata*.cab" (
-  goto :eof
-)
-if exist "_tMSU\SSU*-express.xml.cab" del /f /q "_tMSU\SSU*-express.xml.cab"
-set xtn=cab
-if not exist "_tMSU\*.AggregatedMetadata*.cab" goto :SkipWIM
-set xtn=wim
-for /f %%# in ('dir /b /a:-d "_tMSU\*.AggregatedMetadata*.cab"') do expand.exe -f:*.xml "_tMSU\%%#" "_tMSU" %_Nul3%
-if not exist "_tMSU\LCUCompDB*.xml" goto :eof
-for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml"') do (
-  %_Nul3% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
-)
-if exist "_tMSU\SSUCompDB*.xml" for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB*.xml"') do (
-  %_Nul3% makecab.exe /D Compress=ON /D CompressionType=MSZIP "_tMSU\%%~n#.xml" "_tMSU\%%~n#.xml.cab"
-)
-if not exist "_tMSU\LCUCompDB*.xml.cab" goto :eof
-del /f /q "_tMSU\*.xml" %_Nul3%
-:SkipWIM
-set "_MSUkbn="
-for /f "tokens=2 delims=_." %%# in ('dir /b /a:-d "_tMSU\LCUCompDB*.xml.cab"') do set "_MSUkbn=%%#"
-if exist "*Windows1*%_MSUkbn%*%arch%*.msu" (
-  call :dk_color1 %_Yellow% "累积更新 %_MSUkbn% 的 msu 文件已经存在，将跳过操作。"
-  goto :eof
-)
-if not exist "*Windows1*%_MSUkbn%*%arch%*.psf" goto :eof
-if exist "*Windows1*%_MSUkbn%*%arch%*.cab" (
-  set xmf=cab
-) else if exist "*Windows1*%_MSUkbn%*%arch%*.wim" (
-  set xmf=wim
-) else (
-  goto :eof
-)
-for /f %%# in ('dir /b /a:-d "_tMSU\LCUCompDB_%_MSUkbn%*.xml.cab"') do set "_MSUcdb=%%#"
-for /f %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.%xmf%"') do set "_MSUcab=%%#"
-for /f %%# in ('dir /b /a:-d "*Windows1*%_MSUkbn%*%arch%*.psf"') do set "_MSUpsf=%%#"
-set "_MSUkbf=Windows10.0-%_MSUkbn%-%arch%"
-echo %_MSUcab% | findstr /i "Windows11\." %_Nul1% && set "_MSUkbf=Windows11.0-%_MSUkbn%-%arch%"
-echo %_MSUcab% | findstr /i "Windows12\." %_Nul1% && set "_MSUkbf=Windows12.0-%_MSUkbn%-%arch%"
-if not exist "SSU-*%arch%*.cab" set IncludeSSU=0&goto :SkipSSU
-for /f %%# in ('dir /b /a:-d "SSU-*%arch%*.cab"') do (set "_chk=%%#"&call :DoSSU)
-if not defined _MSUssu set IncludeSSU=0&goto :SkipSSU
-goto :SkipSSU
-
-:DoSSU
-if defined _MSUssu goto :eof
-if exist "_tMSU\update.mum" del /f /q "_tMSU\update.mum"
-expand.exe -f:update.mum "%_chk%" "_tMSU" %_Nul3%
-set "_SSUkbn="
-if exist "_tMSU\update.mum" for /f "tokens=3 delims== " %%# in ('findstr /i releaseType "_tMSU\update.mum"') do set _SSUkbn=%%~#
-if "%_SSUkbn%"=="" goto :eof
-if not exist "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab" goto :eof
-for /f %%# in ('dir /b /a:-d "_tMSU\SSUCompDB_%_SSUkbn%*.xml.cab"') do set "_MSUsdb=%%#"
-for /f "tokens=2 delims=-" %%# in ('dir /b /a:-d "%_chk%"') do set "_MSUtsu=SSU-%%#-%arch%.cab"
-set "_MSUssu=%_chk%"
-goto :eof
-
-:SkipSSU
-set "_MSUddc="
-set "_MSUddd=DesktopDeployment_x86.cab"
-if exist "*DesktopDeployment*.cab" (
-  for /f %%# in ('dir /b /a:-d "*DesktopDeployment*.cab" ^|find /i /v "%_MSUddd%"') do set "_MSUddc=%%#"
-)
-if not defined _MSUddc (
-  call set "_MSUddc=_tMSU\DesktopDeployment.cab"
-  call set "_MSUddd=_tMSU\DesktopDeployment_x86.cab"
-  call :DDCAB
-)
-if %_mcfail% equ 1 goto :eof
-if /i not %arch%==x86 if not exist "DesktopDeployment_x86.cab" if not exist "_tMSU\DesktopDeployment_x86.cab" (
-  call set "_MSUddd=_tMSU\DesktopDeployment_x86.cab"
-  call :DDC86
-)
-if %_mcfail% equ 1 goto :eof
-call :crDDF _tMSU\%_MSUonf%
-(echo "_tMSU\%_MSUcdb%" "%_MSUcdb%"
-if %IncludeSSU% equ 1 echo "_tMSU\%_MSUsdb%" "%_MSUsdb%"
-)>>zzz.ddf
-%_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
-if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %_Yellow% "makecab.exe 对 %_MSUonf% 操作失败，将跳过操作。" 4
-  goto :eof
-)
-if %xmf%==wim goto :msu_wim
-call :crDDF %_MSUkbf%.msu
-(echo "%_MSUddc%" "DesktopDeployment.cab"
-if exist "%_MSUddd%" if /i not %arch%==x86 echo "%_MSUddd%" "DesktopDeployment_x86.cab"
-echo "_tMSU\%_MSUonf%" "%_MSUonf%"
-if %IncludeSSU% equ 1 echo "%_MSUssu%" "%_MSUtsu%"
-echo "%_MSUcab%" "%_MSUkbf%.cab"
-echo "%_MSUpsf%" "%_MSUkbf%.psf"
-)>>zzz.ddf
-%_Nul3% makecab.exe /F zzz.ddf /D Compress=OFF
-if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %_Yellow% "makecab.exe 对 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
-  goto :eof
-)
-goto :eof
-
-:msu_wim
-echo.
-echo 正在创建：%_MSUkbf%.msu
-if exist "_tWIM\" rmdir /s /q "_tWIM\" %_Nul3%
-mkdir "_tWIM" %_Nul3%
-copy /y "%_MSUddc%" "_tWIM\DesktopDeployment.cab" %_Nul3%
-if exist "%_MSUddd%" if /i not %arch%==x86 copy /y "%_MSUddd%" "_tWIM\DesktopDeployment_x86.cab" %_Nul3%
-copy /y "_tMSU\%_MSUonf%" "_tWIM\%_MSUonf%" %_Nul3%
-if %IncludeSSU% equ 1 copy /y "%_MSUssu%" "_tWIM\%_MSUtsu%" %_Nul3%
-copy /y "%_MSUcab%" "_tWIM\%_MSUkbf%.wim" %_Nul3%
-copy /y "%_MSUpsf%" "_tWIM\%_MSUkbf%.psf" %_Nul3%
-%_Nul3% wimlib-imagex.exe capture _tWIM\ %_MSUkbf%.msu content --compress=none --nocheck --no-acls
-if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %_Yellow% "捕获 %_MSUkbf%.msu 操作失败，将跳过操作。" 4
-  goto :eof
-)
-goto :eof
-
-:DDCAB
-echo.
-echo 正在解压所需文件...
-if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
-mkdir "_tSSU\000" %_Nul3%
-if not defined _MSUssu goto :ssuinner64
-expand.exe -f:* "%_MSUssu%" "_tSSU" %_Nul3% || goto :ssuinner64
-goto :ssuouter64
-:ssuinner64
-popd
-for /f %%# in ('wimlib-imagex.exe dir %wimindex% --path=Windows\WinSxS\Manifests ^| find /i "_microsoft-windows-servicingstack_"') do (
-  wimlib-imagex.exe extract %wimindex% Windows\WinSxS\%%~n# --dest-dir="!_DIR!\_tSSU" --no-acls --no-attributes %_Nul3%
-)
-pushd "!_DIR!"
-:ssuouter64
-set btx=%arch%
-if /i %arch%==x64 set btx=amd64
-for /f %%# in ('dir /b /ad "_tSSU\%btx%_microsoft-windows-servicingstack_*"') do set "src=%%#"
-for %%# in (%_MSUdll%) do if exist "_tSSU\%src%\%%#" (move /y "_tSSU\%src%\%%#" "_tSSU\000\%%#" %_Nul1%)
-call :crDDF %_MSUddc%
-call :apDDF _tSSU\000
-%_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
-if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %_Yellow% "由于 makecab.exe 对 %_MSUddc% 操作失败，将跳过操作。" 4
-  set _mcfail=1
-  exit /b
-)
-mkdir "_tSSU\111" %_Nul3%
-if /i not %arch%==x86 if not exist "DesktopDeployment_x86.cab" goto :DDCdual
-rmdir /s /q "_tSSU\" %_Nul3%
-exit /b
-
-:DDC86
-echo.
-echo 正在解压所需文件...
-if exist "_tSSU\" rmdir /s /q "_tSSU\" %_Nul3%
-mkdir "_tSSU\111" %_Nul3%
-if not defined _MSUssu goto :ssuinner86
-expand.exe -f:* "%_MSUssu%" "_tSSU" %_Nul3% || goto :ssuinner86
-goto :ssuouter86
-:ssuinner86
-popd
-for /f %%# in ('wimlib-imagex.exe dir %wimindex% --path=Windows\WinSxS\Manifests ^| find /i "x86_microsoft-windows-servicingstack_"') do (
-  wimlib-imagex.exe extract %wimindex% Windows\WinSxS\%%~n# --dest-dir="!_DIR!\_tSSU" --no-acls --no-attributes %_Nul3%
-)
-pushd "!_DIR!"
-:ssuouter86
-:DDCdual
-for /f %%# in ('dir /b /ad "_tSSU\x86_microsoft-windows-servicingstack_*"') do set "src=%%#"
-for %%# in (%_MSUdll%) do if exist "_tSSU\%src%\%%#" (move /y "_tSSU\%src%\%%#" "_tSSU\111\%%#" %_Nul1%)
-call :crDDF %_MSUddd%
-call :apDDF _tSSU\111
-%_Nul3% makecab.exe /F zzz.ddf /D Compress=ON /D CompressionType=MSZIP
-if %ERRORLEVEL% neq 0 (
-  call :dk_color1 %_Yellow% "由于 makecab.exe 对 %_MSUddd% 操作失败，将跳过操作。" 4
-  set _mcfail=1
-  exit /b
-)
-rmdir /s /q "_tSSU\" %_Nul3%
-exit /b
-
-:crDDF
-echo.
-echo 正在创建：%~nx1
-(echo .Set DiskDirectoryTemplate="."
-echo .Set CabinetNameTemplate="%1"
-echo .Set MaxCabinetSize=0
-echo .Set MaxDiskSize=0
-echo .Set FolderSizeThreshold=0
-echo .Set RptFileName=nul
-echo .Set InfFileName=nul
-echo .Set Cabinet=ON
-)>zzz.ddf
-exit /b
-
-:apDDF
-(echo .Set SourceDir="%1"
-echo "dpx.dll"
-echo "ReserveManager.dll"
-echo "TurboStack.dll"
-echo "UpdateAgent.dll"
-echo "wcp.dll"
-if exist "%1\UpdateCompression.dll" echo "UpdateCompression.dll"
-)>>zzz.ddf
 exit /b
 
 :extract
@@ -2478,6 +2244,12 @@ goto :eof
 :DoWork
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
+if %_build% geq 26100 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Package_for_RollupFix~*~26100.174*.mum"') do (
+    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
+    call :Cleanup
+    )
+)
 if defined mounterr goto :eof
 if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
   xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "ISOFOLDER\sources\" %_Nul3%
@@ -2600,7 +2372,10 @@ reg unload HKLM\%USER% %_Nul3%
 goto :eof
 
 :AddEdge
-if exist "%_mount%\Program Files (x86)\Microsoft\Edge" goto :eof
+call :dk_color1 %Blue% "=== 正在清理旧版 Microsoft Edge..." 4
+if exist "%_mount%\Program Files (x86)\Microsoft\Edge" (
+  %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Edge
+)
 call :dk_color1 %Blue% "=== 正在添加 Microsoft Edge..." 4
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
 if !errorlevel! neq 0 call :dk_color1 %Red% "添加 Edge.wim 失败" 4
@@ -2978,7 +2753,6 @@ set _ndir=0
 set _nsum=0
 set _nupd=0
 set _niso=0
-set _reMSU=0
 set _wimEdge=0
 set _Srvr=0
 set _LTSC=0

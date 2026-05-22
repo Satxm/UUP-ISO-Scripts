@@ -97,7 +97,7 @@ goto :EOF
 
 :getuup:
 $url = "https://api.uupdump.net/listlangs.php?id="+$id
-$json = (Invoke-WebRequest $url).content | ConvertFrom-Json
+$json = (Invoke-WebRequest $url -UseBasicParsing).content | ConvertFrom-Json
 $build = $json.response.updateInfo.build
 $name = $json.response.updateInfo.title
 Write-Host $build $name
