@@ -2244,12 +2244,6 @@ goto :eof
 :DoWork
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
-if %_build% geq 26100 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Package_for_RollupFix~*~26100.174*.mum"') do (
-    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
-    call :Cleanup
-    )
-)
 if defined mounterr goto :eof
 if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
   xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "ISOFOLDER\sources\" %_Nul3%
