@@ -1508,9 +1508,7 @@ if defined safeos (
   %_Dism% /LogPath:"%_dLog%\DismWinre.log" /Image:"%_mount%" /Add-Package %safeos%
   call :chkEC !errorlevel!
   if !_ec!==1 goto :errmount
-  if not defined lcumsu call :Cleanup
-  if not defined lcumsu if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
-  if %LCUWinre% equ 0 goto :eof
+  if %LCUWinre% equ 0 goto :scbt
 )
 :skipsafeos
 if not defined cumulative if not defined lcumsu goto :scbt
