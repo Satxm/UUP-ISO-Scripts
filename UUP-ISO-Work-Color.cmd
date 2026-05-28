@@ -2255,7 +2255,12 @@ if %DeCheckPoint% equ 1 if %_build% geq 26100 if not exist "%_mount%\Windows\Ser
   for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Package_for_RollupFix~*~26100.174*.mum"') do (
     %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
     call :Cleanup
-    )
+  )
+)
+if %DeEdgeFod% equ 1 if exist "%_mount%\Windows\servicing\Packages\Microsoft-Edge-WebView-FOD-Package~*.mum" (
+  for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Microsoft-Edge-WebView-FOD-Package~*.1.mum"') do (
+    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
+  )
 )
 if defined mounterr goto :eof
 if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
@@ -2395,14 +2400,9 @@ reg unload HKLM\%USER% %_Nul3%
 goto :eof
 
 :AddEdge
-call :dk_color1 %Blue% "=== 正在清理旧版 Microsoft Edge..." 4
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" (
+  call :dk_color1 %Blue% "=== 正在清理旧版 Microsoft Edge..." 4
   %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Edge
-)
-if %DeEdgeFod% equ 1 if exist "%_mount%\Windows\servicing\Packages\Microsoft-Edge-WebView-FOD-Package~*.mum" (
-  for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Microsoft-Edge-WebView-FOD-Package~*.mum"') do (
-    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
-  )
 )
 call :dk_color1 %Blue% "=== 正在添加 Microsoft Edge..." 4
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
