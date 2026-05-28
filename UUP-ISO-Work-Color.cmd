@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.05.21-121"
+@set "uivr=v26.05.27-121"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -34,6 +34,12 @@ set SkipWinre=0
 
 :: 若不添加更新到 Boot.wim ，请将此参数更改为 1
 set SkipBoot=0
+
+:: 若要在添加所有更新后移除 CheckPoint 更新，请将此参数更改为 1
+set DeCheckPoint=0
+
+:: 若要移除 Edge WebView FOD，请将此参数更改为 1
+set DeEdgeFod=0
 
 :: 若即使检测到 SafeOS 更新，也强制使用累积更新来更新 Winre.wim，请将此参数更改为 1
 :: 在 Build 21382 - 26052 版本将会自动启用，若需禁用此项，请将此参数更改为 2
@@ -205,6 +211,8 @@ ResetBase
 SkipISO
 SkipWinre
 SkipBoot
+DeCheckPoint
+DeEdgeFod
 LCUWinre
 UpdtBootFiles
 UpdtOneDrive
@@ -1387,6 +1395,7 @@ set "tmpcmp=!tmpcmp! %compkg%"
 goto :eof
 
 :updatewim
+call :dk_color1 %Blue% "=== 正在安装更新..." 4
 set "_Wnn=HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide\Winners"
 set "_Cmp=HKLM\%COMPONENTS%\DerivedData\Components"
 if exist "%_mount%\Windows\Servicing\Packages\*~arm64~~*.mum" (
@@ -2244,6 +2253,12 @@ goto :eof
 :DoWork
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
+if %DeCheckPoint% equ 1 if %_build% geq 26100 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+  for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Package_for_RollupFix~*~26100.174*.mum"') do (
+    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
+    call :Cleanup
+    )
+)
 if defined mounterr goto :eof
 if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
   xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "ISOFOLDER\sources\" %_Nul3%
@@ -2385,6 +2400,11 @@ goto :eof
 call :dk_color1 %Blue% "=== 正在清理旧版 Microsoft Edge..." 4
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" (
   %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Edge
+)
+if %DeEdgeFod% equ 1 if exist "%_mount%\Windows\servicing\Packages\Microsoft-Edge-WebView-FOD-Package~*.mum" (
+  for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Microsoft-Edge-WebView-FOD-Package~*.mum"') do (
+    %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
+  )
 )
 call :dk_color1 %Blue% "=== 正在添加 Microsoft Edge..." 4
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
