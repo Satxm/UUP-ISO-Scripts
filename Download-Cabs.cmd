@@ -80,7 +80,7 @@ goto :EOF
 del %files%
 echo.
 echo 在下载文件时遇到错误。正在重试
-goto :DOWNLOAD_FILES
+goto :DOWNLOAD_CABS
 pause
 goto :EOF
 

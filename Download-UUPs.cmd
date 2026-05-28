@@ -91,7 +91,7 @@ goto :EOF
 del %files%
 echo.
 echo 在下载文件时遇到错误。正在重试
-goto :DOWNLOAD_FILES
+goto :DOWNLOAD_APPS
 pause
 goto :EOF
 
