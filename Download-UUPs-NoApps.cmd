@@ -87,7 +87,7 @@ if %ERRORLEVEL% GTR 0 goto :DOWNLOAD_ERROR
 
 :DOWNLOAD_DONE
 del %files%
-del aria2_download.log
+del aria2_download*.log
 echo.
 echo 下载完成。
 pause
@@ -97,7 +97,7 @@ goto :EOF
 del %files%
 echo.
 echo 在下载文件时遇到错误。正在重试
-goto :DOWNLOAD_APPS
+goto :DOWNLOAD_FILES
 pause
 goto :EOF
 

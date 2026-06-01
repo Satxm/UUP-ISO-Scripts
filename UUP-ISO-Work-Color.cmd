@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.05.27-121"
+@set "uivr=v26.05.31-121"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -388,8 +388,7 @@ if defined ChoiceEdition set UpgradeEdition=0
 if %_Srvr% equ 1 set UpgradeEdition=0 & set UpdtOneDrive=0
 if %_LTSC% equ 1 set UpdtOneDrive=0
 if %_build% lss 21382 set LCUmsuExpand=0
-if %_build% geq 26052 if %LCUmsuExpand% equ 2 (set LCUmsuExpand=0) else (set LCUmsuExpand=1)
-if %LCUmsuExpand% equ 2 set LCUmsuExpand=0
+if %_build% geq 26052 if %LCUmsuExpand% neq 2 (set LCUmsuExpand=1) else (set LCUmsuExpand=0)
 if %AddUpdates% equ 1 set _DismHost=1
 if %AddAppxs% equ 1 set _DismHost=1
 if defined _DismHost call :DismHostON
@@ -1346,7 +1345,7 @@ if %LCUmsuExpand% equ 0 if %_build% geq 26052 (
 if not exist "!_cabdir!\LCUall\*Windows*%pkgid%*.msu" if not exist "!_cabdir!\LCUall\%package%" (
   copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
 )
-if %LCUmsuExpand% equ 0 echo %package% |findstr /i "KB5043080" %_Nul1% && if not exist "!_cabdir!\LCUbase\%package%" (
+if %LCUmsuExpand% equ 0 echo %package% |findstr /i "KB5043080 KB5068181" %_Nul1% && if not exist "!_cabdir!\LCUbase\%package%" (
   mkdir "!_cabdir!\LCUbase" %_Nul3%
   copy /y "!_DIR!\%package%" "!_cabdir!\LCUbase\%package%" %_Nul1%
   )
@@ -1395,7 +1394,6 @@ set "tmpcmp=!tmpcmp! %compkg%"
 goto :eof
 
 :updatewim
-call :dk_color1 %Blue% "=== 正在安装更新..." 4
 set "_Wnn=HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide\Winners"
 set "_Cmp=HKLM\%COMPONENTS%\DerivedData\Components"
 if exist "%_mount%\Windows\Servicing\Packages\*~arm64~~*.mum" (
@@ -1481,6 +1479,7 @@ if defined netpack set "ldr=!netpack! !ldr!"
 if defined ekbpack set "ldr=!ekbpack! !ldr!"
 for %%# in (dupdt,cupdt,supdt,fupdt,safeos,secureboot,edge,ldr,cumulative,lcumsu) do if defined %%# set overall=1
 if not defined overall if not defined mpamfe if not defined servicingstack goto :eof
+call :dk_color1 %Blue% "=== 正在安装更新..." 4
 if defined servicingstack (
   set idpkg=ServicingStack
   set callclean=1
@@ -1591,35 +1590,30 @@ set idpkg=LCU
 set callclean=1
 set _c_=0
 set _e_=0
-if defined cumulative for %%# in (%cumulative%) do (
-  %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%%#
-  call set /a _c_+=1
-  if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
-)
-if defined lcumsu for %%# in (%lcumsu%) do (
-  call :dk_color1 %_Yellow% "=== 添加累积更新 %%~nx#" 4
-  set ppath=%%#
-  if exist "!_cabdir!\LCUbase\%%~nx#" set ppath="!_cabdir!\LCUbase\%%~nx#"
-  %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:!ppath!
-  call set _e_=!errorlevel!
-  call set /a _c_+=1
-  if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
-)
+if defined cumulative for %%# in (%cumulative%) do call :lcuadd %%#
+if defined lcumsu for %%# in (%lcumsu%) do call :lcuadd %%#
 call :chkEC %_e_%
 if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinre% equ 1 call :Cleanup
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :%_gobk%
 if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :%_gobk%
 if not defined lcumsu goto :%_gobk%
-:: if %_build% geq 26052 goto :%_gobk%
 if not exist "!_cabdir!\LCUmum\*.mum" goto :%_gobk%
 for /f %%# in ('dir /b /a:-d /od "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" %_Nul6%') do if exist "!_cabdir!\LCUmum\%%#" (
-call :svcpkg "%%#"
+  call :svcpkg "%%#"
 )
 for /f %%# in ('dir /b /a:-d /od "%_mount%\Windows\Servicing\Packages\Package_for_RevisedFix*.mum" %_Nul6%') do if exist "!_cabdir!\LCUmum\%%#" (
-call :svcpkg "%%#"
+  call :svcpkg "%%#"
 )
 goto :%_gobk%
+
+:lcuadd
+if exist "!_cabdir!\LCUbase\%~nx1" call set /a _c_+=1 & goto :eof
+%_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%1
+call set _e_=!errorlevel!
+call set /a _c_+=1
+if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
+goto :eof
 
 :svcpkg
 set "kbnm=%~1"
@@ -1636,8 +1630,8 @@ goto :eof
 set _ec=0
 cmd /c exit /b %1
 set "_ic=%=ExitCode%"
-if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" if /i not "!_ic!"=="000006be" if /i not "!_ic!"=="000006ba" set _ec=1
-if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="800f081e" if !_ec!==0 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
+if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="C0000409" if /i not "!_ic!"=="800f081e" if /i not "!_ic!"=="800706be" if /i not "!_ic!"=="800706ba" if /i not "!_ic!"=="000006be" if /i not "!_ic!"=="000006ba" set _ec=1
+if /i not "!_ic!"=="00000000" if /i not "!_ic!"=="C0000409" if /i not "!_ic!"=="800f081e" if !_ec!==0 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 goto :eof
 
 :errmount
@@ -2358,14 +2352,14 @@ if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\Lsa" /v "LsaCfgFlags" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 (
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
+  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
 )
 reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
