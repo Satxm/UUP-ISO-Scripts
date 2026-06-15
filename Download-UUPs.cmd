@@ -42,8 +42,9 @@ echo %line%
 echo.
 for /f "delims=' tokens=*" %%a in ('%psc% "$f=[io.file]::ReadAllText('%_batp%',[Text.Encoding]::Default) -split ':getuup\:.*';$id = \"%id%\";iex ($f[1]);"') do set info=%%a
 for /f "tokens=1 delims=. " %%b in ("%info%") do set build=%%b
+for /f "tokens=1 delims= " %%b in ("%info%") do set fullbuild=%%b
 echo %info% | find /i "Server" 1>nul 2>nul && set server=1
-echo 此 UUPID 对应的系统版本为：%build%
+echo 此 UUPID 对应的系统版本为：%fullbuild%
 
 :START_PROCESS
 set "files=files.%random%.txt"

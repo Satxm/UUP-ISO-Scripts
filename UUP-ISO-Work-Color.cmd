@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.05.31-121"
+@set "uivr=v26.06.15-121s"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -2281,41 +2281,27 @@ set handle1=1
 if %UpdtBootFiles% neq 1 goto :NoNewBoot
 if exist "%_mount%\Windows\Boot\EFI\winsipolicy.p7b" if exist "ISOFOLDER\efi\microsoft\boot\winsipolicy.p7b" xcopy /CIDRY "%_mount%\Windows\Boot\EFI\winsipolicy.p7b" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 if exist "%_mount%\Windows\Boot\EFI\CIPolicies\" if exist "ISOFOLDER\efi\microsoft\boot\cipolicies\" xcopy /CEDRY "%_mount%\Windows\Boot\EFI\CIPolicies" "ISOFOLDER\efi\microsoft\boot\cipolicies\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys_noprompt.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 if /i not %arch%==arm64 (
   xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\bootmgr" "ISOFOLDER\" %_Nul3%
   xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\memtest.exe" "ISOFOLDER\boot\" %_Nul3%
   xcopy /CIDRY "%_mount%\Windows\Boot\EFI\memtest.efi" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 )
-if exist "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" (
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
-) else (
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
-)
-if exist "%_mount%\Windows\Boot\EFI_EX\bootmgr_EX.efi" (
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgr_EX.efi" "ISOFOLDER\bootmgr.efi" %_Nul3%
-) else (
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%
-)
-if exist "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_EX.bin" (
-  xcopy /CIDRY "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_EX.bin" "ISOFOLDER\efi\microsoft\boot\efisys.bin" %_Nul3%
-) else (
-  xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
-)
-if exist "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_noprompt_EX.bin" (
-  xcopy /CIDRY "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_noprompt_EX.bin" "ISOFOLDER\efi\microsoft\boot\efisys_noprompt.bin" %_Nul3%
-) else (
-  xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys_noprompt.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
-)
-if exist "%_mount%\Windows\Boot\Fonts_EX\*" (
-  for /f "tokens=1-3 delims=_." %%i in ('dir /b "ISOFOLDER\efi\microsoft\boot\fonts\*.ttf" %_Nul6%') do xcopy /CIDRY "%_mount%\Windows\Boot\Fonts_EX\%%i_%%j_EX.ttf" "ISOFOLDER\efi\microsoft\boot\fonts\%%i_%%j.ttf" %_Nul3%
-) else (
-  xcopy /CIDRY "%_mount%\Windows\Boot\Fonts\*" "ISOFOLDER\efi\microsoft\boot\fonts\" %_Nul3%
-)
+if not exist "%_mount%\Windows\Boot\EFI_EX\*_EX.efi" goto :NoNewBoot
+if exist "ISOFOLDER\efi\boot\bootmgfw.efi" xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" "ISOFOLDER\efi\boot\bootmgfw.efi" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
+if exist "%_mount%\Windows\Boot\EFI_EX\bootmgr_EX.efi" (xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgr_EX.efi" "ISOFOLDER\bootmgr.efi" %_Nul3%) else (xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%)
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_EX.bin" "ISOFOLDER\efi\microsoft\boot\efisys.bin" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\DVD_EX\EFI\en-US\efisys_noprompt_EX.bin" "ISOFOLDER\efi\microsoft\boot\efisys_noprompt.bin" %_Nul3%
+for /f "tokens=1-3 delims=_." %%i in ('dir /b "ISOFOLDER\efi\microsoft\boot\fonts\*.ttf" %_Nul6%') do xcopy /CIDRY "%_mount%\Windows\Boot\Fonts_EX\%%i_%%j_EX.ttf" "ISOFOLDER\efi\microsoft\boot\fonts\%%i_%%j.ttf" %_Nul3%
 goto :Skiphand1
 :NoNewBoot
 if exist "ISOFOLDER\efi\boot\bootmgfw.efi" xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\bootmgfw.efi" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 :Skiphand1
 if !handle2! equ 1 goto :Skiphand2
 set handle2=1

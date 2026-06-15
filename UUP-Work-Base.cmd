@@ -114,7 +114,7 @@ echo 正在调试模式下运行...
 echo 当完成之后，此窗口将会关闭
 @echo on
 @prompt $G
-@call :Begin %_args% >"!_log!_tmp.log" 2>&1 &cmd /u /c type "!_log!_tmp.log">"!_log!_Debug.log"&del /f /q "!_log!_tmp.log"
+@call :Begin %_args% >"!_log!_Debug.log" 2>&1
 @exit /b
 
 :Begin
@@ -361,6 +361,7 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\b
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 set "_inx=1"&call :DoMount "ISOFOLDER\sources\boot.wim"
+call :wds_add
 call :BootRemove
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\ %_Nul3%
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -368,6 +369,7 @@ call :Cleanup
 call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
+call :wds_add
 call :BootRemove
 if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootCabsAdd) else (call :BootFileAdd)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -693,6 +695,19 @@ reg.exe unload HKLM\%SOFTWARE% %_Nul1%
 if /i %xOS%==x86 if /i not %arch%==x86 move /y "%_mount%\Windows\System32\Config\SOFTWARE2" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
 goto :eof
 
+:wds_add
+if %_build% geq 29550 if %winbuild% lss 20348 if /i not %xOS%==x86 (
+if /i %arch%==%xOS% copy /y %SysPath%\wdscore.dll "%_mount%\Windows\System32\downlevel\" %_Nul1%
+if /i %arch%==x64 if /i %xOS%==amd64 copy /y %SysPath%\wdscore.dll "%_mount%\Windows\System32\downlevel\" %_Nul1%
+if exist "%SystemRoot%\SysWOW64\wdscore.dll" if exist "%_mount%\Windows\SysWOW64\downlevel\*.dll" copy /y %SystemRoot%\SysWOW64\wdscore.dll "%_mount%\Windows\SysWOW64\downlevel\" %_Nul1%
+)
+exit /b
+
+:wds_rem
+if exist "%_mount%\Windows\System32\downlevel\wdscore.dll" del /f /q "%_mount%\Windows\System32\downlevel\wdscore.dll" %_Nul3%
+if exist "%_mount%\Windows\SysWOW64\downlevel\wdscore.dll" del /f /q "%_mount%\Windows\SysWOW64\downlevel\wdscore.dll" %_Nul3%
+exit /b
+
 :update
 if %W10UI% equ 0 exit /b
 set directcab=0
@@ -749,8 +764,10 @@ goto :eof
 :DoCommit
 set "_apd="
 if "%~1"=="Append" set "_apd=/Append"
-if %Cleanup% equ 1 call :CleanReg
+call :CleanReg
+call :wds_rem
 %_Dism% /LogPath:"%_dLog%\DismCommit.log" /Commit-Image /MountDir:"%_mount%" %_apd%
+call :wds_add
 goto :eof
 
 :DoUnmount
@@ -770,6 +787,15 @@ goto :eof
 :DoWork
 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
 if %Cleanup% equ 1 call :Cleanup
+if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
+  xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "ISOFOLDER\sources\" %_Nul3%
+  xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "%_mount%\sources\" %_Nul3%
+)
+if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
+  set isoupdate=
+  xcopy /CDRUY "%_mount%\sources\" "ISOFOLDER\sources\" %_Nul3%
+  for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_mount%\sources\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
+)
 if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :DoCommit
 if !handle2! equ 1 goto :Skiphand2
 set handle2=1
@@ -899,10 +925,10 @@ if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
   if %Cleanup% neq 0 (
     if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean_PE.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
   )
-  call :CleanManual&goto :eof
+  goto :FinalClean
 )
-if %Cleanup% equ 0 call :CleanManual&goto :eof
-if exist "%_mount%\Windows\WinSxS\pending.xml" call :CleanManual&goto :eof
+if %Cleanup% equ 0 goto :FinalClean
+if exist "%_mount%\Windows\WinSxS\pending.xml" goto :FinalClean
 set "_Nul8="
 if %_build% geq 25380 if %_build% lss 26000 (
   set "_Nul8=1>nul 2>nul"
@@ -918,7 +944,8 @@ call :SBSConfig %savr% %rbvr% 9
 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
 if %ResetBase% neq 0 %_Dism% /LogPath:"%_dLog%\DismClean.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup /ResetBase %_Nul3%
 :FinalClean
-call :CleanManual&goto :eof
+call :CleanManual
+goto :eof
 
 :CleanManual
 if exist "%_mount%\Windows\WinSxS\ManifestCache\*.bin" (
