@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v25.12.17-120"
+@set "uivr=v26.06.20-123"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -335,7 +335,7 @@ call :dk_color1 %Blue% "=== 正在导出 Winre.wim 文件..." 4 5
 wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
-goto:eof
+goto :eof
 
 :WinreDone
 echo.
@@ -361,7 +361,6 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\b
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 set "_inx=1"&call :DoMount "ISOFOLDER\sources\boot.wim"
-call :wds_add
 call :BootRemove
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\ %_Nul3%
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -369,7 +368,6 @@ call :Cleanup
 call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
-call :wds_add
 call :BootRemove
 if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootCabsAdd) else (call :BootFileAdd)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -392,6 +390,13 @@ wimlib-imagex.exe optimize "ISOFOLDER\sources\boot.wim"
 goto :%_rtrn%
 
 :BootRemove
+call :wds_add
+if %_build% geq 22000 (
+  reg.exe load "HKLM\PESOFTWARE" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+  reg.exe add "HKLM\PESOFTWARE\%_wper%" /v CustomBackground /t REG_EXPAND_SZ /d "%_root%\System32\winre.jpg" /f %_Nul3%
+  reg.exe delete "HKLM\PESOFTWARE\%_wper%" /v CustomShell /f %_Nul3%
+  reg.exe unload "HKLM\PESOFTWARE" %_Nul3%
+)
 type nul>temp\winre.txt
 type nul>temp\winpe.txt
 set "remove="
@@ -419,12 +424,19 @@ wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\system32\xmllite.dll --
 copy /y ISOFOLDER\setup.exe %_mount%\setup.exe %_Nul3%
 copy /y ISOFOLDER\sources\inf\setup.cfg %_mount%\sources\inf\setup.cfg %_Nul3%
 set "_bkimg="
-wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Nul3%
-for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png) do if exist "ISOFOLDER\sources\%%#" set "_bkimg=%%#"
+if exist "ISOFOLDER\sources\winpe.jpg" del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
+if exist "ISOFOLDER\sources\winre.jpg" del /f /q ISOFOLDER\sources\winre.jpg %_Nul3%
+wimlib-imagex.exe extract ISOFOLDER\sources\boot.wim 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Null%
+wimlib-imagex.exe extract ISOFOLDER\sources\boot.wim 1 Windows\System32\winre.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Null%
 for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png, winpe.jpg) do (if exist "ISOFOLDER\sources\%%#" if not defined _bkimg set "_bkimg=%%#")
 if defined _bkimg (
   copy /y ISOFOLDER\sources\%_bkimg% %_mount%\sources\background.bmp %_Nul3%
-  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\setup.bmp %_Nul3%
+)
+if defined _bkimg if not exist "ISOFOLDER\sources\winpe.jpg" (
+  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winpe.jpg
+)
+if defined _bkimg if not exist "ISOFOLDER\sources\winre.jpg" (
+  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winre.jpg
 )
 for /f %%# in (bin\bootwim.txt) do if exist "ISOFOLDER\sources\%%#" (
   copy /y ISOFOLDER\sources\%%# %_mount%\sources\%%# %_Nul3%
@@ -434,6 +446,7 @@ for /f %%# in (bin\bootmui.txt) do if exist "ISOFOLDER\sources\%langid%\%%#" (
 )
 del /f /q ISOFOLDER\sources\xmllite.dll %_Nul3%
 del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
+del /f /q ISOFOLDER\sources\winre.jpg %_Nul3%
 goto :eof
 
 :PREPARE
@@ -443,10 +456,6 @@ imagex.exe /info %wimindex% >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
 for /f "tokens=3 delims=<>" %%# in ('find /i "<ARCH>" temp\info.txt') do (if %%# equ 0 (set "arch=x86") else if %%# equ 9 (set "arch=x64") else (set "arch=arm64"))
 for /f "tokens=3 delims=<>" %%# in ('find /i "<BUILD>" temp\info.txt') do set _build=%%#
-if %_build% geq 21382 if %_build% lss 26052 if exist "!_DIR!\*.AggregatedMetadata*.cab" (
-  if exist "!_DIR!\*Windows1*-KB*.cab" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
-  if exist "!_DIR!\*Windows1*-KB*.wim" if exist "!_DIR!\*Windows1*-KB*.psf" set _reMSU=1
-)
 if %_build% geq 22621 if exist "!_DIR!\*Edge*.wim" (
   set _wimEdge=1
   if not exist "!_DIR!\Edge.wim" for /f %%# in ('dir /b /a:-d "!_DIR!\*Edge*.wim"') do rename "!_DIR!\%%#" Edge.wim %_Nul3%
@@ -458,6 +467,7 @@ if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if exist "!_DIR!\*Deskto
 )
 if %_dpx% equ 1 (
   for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:dpx.dll "!_DIR!\%%#" temp %_Nul3%
+  for /f "delims=" %%# in ('dir /b /a:-d "!_DIR!\*DesktopDeployment*.cab"') do expand.exe -f:UpdateCompression.dll "!_DIR!\%%#" temp %_Nul3%
   copy /y %SysPath%\expand.exe temp\ %_Nul3%
 )
 if not exist "ISOFOLDER\sources\setuphost.exe" (
@@ -478,7 +488,7 @@ if exist "temp\*_microsoft-windows-coreos-revision*.manifest" for /f "tokens=%to
 if %_build% geq 15063 (
   wimlib-imagex.exe extract %wimindex% Windows\System32\config\SOFTWARE --dest-dir=temp --no-acls --no-attributes %_Nul3%
   set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-  for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS""') do if not errorlevel 1 (
+  for /f %%i in ('"offlinereg.exe temp\SOFTWARE "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS WNC\.OS WCOSDevice""') do if not errorlevel 1 (
     for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe temp\SOFTWARE "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !revmaj! (
       set "revver=%%~A.%%B
       set revmaj=%%~A
@@ -671,6 +681,7 @@ if /i "!edition%1!"=="ServerDatacenter" set "edition%1=ServerDatacenterCore"
 if /i "!edition%1!"=="ServerTurbine" set "edition%1=ServerTurbineCore"
 )
 exit /b
+
 :SBSConfig
 if exist "temp\Reg-*.*" del /f /q "temp\Reg-*.*" %_Nul3%
 call :RegLoad
@@ -1082,7 +1093,6 @@ set _ndir=0
 set _nsum=0
 set _nupd=0
 set _niso=0
-set _reMSU=0
 set _wimEdge=0
 set _Srvr=0
 set _LTSC=0

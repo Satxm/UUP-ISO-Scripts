@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.06.15-121s"
+@set "uivr=v26.06.20-123"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -441,20 +441,7 @@ echo.
 echo [VL]
 if %_LTSC% equ 1 (echo 1) else (echo 0)
 )>ISOFOLDER\sources\ei.cfg
-if not defined isoupdate goto :NoSetupDU
-if %SkipBoot% equ 1 goto :NoSetupDU
-call :dk_color1 %Blue% "=== 正在应用 ISO 安装文件更新..." 4 5
-mkdir "%_cabdir%\du" %_Nul3%
-for %%# in (!isoupdate!) do (
-  echo %%~#
-  expand.exe -r -f:* "!_DIR!\%%~#" "%_cabdir%\du" %_Nul1%
-)
-xcopy /CDRUY "%_cabdir%\du\" "ISOFOLDER\sources\" %_Nul3%
-if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "ISOFOLDER\sources\" %_Nul3%
-for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_cabdir%\du\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
-if exist "%_cabdir%\du\replacementmanifests\" xcopy /CERY "%_cabdir%\du\replacementmanifests" "ISOFOLDER\sources\replacementmanifests\" %_Nul3%
-rmdir /s /q "%_cabdir%\du\" %_Nul3%
-:NoSetupDU
+if %SkipBoot% neq 1 if defined isoupdate call :AddDU
 set _rtrn=WinreRet
 goto :WinreWim
 :WinreRet
@@ -486,6 +473,20 @@ set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_ISOC
 call :dk_color1 %Green% "完成。" 4
 goto :QUIT
+
+:AddDU
+call :dk_color1 %Blue% "=== 正在应用 ISO 安装文件更新..." 4 5
+mkdir "%_cabdir%\du" %_Nul3%
+for %%# in (!isoupdate!) do (
+  echo %%~#
+  expand.exe -r -f:* "!_DIR!\%%~#" "%_cabdir%\du" %_Nul1%
+)
+xcopy /CDRUY "%_cabdir%\du\" "ISOFOLDER\sources\" %_Nul3%
+if exist "%_cabdir%\du\*.ini" xcopy /CDRY "%_cabdir%\du\*.ini" "ISOFOLDER\sources\" %_Nul3%
+for /f %%# in ('dir /b /ad "%_cabdir%\du\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_cabdir%\du\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
+if exist "%_cabdir%\du\replacementmanifests\" xcopy /CERY "%_cabdir%\du\replacementmanifests" "ISOFOLDER\sources\replacementmanifests\" %_Nul3%
+rmdir /s /q "%_cabdir%\du\" %_Nul3%
+goto :eof
 
 :InstallWim
 if not exist "ISOFOLDER\sources\install.wim" call :CreateInstallWim
@@ -653,17 +654,6 @@ if not exist "ISOFOLDER\sources\boot.wim" if exist "!_DIR!\boot.wim" copy /y "!_
 if not exist "ISOFOLDER\sources\boot.wim" goto :CreateBootWim
 if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 call :update "ISOFOLDER\sources\boot.wim"
-if not defined isoupdate goto :BootDone
-mkdir "temp\du" %_Nul3%
-for %%# in (!isoupdate!) do expand.exe -r -f:* "!_DIR!\%%~#" "temp\du" %_Nul1%
-type nul>temp\boot.txt
-for /f %%# in ('dir /b /a-d "temp\du" %_Nul6%') do (
-  >>temp\boot.txt echo add 'temp^\du^\%%#' '^\sources^\%%#'
-)
-if exist "temp\du\%langid%\" for /f %%# in ('dir /b /a-d "temp\du\%langid%" %_Nul6%') do (
-  >>temp\boot.txt echo add 'temp^\du^\%langid%^\%%#' '^\sources^\%langid%^\%%#'
-)
-wimlib-imagex.exe update "ISOFOLDER\sources\boot.wim" 2 < temp\boot.txt %_Nul3%
 goto :BootDone
 
 :CreateBootWim
@@ -678,7 +668,6 @@ for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\b
 if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
 if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
 set "_inx=1"&call :DoMount "ISOFOLDER\sources\boot.wim"
-call :wds_add
 call :BootRemove
 %_Dism% /LogPath:"%_dLog%\DismBoot.log" /Image:"%_mount%" /Set-TargetPath:X:\$Windows.~bt\ %_Nul3%
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -686,7 +675,6 @@ call :Cleanup
 call :DoWork
 call :DoUnmount
 set "_inx=2"&call :DoMount "ISOFOLDER\sources\boot.wim"
-call :wds_add
 call :BootRemove
 if exist "!_DIR!\WinPE-Setup\*WinPE-Setup*.cab" (call :BootCabsAdd) else (call :BootFileAdd)
 del /f /q %_mount%\Windows\system32\winpeshl.ini %_Nul3%
@@ -709,6 +697,13 @@ wimlib-imagex.exe optimize "ISOFOLDER\sources\boot.wim"
 goto :%_rtrn%
 
 :BootRemove
+call :wds_add
+if %_build% geq 22000 (
+  reg.exe load "HKLM\PESOFTWARE" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+  reg.exe add "HKLM\PESOFTWARE\%_wper%" /v CustomBackground /t REG_EXPAND_SZ /d "%_root%\System32\winre.jpg" /f %_Nul3%
+  reg.exe delete "HKLM\PESOFTWARE\%_wper%" /v CustomShell /f %_Nul3%
+  reg.exe unload "HKLM\PESOFTWARE" %_Nul3%
+)
 type nul>temp\winre.txt
 type nul>temp\winpe.txt
 set "remove="
@@ -737,12 +732,18 @@ copy /y ISOFOLDER\setup.exe %_mount%\setup.exe %_Nul3%
 copy /y ISOFOLDER\sources\inf\setup.cfg %_mount%\sources\inf\setup.cfg %_Nul3%
 set "_bkimg="
 if exist "ISOFOLDER\sources\winpe.jpg" del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
-wimlib-imagex.exe extract "ISOFOLDER\sources\boot.wim" 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Nul3%
-for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png) do if exist "ISOFOLDER\sources\%%#" set "_bkimg=%%#"
+if exist "ISOFOLDER\sources\winre.jpg" del /f /q ISOFOLDER\sources\winre.jpg %_Nul3%
+wimlib-imagex.exe extract ISOFOLDER\sources\boot.wim 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Null%
+wimlib-imagex.exe extract ISOFOLDER\sources\boot.wim 1 Windows\System32\winre.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Null%
 for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png, winpe.jpg) do (if exist "ISOFOLDER\sources\%%#" if not defined _bkimg set "_bkimg=%%#")
 if defined _bkimg (
   copy /y ISOFOLDER\sources\%_bkimg% %_mount%\sources\background.bmp %_Nul3%
-  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\setup.bmp %_Nul3%
+)
+if defined _bkimg if not exist "ISOFOLDER\sources\winpe.jpg" (
+  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winpe.jpg
+)
+if defined _bkimg if not exist "ISOFOLDER\sources\winre.jpg" (
+  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winre.jpg
 )
 for /f %%# in (bin\bootwim.txt) do if exist "ISOFOLDER\sources\%%#" (
   copy /y ISOFOLDER\sources\%%# %_mount%\sources\%%# %_Nul3%
@@ -752,6 +753,7 @@ for /f %%# in (bin\bootmui.txt) do if exist "ISOFOLDER\sources\%langid%\%%#" (
 )
 del /f /q ISOFOLDER\sources\xmllite.dll %_Nul3%
 del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
+del /f /q ISOFOLDER\sources\winre.jpg %_Nul3%
 goto :eof
 
 :PREPARE
@@ -2284,11 +2286,12 @@ if exist "%_mount%\Windows\Boot\EFI\CIPolicies\" if exist "ISOFOLDER\efi\microso
 xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\DVD\EFI\en-US\efisys_noprompt.bin" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
-if /i not %arch%==arm64 (
-  xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\bootmgr" "ISOFOLDER\" %_Nul3%
-  xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\memtest.exe" "ISOFOLDER\boot\" %_Nul3%
-  xcopy /CIDRY "%_mount%\Windows\Boot\EFI\memtest.efi" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
-)
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.pnd.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+:: if /i not %arch%==arm64 (
+  :: xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\bootmgr" "ISOFOLDER\" %_Nul3%
+  :: xcopy /CIDRY "%_mount%\Windows\Boot\PCAT\memtest.exe" "ISOFOLDER\boot\" %_Nul3%
+  :: xcopy /CIDRY "%_mount%\Windows\Boot\EFI\memtest.efi" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+:: )
 if not exist "%_mount%\Windows\Boot\EFI_EX\*_EX.efi" goto :NoNewBoot
 if exist "ISOFOLDER\efi\boot\bootmgfw.efi" xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" "ISOFOLDER\efi\boot\bootmgfw.efi" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI_EX\bootmgfw_EX.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
@@ -2302,6 +2305,7 @@ if exist "ISOFOLDER\efi\boot\bootmgfw.efi" xcopy /CIDRY "%_mount%\Windows\Boot\E
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgfw.efi" "ISOFOLDER\efi\boot\!efifile!" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
+xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.pnd.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 :Skiphand1
 if !handle2! equ 1 goto :Skiphand2
 set handle2=1
@@ -2743,6 +2747,8 @@ set "_SxsCfg=Microsoft\Windows\CurrentVersion\SideBySide\Configuration"
 set "_CBS=Microsoft\Windows\CurrentVersion\Component Based Servicing\Packages"
 set "_IFEO=HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\dismhost.exe"
 set _MOifeo=0
+set "_wper=Microsoft\Windows NT\CurrentVersion\WinPE"
+set _root=^%%SystemRoot^%%
 goto :eof
 
 :postVars
