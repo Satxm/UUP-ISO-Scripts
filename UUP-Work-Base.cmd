@@ -1,5 +1,5 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.06.20-123"
+@set "uivr=v26.06.29-124"
 @echo off
 
 :: 若要启用调试模式，请将此参数更改为 1
@@ -391,12 +391,6 @@ goto :%_rtrn%
 
 :BootRemove
 call :wds_add
-if %_build% geq 22000 (
-  reg.exe load "HKLM\PESOFTWARE" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
-  reg.exe add "HKLM\PESOFTWARE\%_wper%" /v CustomBackground /t REG_EXPAND_SZ /d "%_root%\System32\winre.jpg" /f %_Nul3%
-  reg.exe delete "HKLM\PESOFTWARE\%_wper%" /v CustomShell /f %_Nul3%
-  reg.exe unload "HKLM\PESOFTWARE" %_Nul3%
-)
 type nul>temp\winre.txt
 type nul>temp\winpe.txt
 set "remove="
@@ -422,21 +416,18 @@ goto :eof
 :BootFileAdd
 wimlib-imagex.exe extract "!_DIR!\%uups_esd1%" 3 Windows\system32\xmllite.dll --dest-dir=ISOFOLDER\sources --no-acls --no-attributes %_Nul3%
 copy /y ISOFOLDER\setup.exe %_mount%\setup.exe %_Nul3%
+if not exist %_mount%\sources\inf mkdir %_mount%\sources\inf %_Nul3%
 copy /y ISOFOLDER\sources\inf\setup.cfg %_mount%\sources\inf\setup.cfg %_Nul3%
 set "_bkimg="
 if exist "ISOFOLDER\sources\winpe.jpg" del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
-if exist "ISOFOLDER\sources\winre.jpg" del /f /q ISOFOLDER\sources\winre.jpg %_Nul3%
 wimlib-imagex.exe extract ISOFOLDER\sources\boot.wim 1 Windows\System32\winpe.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Null%
-wimlib-imagex.exe extract ISOFOLDER\sources\boot.wim 1 Windows\System32\winre.jpg --dest-dir=ISOFOLDER\sources --no-acls --no-attributes --nullglob %_Null%
 for %%# in (background_cli.bmp, background_svr.bmp, background_cli.png, background_svr.png, winpe.jpg) do (if exist "ISOFOLDER\sources\%%#" if not defined _bkimg set "_bkimg=%%#")
 if defined _bkimg (
   copy /y ISOFOLDER\sources\%_bkimg% %_mount%\sources\background.bmp %_Nul3%
+  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\setup.bmp %_Nul3%
 )
-if defined _bkimg if not exist "ISOFOLDER\sources\winpe.jpg" (
-  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winpe.jpg
-)
-if defined _bkimg if not exist "ISOFOLDER\sources\winre.jpg" (
-  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winre.jpg
+if defined _bkimg if not exist "%_mount%\Windows\system32\winpe.jpg" (
+  copy /y ISOFOLDER\sources\%_bkimg% %_mount%\Windows\system32\winpe.jpg %_Nul3%
 )
 for /f %%# in (bin\bootwim.txt) do if exist "ISOFOLDER\sources\%%#" (
   copy /y ISOFOLDER\sources\%%# %_mount%\sources\%%# %_Nul3%
@@ -444,9 +435,14 @@ for /f %%# in (bin\bootwim.txt) do if exist "ISOFOLDER\sources\%%#" (
 for /f %%# in (bin\bootmui.txt) do if exist "ISOFOLDER\sources\%langid%\%%#" (
   copy /y ISOFOLDER\sources\%langid%\%%# %_mount%\sources\%langid%\%%# %_Nul3%
 )
+if %_build% geq 22000 (
+  reg.exe load "HKLM\PESOFTWARE" "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
+  reg.exe add "HKLM\PESOFTWARE\Microsoft\Windows NT\CurrentVersion\WinPE" /v CustomBackground /t REG_EXPAND_SZ /d "%%SystemRoot%%\System32\setup.bmp" /f %_Nul3%
+  reg.exe delete "HKLM\PESOFTWARE\Microsoft\Windows NT\CurrentVersion\WinPE" /v CustomShell /f %_Nul3%
+  reg.exe unload "HKLM\PESOFTWARE" %_Nul3%
+)
 del /f /q ISOFOLDER\sources\xmllite.dll %_Nul3%
 del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
-del /f /q ISOFOLDER\sources\winre.jpg %_Nul3%
 goto :eof
 
 :PREPARE
@@ -813,7 +809,7 @@ set handle2=1
 set vermin=0
 for /f "tokens=%tok% delims=_." %%i in ('dir /b /a:-d /od "%_mount%\Windows\WinSxS\Manifests\%_ss%_microsoft-windows-coreos-revision*.manifest"') do (set verver=%%i.%%j&set vermaj=%%i&set vermin=%%j)
 set "isokey=Microsoft\Windows NT\CurrentVersion\Update\TargetingInfo\Installed"
-for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS""') do if not errorlevel 1 (
+for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!" enumkeys %_Nul6% ^| findstr /i /r "Client\.OS Server\.OS WNC\.OS WCOSDevice""') do if not errorlevel 1 (
   for /f "tokens=5,6 delims==:." %%A in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!isokey!\%%i" getvalue Version %_Nul6%"') do if %%A gtr !vermaj! (
     set "revver=%%~A.%%B
     set revmaj=%%~A
