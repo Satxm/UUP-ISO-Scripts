@@ -1,99 +1,107 @@
 @setlocal DisableDelayedExpansion
-@set "uivr=v26.06.29-124"
+@set "uivr=v26.10.29-129"
 @echo off
 
-:: è‹¥è¦å¯ç”¨è°ƒè¯•æ¨¡å¼ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôÒªÆôÓÃµ÷ÊÔÄ£Ê½£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set _Debug=0
 
-:: è‹¥å°†æ›´æ–°ï¼ˆå¦‚æœæ£€æµ‹åˆ°ï¼‰é›†æˆåˆ° install.wim/winre.wim ä¸­ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô½«¸üĞÂ£¨Èç¹û¼ì²âµ½£©¼¯³Éµ½ install.wim/winre.wim ÖĞ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set AddUpdates=0
 
-:: è‹¥è¦æ¸…ç†æ˜ åƒä»¥å¢é‡å‹ç¼©å·²å–ä»£çš„ç»„ä»¶ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1ï¼ˆè­¦å‘Šï¼šåœ¨ 18362 åŠä»¥ä¸Šç‰ˆæœ¬ä¸­ï¼Œè¿™å°†ä¼šåˆ é™¤åŸºç¡€ RTM ç‰ˆæœ¬ç¨‹åºåŒ…ï¼‰
+:: ÈôÒªÇåÀíÓ³ÏñÒÔÔöÁ¿Ñ¹ËõÒÑÈ¡´úµÄ×é¼ş£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1£¨¾¯¸æ£ºÔÚ 18362 ¼°ÒÔÉÏ°æ±¾ÖĞ£¬Õâ½«»áÉ¾³ı»ù´¡ RTM °æ±¾³ÌĞò°ü£©
 set Cleanup=0
 
-:: è‹¥è¦é‡ç½®æ“ä½œç³»ç»Ÿæ˜ åƒï¼ˆResetBaseï¼‰ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1ï¼ˆå¿«äºé»˜è®¤çš„å¢é‡å‹ç¼©ï¼‰
-:: éœ€è¦å‰ç½®å‚æ•° Cleanup ä¸º 1
-:: åœ¨ 26052 åŠæ›´é«˜ç‰ˆæœ¬æ¯ä¸ªç´¯ç§¯æ›´æ–°åé‡ç½®æ“ä½œç³»ç»Ÿæ˜ åƒï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 2
+:: ÈôÒªÖØÖÃ²Ù×÷ÏµÍ³Ó³Ïñ£¨ResetBase£©£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1£¨¿ìÓÚÄ¬ÈÏµÄÔöÁ¿Ñ¹Ëõ£©
+:: ĞèÒªÇ°ÖÃ²ÎÊı Cleanup Îª 1
+:: ÔÚ 26052 ¼°¸ü¸ß°æ±¾Ã¿¸öÀÛ»ı¸üĞÂºóÖØÖÃ²Ù×÷ÏµÍ³Ó³Ïñ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 2
 set ResetBase=0
 
-:: è‹¥è¦åœ¨æ—  Winre æ›´æ–°æƒ…å†µä¸‹æ¸…ç† Winre æ˜ åƒï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
-set CleanWinre=0
+:: ÈôÒªÔÚÎŞ¸üĞÂÇé¿öÏÂÇåÀí Winre.wim/boot.wim Ó³Ïñ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
+set CleanWim=0
 
-:: è‹¥å°† install.wim è½¬æ¢ä¸º install.esdï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô½« install.wim ×ª»»Îª install.esd£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set WIM2ESD=0
 
-:: è‹¥å°† install.wim æ‹†åˆ†ä¸º install.swmï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
-:: æ³¨ï¼šå¦‚æœä¸¤ä¸ªé€‰é¡¹å‡ä¸º 1ï¼Œinstall.esd å°†ä¼˜å…ˆæ‰§è¡Œ
+:: Èô½« install.wim ²ğ·ÖÎª install.swm£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
+:: ×¢£ºÈç¹ûÁ½¸öÑ¡Ïî¾ùÎª 1£¬install.esd ½«ÓÅÏÈÖ´ĞĞ
 set WIM2SWM=0
 
-:: è‹¥ä¸éœ€è¦åˆ›å»º ISO æ–‡ä»¶ï¼Œä¿ç•™åŸå§‹æ–‡ä»¶å¤¹ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô²»ĞèÒª´´½¨ ISO ÎÄ¼ş£¬±£ÁôÔ­Ê¼ÎÄ¼ş¼Ğ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set SkipISO=0
 
-:: è‹¥ä¸æ·»åŠ æ›´æ–°åˆ° Winre.wim æˆ–ä¸åˆ›å»º Winre.wimï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô²»Ìí¼Ó¸üĞÂµ½ Winre.wim »ò²»´´½¨ Winre.wim£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set SkipWinre=0
 
-:: è‹¥ä¸æ·»åŠ æ›´æ–°åˆ° Boot.wim ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô²»Ìí¼Ó¸üĞÂµ½ Boot.wim £¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set SkipBoot=0
 
-:: è‹¥è¦åœ¨æ·»åŠ æ‰€æœ‰æ›´æ–°åç§»é™¤ CheckPoint æ›´æ–°ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôÒªÔÚÌí¼ÓËùÓĞ¸üĞÂºóÒÆ³ı CheckPoint ¸üĞÂ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set DeCheckPoint=0
 
-:: è‹¥è¦ç§»é™¤ Edge WebView FODï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôÒªÒÆ³ı Edge WebView FOD£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set DeEdgeFod=0
 
-:: è‹¥å³ä½¿æ£€æµ‹åˆ° SafeOS æ›´æ–°ï¼Œä¹Ÿå¼ºåˆ¶ä½¿ç”¨ç´¯ç§¯æ›´æ–°æ¥æ›´æ–° Winre.wimï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
-:: åœ¨ Build 21382 - 26052 ç‰ˆæœ¬å°†ä¼šè‡ªåŠ¨å¯ç”¨ï¼Œè‹¥éœ€ç¦ç”¨æ­¤é¡¹ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 2
+:: Èô¼´Ê¹¼ì²âµ½ SafeOS ¸üĞÂ£¬Ò²Ç¿ÖÆÊ¹ÓÃÀÛ»ı¸üĞÂÀ´¸üĞÂ Winre.wim£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
+:: ÔÚ Build 21382 - 26052 °æ±¾½«»á×Ô¶¯ÆôÓÃ£¬ÈôĞè½ûÓÃ´ËÏî£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 2
 set LCUWinre=0
 
-:: è‹¥ä»ç´¯ç§¯æ›´æ–°æ›´æ–° ISO å¯åŠ¨æ–‡ä»¶ bootmgr/memtest/efisys.binï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
-:: å¦‚æœæ£€æµ‹åˆ°æ–°çš„ UEFI CA 2023 å¯åŠ¨æ–‡ä»¶ï¼Œè¿˜ä¼šå°†å…¶æ›´æ–°
+:: Èô´ÓÀÛ»ı¸üĞÂ¸üĞÂ ISO Æô¶¯ÎÄ¼ş bootmgr/memtest/efisys.bin£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
+:: Èç¹û¼ì²âµ½ĞÂµÄ UEFI CA 2023 Æô¶¯ÎÄ¼ş£¬»¹»á½«Æä¸üĞÂ
 set UpdtBootFiles=0
 
-:: è‹¥æ›´æ–°OneDriveï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô¸üĞÂOneDrive£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set UpdtOneDrive=0
 
-:: è‹¥è¦ä¿ç•™å…³è” ESD æ–‡ä»¶ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôÒª±£Áô¹ØÁª ESD ÎÄ¼ş£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set RefESD=0
 
-:: è‹¥ä»…æ›´æ–°é€‰å®šé•œåƒï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸ºæ‰€éœ€æ›´æ–°çš„é•œåƒæ ‡å¿—ï¼ˆEdition IDï¼‰
-:: ä¾‹å¦‚: Core,Professional,ServerDatacenter ç­‰
+:: Èô½ö¸üĞÂÑ¡¶¨¾µÏñ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎªËùĞè¸üĞÂµÄ¾µÏñ±êÖ¾£¨Edition ID£©
+:: ÀıÈç: Core,Professional,ServerDatacenter µÈ
 set ChoiceEdition=
 
-:: è‹¥ä½¿ç”¨ç°æœ‰é•œåƒå‡çº§ Windows ç‰ˆæœ¬å¹¶ä¿å­˜ï¼ˆä¸é€‚ç”¨äº Windows Serverï¼‰ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôÊ¹ÓÃÏÖÓĞ¾µÏñÉı¼¶ Windows °æ±¾²¢±£´æ£¨²»ÊÊÓÃÓÚ Windows Server£©£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set UpgradeEdition=0
 
-:: è‹¥å¯¹æ›´æ–°åçš„é•œåƒè¿›è¡Œæ’åºï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸ºé•œåƒæ ‡å¿—ï¼ˆEdition IDï¼‰é¡ºåº
-:: ä¸é€‚ç”¨äº Windows Serverï¼Œéœ€è¦å‰ç½®å‚æ•° UpgradeEdition ä¸º 1
-:: ä¾‹å¦‚: Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
+:: Èô¶Ô¸üĞÂºóµÄ¾µÏñ½øĞĞÅÅĞò£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª¾µÏñ±êÖ¾£¨Edition ID£©Ë³Ğò
+:: ²»ÊÊÓÃÓÚ Windows Server£¬ĞèÒªÇ°ÖÃ²ÎÊı UpgradeEdition Îª 1
+:: ÀıÈç: Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
 set SortEditions=Core,CoreSingleLanguage,Education,Professional,ProfessionalEducation,ProfessionalWorkstation
 
-:: è‹¥å®‰è£…æˆ–å‡çº§åˆåº”ç”¨åŒ…ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô°²×°»òÉı¼¶ºÏÓ¦ÓÃ°ü£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set AddAppxs=0
 
-:: è‹¥å®‰è£…åº”ç”¨åŒ…ä¸ºå­˜æ ¹ç‰ˆæœ¬ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Èô°²×°Ó¦ÓÃ°üÎª´æ¸ù°æ±¾£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set AppsAsStub=0
 
-:: è‹¥å±•å¼€.msu æ›´æ–°åŒ…å¹¶é€šè¿‡ update.mum å®‰è£…æ›´æ–°ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
-:: åœ¨ Build 26052 åŠæ›´é«˜ç‰ˆæœ¬å°†ä¼šè‡ªåŠ¨å¯ç”¨ï¼Œè‹¥éœ€ç¦ç”¨æ­¤é¡¹ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 2
+:: ÈôÕ¹¿ª .msu ÀÛ»ı¸üĞÂ°ü²¢Í¨¹ı update.mum °²×°¸üĞÂ£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
+:: ½öÊÊÓÃÓÚ build 22621 ¼°ÒÔÉÏ
+:: ¶ÔÓÚ build 26052 ¼°ÒÔÉÏ£º
+:: - ×Ô¶¯ÆôÓÃ
+:: - ¸ÄÎª 2 »ò 3 ¿É½ûÓÃÕ¹¿ª£¬ÇÒ½öÌí¼Ó°æ±¾×î¸ßµÄ LCU msu
+:: - Èô .msu ÀÛ»ı¸üĞÂÄÚº¬ MumX v2£¬×Ô¶¯ÉèÎª 3
 set LCUmsuExpand=0
 
-:: è‹¥ä¿®å¤å…¨æ–°å®‰è£…åæ—  Microsoft Print to PDF æ‰“å°æœºï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôĞŞ¸´È«ĞÂ°²×°ºóÎŞ Microsoft Print to PDF ´òÓ¡»ú£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set FixPDF=0
 
-:: æ·»åŠ æ™ºèƒ½åº”ç”¨æ§åˆ¶ï¼ˆè§£å†³è½¯ä»¶æ‰“å¼€æ…¢ï¼‰åŠé˜»æ­¢å¾®è½¯æ¨é€è½¯ä»¶è‡ªåŠ¨å®‰è£…çš„æ³¨å†Œè¡¨ï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: Ìí¼ÓÖÇÄÜÓ¦ÓÃ¿ØÖÆ£¨½â¾öÈí¼ş´ò¿ªÂı£©¼°×èÖ¹Î¢ÈíÍÆËÍÈí¼ş×Ô¶¯°²×°µÄ×¢²á±í£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set AddRegs=0
 
-:: ### é©±åŠ¨é€‰é¡¹ ###
+:: ½«Öµ¸ü¸ÄÎª 1£¬ÒÔ±ãÎª LTSC °æ±¾£¨EnterpriseS ±äÌå»ò Server ·şÎñÆ÷°æ£©°²×°ÊÊÓÃµÄÆôÓÃ°ü£¨Enablement Package£©
+:: ½öÊÊÓÃÓÚÄÚ²¿°æ±¾ºÅ 26100 ¼°¸ü¸ß°æ±¾
+set LTSCAddEKB=0
 
-:: å°†é©±åŠ¨ç¨‹åºæ·»åŠ åˆ° install.wim ã€ boot.wim æˆ– winre.wimï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
-:: é©±åŠ¨ç¨‹åºçš„é»˜è®¤æ–‡ä»¶å¤¹è·¯å¾„ä¸ºæ›´æ–°æ–‡ä»¶å¤¹å†…çš„ Drivers æ–‡ä»¶å¤¹
-:: è¯¥æ–‡ä»¶å¤¹å¿…é¡»åŒ…å«ä¸‹åˆ—å­æ–‡ä»¶å¤¹ï¼š
-:: All   / é©±åŠ¨ç¨‹åºéƒ½å°†æ·»åŠ åˆ°æ‰€æœ‰ wim æ–‡ä»¶
-:: OS    / é©±åŠ¨ç¨‹åºå°†ä»…æ·»åŠ åˆ° install.wim æ–‡ä»¶
-:: PE    / é©±åŠ¨ç¨‹åºå°†ä»…æ·»åŠ åˆ° boot.wim / Winre.wim æ–‡ä»¶
+:: ### Çı¶¯Ñ¡Ïî ###
+
+:: ½«Çı¶¯³ÌĞòÌí¼Óµ½ install.wim ¡¢ boot.wim »ò winre.wim£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
+:: Çı¶¯³ÌĞòµÄÄ¬ÈÏÎÄ¼ş¼ĞÂ·¾¶Îª¸üĞÂÎÄ¼ş¼ĞÄÚµÄ Drivers ÎÄ¼ş¼Ğ
+:: ¸ÃÎÄ¼ş¼Ğ±ØĞë°üº¬ÏÂÁĞ×ÓÎÄ¼ş¼Ğ£º
+:: All   / Çı¶¯³ÌĞò¶¼½«Ìí¼Óµ½ËùÓĞ wim ÎÄ¼ş
+:: OS    / Çı¶¯³ÌĞò½«½öÌí¼Óµ½ install.wim ÎÄ¼ş
+:: PE    / Çı¶¯³ÌĞò½«½öÌí¼Óµ½ boot.wim / Winre.wim ÎÄ¼ş
 set AddDrivers=0
 
-:: è‹¥åœ¨å®Œæˆæ—¶é€€å‡ºè¿›ç¨‹è€Œä¸æç¤ºï¼Œè¯·å°†æ­¤å‚æ•°æ›´æ”¹ä¸º 1
+:: ÈôÔÚÍê³ÉÊ±ÍË³ö½ø³Ì¶ø²»ÌáÊ¾£¬Çë½«´Ë²ÎÊı¸ü¸ÄÎª 1
 set AutoExit=0
 
 set "_Null=1>nul 2>nul"
@@ -121,7 +129,7 @@ if exist "%SystemRoot%\Sysnative\reg.exe" (
   set "SysPath=%SystemRoot%\Sysnative"
   set "Path=%~dp0bin;%~dp0temp;%SystemRoot%\Sysnative;%SystemRoot%\Sysnative\Wbem;%SystemRoot%\Sysnative\WindowsPowerShell\v1.0\;%LocalAppData%\Microsoft\WindowsApps\;%Path%"
 )
-set "_err=echo: &echo ==== å‡ºç°é”™è¯¯ ===="
+set "_err=echo: &echo ==== ³öÏÖ´íÎó ===="
 set "_psc=powershell -nop -c"
 set winbuild=1
 for /f "tokens=6 delims=[]. " %%# in ('ver') do set winbuild=%%#
@@ -172,8 +180,8 @@ set "_Nul6="
 set "_Nul3="
 copy /y nul "!_work!\#.rw" %_Null% && (if exist "!_work!\#.rw" del /f /q "!_work!\#.rw") || (set "_log=!_dsk!\%~n0")
 echo.
-echo æ­£åœ¨è°ƒè¯•æ¨¡å¼ä¸‹è¿è¡Œ...
-echo å½“å®Œæˆä¹‹åï¼Œæ­¤çª—å£å°†ä¼šå…³é—­
+echo ÕıÔÚµ÷ÊÔÄ£Ê½ÏÂÔËĞĞ...
+echo µ±Íê³ÉÖ®ºó£¬´Ë´°¿Ú½«»á¹Ø±Õ
 @echo on
 @prompt $G
 @call :Begin %_args% >"!_log!_Debug.log" 2>&1
@@ -181,7 +189,7 @@ echo å½“å®Œæˆä¹‹åï¼Œæ­¤çª—å£å°†ä¼šå…³é—­
 
 :Begin
 @cls
-title UUP ç”Ÿæˆ / ISO æ›´æ–°
+title UUP Éú³É / ISO ¸üĞÂ
 set "_dLog=%SystemRoot%\Logs\DISM"
 set "_Dism=Dism.exe /ScratchDir:"!_cabdir!""
 set W10UI=0
@@ -206,7 +214,7 @@ findstr /i \[Config\] Config.ini %_Nul1% || goto :findargs
 for %%# in (
 AddUpdates
 Cleanup
-CleanWinre
+CleanWim
 ResetBase
 SkipISO
 SkipWinre
@@ -261,14 +269,14 @@ if !_nesd! equ 1 if !_nupd! equ 0 if defined _DIR goto :checkuup
 if !_nesd! equ 0 if !_nupd! equ 1 if defined _DIR goto :selectiso
 set _DIR=
 echo.
-echo ä½¿ç”¨ Tab é”®é€‰æ‹©æˆ–è¾“å…¥ UUP æ–‡ä»¶å¤¹æˆ–æ›´æ–°æ–‡ä»¶å¤¹
+echo Ê¹ÓÃ Tab ¼üÑ¡Ôñ»òÊäÈë UUP ÎÄ¼ş¼Ğ»ò¸üĞÂÎÄ¼ş¼Ğ
 echo %line%
 echo.
 set /p _DIR=
 if not defined _DIR (
   echo.
   %_err%
-  call :dk_color1 %Red% "æœªæŒ‡å®šæ–‡ä»¶ï¼ˆå¤¹ï¼‰"
+  call :dk_color1 %Red% "Î´Ö¸¶¨ÎÄ¼ş£¨¼Ğ£©"
   echo.
   goto :selectdir
 )
@@ -278,7 +286,7 @@ if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
 if not exist "%_DIR%\*.esd" if not exist "%_DIR%\*Windows1*-KB*" (
   echo.
   %_err%
-  call :dk_color1 %Red% "æŒ‡å®šçš„æ–‡ä»¶å¤¹å†…æ—  UUP æ–‡ä»¶æˆ–æ›´æ–°æ–‡ä»¶"
+  call :dk_color1 %Red% "Ö¸¶¨µÄÎÄ¼ş¼ĞÄÚÎŞ UUP ÎÄ¼ş»ò¸üĞÂÎÄ¼ş"
   echo.
   goto :selectdir
 )
@@ -299,14 +307,14 @@ if !_niso! equ 1 if defined _DIR if defined _ISO (
 )
 set _ISO=
 echo.
-echo ä½¿ç”¨ Tab é”®é€‰æ‹©æˆ–è¾“å…¥ ISO æ–‡ä»¶æˆ– install.wim æ–‡ä»¶å¤¹
+echo Ê¹ÓÃ Tab ¼üÑ¡Ôñ»òÊäÈë ISO ÎÄ¼ş»ò install.wim ÎÄ¼ş¼Ğ
 echo %line%
 echo.
 set /p _ISO=
 if not defined _ISO (
   echo.
   %_err%
-  call :dk_color1 %Red% "æœªæŒ‡å®šæ–‡ä»¶ï¼ˆå¤¹ï¼‰"
+  call :dk_color1 %Red% "Î´Ö¸¶¨ÎÄ¼ş£¨¼Ğ£©"
   echo.
   goto :selectiso
 )
@@ -315,7 +323,7 @@ if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if not exist "%_ISO%" if not exist "%_ISO%\sources\install.wim" (
   echo.
   %_err%
-  call :dk_color1 %Red% "æŒ‡å®šçš„æ–‡ä»¶ï¼ˆå¤¹ï¼‰é ISO æ–‡ä»¶æˆ– install.wim æ–‡ä»¶å¤¹"
+  call :dk_color1 %Red% "Ö¸¶¨µÄÎÄ¼ş£¨¼Ğ£©·Ç ISO ÎÄ¼ş»ò install.wim ÎÄ¼ş¼Ğ"
   echo.
   goto :selectdir
 )
@@ -324,14 +332,14 @@ if /i "%_ISO:~-4%"==".iso" goto :extraciso
 goto :eof
 
 :copyisodir
-call :dk_color1 %Gray% "æ­£åœ¨å¤åˆ¶ ISO æ–‡ä»¶å¤¹ %_ISO% ..." 4 5
+call :dk_color1 %Gray% "ÕıÔÚ¸´ÖÆ ISO ÎÄ¼ş¼Ğ %_ISO% ..." 4 5
 if "%_ISO:~-1%"=="\" set "_ISO=%_ISO:~0,-1%"
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 robocopy "%_ISO%" "ISOFOLDER" /E /A-:R %_Nul3%
 goto :checkiso
 
 :extraciso
-call :dk_color1 %Gray% "æ­£åœ¨è§£å‹ ISO æ–‡ä»¶ %_ISO% ..." 4 5
+call :dk_color1 %Gray% "ÕıÔÚ½âÑ¹ ISO ÎÄ¼ş %_ISO% ..." 4 5
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 7z.exe x "%_ISO%" -oISOFOLDER * -r %_Nul3%
 goto :checkiso
@@ -339,8 +347,8 @@ goto :checkiso
 :checkuup
 @cls
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
-call :dk_color1 %_Green% "UUPs æ–‡ä»¶å¤¹ï¼š !_DIR!" 4
-call :dk_color1 %Gray% "æ­£åœ¨æ£€æŸ¥ ESD æ–‡ä»¶ä¿¡æ¯..." 4
+call :dk_color1 %_Green% "UUPs ÎÄ¼ş¼Ğ£º !_DIR!" 4
+call :dk_color1 %Gray% "ÕıÔÚ¼ì²é ESD ÎÄ¼şĞÅÏ¢..." 4
 dir /b /ad "!_DIR!\*Package*" %_Nul3% && set EXPRESS=1
 for %%# in (
   Core,CoreN,CoreSingleLanguage,CoreCountrySpecific
@@ -365,8 +373,8 @@ goto :ISO
 :checkiso
 @cls
 if "%_DIR:~-1%"=="\" set "_DIR=%_DIR:~0,-1%"
-call :dk_color1 %_Green% "æ›´æ–°æ–‡ä»¶å¤¹ï¼š !_DIR!" 4
-call :dk_color1 %Gray% "æ­£åœ¨æ£€æŸ¥ ISO æ–‡ä»¶ä¿¡æ¯..." 4
+call :dk_color1 %_Green% "¸üĞÂÎÄ¼ş¼Ğ£º !_DIR!" 4
+call :dk_color1 %Gray% "ÕıÔÚ¼ì²é ISO ÎÄ¼şĞÅÏ¢..." 4
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set _nsum=%%#
 if %_nsum% equ 0 goto :E_NotFind
 for /l %%# in (1,1,%_nsum%) do call :mediacheck %%#
@@ -383,12 +391,26 @@ if /i %arch%==arm64 if %winbuild% lss 9600 if %AddUpdates% equ 1 if %_build% geq
 if %AddUpdates% equ 1 if %W10UI% equ 0 set AddUpdates=0
 if %Cleanup% equ 0 set ResetBase=0
 if %_build% lss 17763 if %AddUpdates% equ 1 set Cleanup=1
-if %_build% geq 22000 if %_build% lss 26052 if %LCUWinre% equ 2 (set LCUWinre=0) else (set LCUWinre=1)
+if %_build% geq 22000 if %_build% lss 26052 if %LCUwinre% equ 2 (set LCUwinre=0)
 if defined ChoiceEdition set UpgradeEdition=0
 if %_Srvr% equ 1 set UpgradeEdition=0 & set UpdtOneDrive=0
 if %_LTSC% equ 1 set UpdtOneDrive=0
+set u_msulcu=%LCUmsuExpand%
 if %_build% lss 21382 set LCUmsuExpand=0
-if %_build% geq 26052 if %LCUmsuExpand% neq 2 (set LCUmsuExpand=1) else (set LCUmsuExpand=0)
+if %_build% geq 26052 if %LCUmsuExpand% equ 2 (set LCUmsuExpand=0) else if %LCUmsuExpand% equ 3 (set LCUmsuExpand=0) else if %LCUmsuExpand% equ 9 (set LCUmsuExpand=0) else (set LCUmsuExpand=1)
+if %_build% geq 26052 if exist "!_DIR!\*Windows1*-KB*.msu" (
+  if not exist "!_cabdir!\mum_x\" mkdir "!_cabdir!\mum_x"
+  for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (set "package=%%#"&call :scanmsu)
+  if exist "!_cabdir!\mum_x\" rmdir /s /q "!_cabdir!\mum_x\" %_Nul1%
+)
+if %msumumx% equ 1 (
+if %LCUmsuExpand% equ 1 echo.&echo Turbo MumX v2 Container detected. LCUmsuExpand will be disabled.
+set LCUmsuExpand=0&set u_msulcu=3
+)
+if %_build% geq 26052 (
+if %u_msulcu% equ 2 if %ResetBase% equ 2 set ResetBase=1
+if %u_msulcu% equ 3 if %ResetBase% equ 2 set ResetBase=1
+)
 if %AddUpdates% equ 1 set _DismHost=1
 if %AddAppxs% equ 1 set _DismHost=1
 if defined _DismHost call :DismHostON
@@ -405,7 +427,7 @@ if exist "!_DIR!\*.*xbundle" (call :appx_sort) else if exist "!_DIR!\*.appx" (ca
 
 if not exist "!_DIR!\*.esd" goto :notuups
 call :uups_ref
-call :dk_color1 %Blue% "=== æ­£åœ¨éƒ¨ç½² ISO å®‰è£…æ–‡ä»¶..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚ²¿Êğ ISO °²×°ÎÄ¼ş..." 4
 if exist ISOFOLDER\ rmdir /s /q ISOFOLDER\
 mkdir ISOFOLDER
 wimlib-imagex.exe apply "!_DIR!\%uups_esd1%" 1 ISOFOLDER\ --no-acls --no-attributes %_Nul3%
@@ -424,7 +446,7 @@ if %_build% geq 18890 if %_build% lss 27500 (
   xcopy /CRY ISOFOLDER\boot\fonts\* ISOFOLDER\efi\microsoft\boot\fonts\ %_Nul3%
 )
 if %AddUpdates% neq 1 goto :NoUpdate
-call :dk_color1 %Blue% "=== æ­£åœ¨æ£€æŸ¥æ›´æ–°æ–‡ä»¶..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ¼ì²é¸üĞÂÎÄ¼ş..." 4 5
 if exist "!_DIR!\*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&call :exd_msu)
 if %_build% geq 22000 if exist "%SysPath%\ucrtbase.dll" if not exist "bin\dpx.dll" if not exist "temp\dpx.dll" call :expand_dll dpx
 set directcab=0
@@ -456,10 +478,10 @@ goto :WimWork
 :IsoRet
 if %SkipISO% neq 0 (
   ren ISOFOLDER %DVDISO%
-  call :dk_color1 %Green% "å·²å®Œæˆè¦æ±‚çš„æ“ä½œã€‚ä½ å·²é€‰æ‹©ä¸åˆ›å»º .iso æ–‡ä»¶ã€‚" 4
+  call :dk_color1 %Green% "ÒÑÍê³ÉÒªÇóµÄ²Ù×÷¡£ÄãÒÑÑ¡Ôñ²»´´½¨ .iso ÎÄ¼ş¡£" 4
   goto :QUIT
 )
-call :dk_color1 %Blue% "=== æ­£åœ¨åˆ›å»º ISO ..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚ´´½¨ ISO ..." 4
 set "wimfile=ISOFOLDER\sources\install.wim"
 if exist "ISOFOLDER\sources\install.esd" set "wimfile=ISOFOLDER\sources\install.esd"
 if exist "ISOFOLDER\sources\install.swm" set "wimfile=ISOFOLDER\sources\install.swm"
@@ -471,11 +493,11 @@ if /i not %arch%==arm64 (
 )
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_ISOC
-call :dk_color1 %Green% "å®Œæˆã€‚" 4
+call :dk_color1 %Green% "Íê³É¡£" 4
 goto :QUIT
 
 :AddDU
-call :dk_color1 %Blue% "=== æ­£åœ¨åº”ç”¨ ISO å®‰è£…æ–‡ä»¶æ›´æ–°..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚÓ¦ÓÃ ISO °²×°ÎÄ¼ş¸üĞÂ..." 4 5
 mkdir "%_cabdir%\du" %_Nul3%
 for %%# in (!isoupdate!) do (
   echo %%~#
@@ -508,7 +530,7 @@ if %UpgradeEdition% equ 1 call :SortEditions
 goto :InstallDone
 
 :CreateInstallWim
-call :dk_color1 %Blue% "=== æ­£åœ¨åˆ›å»º install.wim æ–‡ä»¶..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ´´½¨ install.wim ÎÄ¼ş..." 4 5
 if exist "temp\*.esd" (set _rrr=--ref="temp\*.esd") else (set "_rrr=")
 for /l %%# in (1, 1,%_nsum%) do (
   wimlib-imagex.exe export "!_DIR!\!uups_esd%%#!" 3 "ISOFOLDER\sources\install.wim" --ref="!_DIR!\*.esd" %_rrr% --compress=LZX
@@ -537,7 +559,7 @@ goto :eof
 :SortEditions
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgs=%%#
 if %imgs% equ 1 goto :eof
-call :dk_color1 %Blue% "=== æ­£åœ¨æ’åº install.wim æ–‡ä»¶çš„ SKU ç‰ˆæœ¬â€¦â€¦" 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚÅÅĞò install.wim ÎÄ¼şµÄ SKU °æ±¾¡­¡­" 4 5
 set tcount=0
 for %%A in (%SortEditions%) do for /l %%# in (1,1,%imgs%) do imagex.exe /info "ISOFOLDER\sources\install.wim" %%# | findstr /i "<EDITIONID>%%A</EDITIONID>" %_Nul3% && (
   set /a tcount+=1
@@ -556,7 +578,7 @@ goto :%_rtrn%
 
 :AddWinre
 if not exist "temp\Winre.wim" goto :eof
-call :dk_color1 %Blue% "=== æ­£åœ¨å°† Winre.wim æ·»åŠ åˆ° install.wim ä¸­..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚ½« Winre.wim Ìí¼Óµ½ install.wim ÖĞ..." 4
 for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "ISOFOLDER\sources\install.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
 for /l %%# in (1,1,%imgcount%) do wimlib-imagex.exe update "ISOFOLDER\sources\install.wim" %%# --command="add 'temp\Winre.wim' '\Windows\System32\Recovery\Winre.wim'" %_Nul3%
 goto :eof
@@ -565,7 +587,7 @@ goto :eof
 set sysdir=System32
 if %_build% lss 22563 set sysdir=SysWOW64
 wimlib-imagex.exe dir "ISOFOLDER\sources\install.wim" 1 --path="\Windows\%sysdir%\OneDriveSetup.exe" | findstr /i "OneDrive" %_Nul3% || goto :eof
-call :dk_color1 %Blue% "=== æ­£åœ¨æ›´æ–° OneDrive å®‰è£…æ–‡ä»¶..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚ¸üĞÂ OneDrive °²×°ÎÄ¼ş..." 4
 if exist "bin\OneDrive.ico" copy /y "bin\OneDrive.ico" "temp\OneDrive.ico" %_Nul3%
 if exist "bin\OneDriveSetup.exe" copy /y "bin\OneDriveSetup.exe" "temp\OneDriveSetup.exe" %_Nul3%
 if exist "temp\OneDriveSetup.exe" goto :DoneDown
@@ -576,7 +598,7 @@ if exist "temp\OneDriveSetup.exe" del /q /f "temp\OneDriveSetup.exe" %_Nul3%
 aria2c.exe --no-conf -x16 -s16 -j5 -c -R --allow-overwrite=true --auto-file-renaming=false -d "temp" "https://g.live.com/1rewlive5skydrive/WinProdLatestBinary" %_Nul3%
 if %ERRORLEVEL% GTR 0 (
   if %onedown% leq 5 goto :ReDown
-  call :dk_color1 %_Yellow% "OneDrive ä¸‹è½½å¤±è´¥ï¼Œå°†è·³è¿‡æ“ä½œ" 4
+  call :dk_color1 %_Yellow% "OneDrive ÏÂÔØÊ§°Ü£¬½«Ìø¹ı²Ù×÷" 4
   goto :eof
 )
 :DoneDown
@@ -595,22 +617,22 @@ if %WIM2ESD% equ 0 if %WIM2SWM% equ 1 goto :DoSWM
 goto :%_rtrn%
 
 :DoESD
-call :dk_color1 %Blue% "=== æ­£åœ¨å°† install.wim è½¬æ¢ä¸º install.esd..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ½« install.wim ×ª»»Îª install.esd..." 4 5
 wimlib-imagex.exe export ISOFOLDER\sources\install.wim all ISOFOLDER\sources\install.esd --compress=LZMS --solid
 call set ERRTEMP=!ERRORLEVEL!
 if !ERRTEMP! neq 0 (
-  call :dk_color1 %Red% "åœ¨å¯¼å‡ºæ˜ åƒçš„æ—¶å€™å‡ºç°é”™è¯¯ã€‚æ­£åœ¨ä¸¢å¼ƒ install.esd" 4
+  call :dk_color1 %Red% "ÔÚµ¼³öÓ³ÏñµÄÊ±ºò³öÏÖ´íÎó¡£ÕıÔÚ¶ªÆú install.esd" 4
   del /f /q ISOFOLDER\sources\install.esd %_Nul3%
 )
 if exist ISOFOLDER\sources\install.esd del /f /q ISOFOLDER\sources\install.wim %_Nul3%
 goto :%_rtrn%
 
 :DoSWM
-call :dk_color1 %Blue% "=== æ­£åœ¨å°† install.wim æ‹†åˆ†ä¸ºå¤šä¸ª install*.swm..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ½« install.wim ²ğ·ÖÎª¶à¸ö install*.swm..." 4 5
 wimlib-imagex.exe split ISOFOLDER\sources\install.wim ISOFOLDER\sources\install.swm 3500
 call set ERRTEMP=!ERRORLEVEL!
 if !ERRTEMP! neq 0 (
-  call :dk_color1 %Red% "åœ¨æ‹†åˆ†æ˜ åƒçš„æ—¶å€™å‡ºç°é”™è¯¯ã€‚æ­£åœ¨ä¸¢å¼ƒ install.swm" 4
+  call :dk_color1 %Red% "ÔÚ²ğ·ÖÓ³ÏñµÄÊ±ºò³öÏÖ´íÎó¡£ÕıÔÚ¶ªÆú install.swm" 4
   del /f /q ISOFOLDER\sources\install*.swm %_Nul3%
 )
 if exist ISOFOLDER\sources\install*.swm del /f /q ISOFOLDER\sources\install.wim
@@ -620,28 +642,17 @@ goto :%_rtrn%
 if %SkipWinre% equ 1 goto :%_rtrn%
 if not exist "temp\Winre.wim" if exist "!_DIR!\Winre.wim" copy /y "!_DIR!\Winre.wim" "temp\Winre.wim" %_Nul3%
 if not exist "temp\Winre.wim" call :CreateWinreWim
-if %uwinpe% equ 0 if %CleanWinre% equ 1 goto :CleanWinre
-if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
+if %uwinpe% equ 0 if %CleanWim% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 call :update "temp\Winre.wim"
 goto :WinreDone
 
 :CreateWinreWim
-call :dk_color1 %Blue% "=== æ­£åœ¨å¯¼å‡º Winre.wim æ–‡ä»¶..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚµ¼³ö Winre.wim ÎÄ¼ş..." 4 5
 if exist "!_DIR!\*.esd" wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "temp\Winre.wim" --compress=LZX --boot
 if not exist "temp\Winre.wim" wimlib-imagex.exe extract "ISOFOLDER\sources\install.wim" 1 Windows\System32\Recovery\Winre.wim --dest-dir=temp --no-acls --no-attributes %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 goto :E_Export
 goto :eof
-
-:CleanWinre
-for /f "tokens=3 delims=: " %%# in ('wimlib-imagex.exe info "temp\Winre.wim" ^| findstr /c:"Image Count"') do set imgcount=%%#
-if exist "%_mount%\" rmdir /s /q "%_mount%\" %_Nul3%
-if not exist "%_mount%\" mkdir "%_mount%" %_Nul3%
-set "_inx=1"&call :DoMount "temp\Winre.wim"
-call :Cleanup
-call :DoWork
-call :DoUnmount
-goto :WinreDone
 
 :WinreDone
 echo.
@@ -652,12 +663,12 @@ goto :%_rtrn%
 if %SkipBoot% equ 1 goto :%_rtrn%
 if not exist "ISOFOLDER\sources\boot.wim" if exist "!_DIR!\boot.wim" copy /y "!_DIR!\boot.wim" "ISOFOLDER\sources\boot.wim" %_Nul3%
 if not exist "ISOFOLDER\sources\boot.wim" goto :CreateBootWim
-if %uwinpe% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
+if %uwinpe% equ 0 if %CleanWim% equ 0 if not defined DrvSrcAll if not defined DrvSrcPE goto :%_rtrn%
 call :update "ISOFOLDER\sources\boot.wim"
 goto :BootDone
 
 :CreateBootWim
-call :dk_color1 %Blue% "=== æ­£åœ¨åˆ›å»º boot.wim æ–‡ä»¶..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ´´½¨ boot.wim ÎÄ¼ş..." 4 5
 wimlib-imagex.exe export "!_DIR!\%uups_esd1%" 2 "ISOFOLDER\sources\boot.wim" "Microsoft Windows PE (%_ss%)" "Microsoft Windows PE (%_ss%)" --compress=LZX
 if %_build% lss 22000 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 "Microsoft Windows PE (%arch%)" "Microsoft Windows PE (%arch%)" %_Nul3%
 wimlib-imagex.exe info "ISOFOLDER\sources\boot.wim" 1 --image-property FLAGS=9 %_Nul3%
@@ -753,7 +764,7 @@ del /f /q ISOFOLDER\sources\winpe.jpg %_Nul3%
 goto :eof
 
 :PREPARE
-call :dk_color1 %Gray% "æ­£åœ¨æ£€æŸ¥é•œåƒä¿¡æ¯..." 4
+call :dk_color1 %Gray% "ÕıÔÚ¼ì²é¾µÏñĞÅÏ¢..." 4
 set PREPARED=1
 imagex.exe /info %wimindex% >temp\info.txt 2>&1
 for /f "tokens=3 delims=<>" %%# in ('find /i "<DEFAULT>" temp\info.txt') do set "langid=%%#"
@@ -879,7 +890,7 @@ exit /b
 :uups_ref
 if not exist "!_DIR!\*Package*.esd" exit /b
 if not exist "!_DIR!\*Package*.cab" exit /b
-call :dk_color1 %Gray% "æ­£åœ¨å°† .cab è½¬æ¢ä¸º .esd æ–‡ä»¶..." 4 5
+call :dk_color1 %Gray% "ÕıÔÚ½« .cab ×ª»»Îª .esd ÎÄ¼ş..." 4 5
 if %RefESD% neq 0 (set _level=LZMS) else (set _level=XPRESS)
 if exist "!_DIR!\*.xml.cab" if exist "!_DIR!\Metadata\*" move /y "!_DIR!\*.xml.cab" "!_DIR!\Metadata\" %_Nul3%
 if exist "!_DIR!\*.cab" (
@@ -901,7 +912,7 @@ set cbsp=%~1
 if exist "temp\%cbsp%.esd" exit /b
 echo %cbsp% | findstr /i /r "Windows.*-KB SSU-.* RCU-.* RetailDemo Holographic-Desktop-FOD" %_Nul1% && exit /b
 if /i "%cbsp%"=="Metadata" exit /b
-echo è½¬æ¢ä¸º ESD æ–‡ä»¶ï¼š%cbsp%.cab
+echo ×ª»»Îª ESD ÎÄ¼ş£º%cbsp%.cab
 rmdir /s /q "!_DIR!\%~1\$dpx$.tmp\" %_Nul3%
 wimlib-imagex.exe capture "!_DIR!\%~1" "temp\%cbsp%.esd" --compress=%_level% --check --no-acls --norpfix "Edition Package" "Edition Package" %_Nul3%
 exit /b
@@ -929,7 +940,7 @@ exit /b
 
 :uups_backup
 if not exist "!_work!\temp\*.esd" exit /b
-call :dk_color1 %Gray% "æ­£åœ¨å¤‡ä»½ .esd æ–‡ä»¶..." 4 5
+call :dk_color1 %Gray% "ÕıÔÚ±¸·İ .esd ÎÄ¼ş..." 4 5
 if %EXPRESS% equ 1 (
 mkdir "!_work!\CanonicalUUP" %_Nul3%
 move /y "!_work!\temp\*.esd" "!_work!\CanonicalUUP\" %_Nul3%
@@ -954,13 +965,13 @@ wimlib-imagex.exe info %wimindex% %_Nul3%
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% equ 73 (
   %_err%
-  call :dk_color1 %Red% "%wimshow% æ–‡ä»¶å·²æŸå"
+  call :dk_color1 %Red% "%wimshow% ÎÄ¼şÒÑËğ»µ"
   set eWIMLIB=1
   exit /b
 )
 if %ERRTEMP% neq 0 (
   %_err%
-  call :dk_color1 %Red% "æ— æ³•è§£ææ¥è‡ªæ–‡ä»¶ %wimshow% çš„ä¿¡æ¯"
+  call :dk_color1 %Red% "ÎŞ·¨½âÎöÀ´×ÔÎÄ¼ş %wimshow% µÄĞÅÏ¢"
   set eWIMLIB=1
   exit /b
 )
@@ -1028,7 +1039,7 @@ if %_nat% equ 0 (
 if exist "temp\%_f_%" goto :expand_end
 set msuwim=0
 set "uupmsu="
-if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (
+if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.msu"') do (
   expand.exe -d -f:*Windows*.psf "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#")
   wimlib-imagex.exe dir "!_DIR!\%%#" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && (set "uupmsu=%%#"&set msuwim=1)
 )
@@ -1042,24 +1053,47 @@ if exist "temp\%_f_%" if "%_f_%"=="dpx.dll" copy /y %SystemRoot%\%_dsp%\expand.e
 if exist "temp\%_f_%" if "%_f_%"=="UpdateCompression.dll" copy /y "temp\%_f_%" "bin\MSDelta.dll" %_Nul3%
 exit /b
 
+:scanmsu
+expand.exe -d -f:*Windows*.psf "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
+wimlib-imagex.exe dir "!_DIR!\%package%" %_Nul2% | findstr /i %arch%\.mumx %_Nul3% && (call :checkmsu)
+goto :eof
+
+:checkmsu
+if not defined msg_mumx call :dk_color1 %Blue% "=== Checking LCU MumX version . . ." 4 5
+set msg_mumx=1
+set loc_mumx=1
+if exist "!_cabdir!\mum_x\*.mumx*" del /f /q "!_cabdir!\mum_x\*.mumx*" %_Nul1%
+wimlib-imagex.exe extract "!_DIR!\%package%" 1 *Windows*.mumx* --dest-dir="!_cabdir!\mum_x" --nullglob %_Null%
+if exist "!_cabdir!\mum_x\*.mumx.???" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\mum_x\*.mumx.???"') do (
+if %_pwsh% equ 1 %_psc% "$bb = Get-Content '!_cabdir!\mum_x\%%#' -Encoding Byte -Total 216; if ('77 85 77 88' -eq $bb[208..211]) {$bb[215].ToString()} else {'1'}" | findstr 1 %_Nul1% || (set msumumx=1&set loc_mumx=2)
+if %_pwsh% equ 0 wimlib-imagex.exe info "!_cabdir!\mum_x\%%#" --header | findstr /i WIM_HDR_FLAG_COMPRESSION %_Nul1% || (set msumumx=1&set loc_mumx=2)
+)
+if exist "!_cabdir!\mum_x\*.mumx" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\mum_x\*.mumx"') do (
+if %_pwsh% equ 1 %_psc% "$bb = Get-Content '!_cabdir!\mum_x\%%#' -Encoding Byte -Total 8; $bb[7].ToString()" | findstr 1 %_Nul1% || (set msumumx=1&set loc_mumx=2)
+)
+echo %package% [MumX v%loc_mumx%]
+goto :eof
+
 :extract
 if not exist "!_cabdir!\" mkdir "!_cabdir!" %_Nul3%
 if not exist "!_cabdir!\LCUmum\" mkdir "!_cabdir!\LCUmum"
+if not exist "!_cabdir!\LCUwpe\" mkdir "!_cabdir!\LCUwpe"
 if not exist "!_cabdir!\LCUall\" mkdir "!_cabdir!\LCUall"
+if not exist "!_cabdir!\LCUbase\" mkdir "!_cabdir!\LCUbase"
 set _cab=0
-if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (set "package=%%#"&call :sum2msu)
+if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.msu"') do (set "package=%%#"&call :sum2msu)
 if exist "!_DIR!\*defender-dism*%_bit%*.cab" for /f "tokens=* delims=" %%# in ('dir /b "!_DIR!\*defender-dism*%_bit%*.cab"') do (call set /a _cab+=1)
 if exist "!_DIR!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\SSU-*-*.cab"') do (call set /a _cab+=1)
 if exist "!_DIR!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\RCU-*-*.cab"') do (call set /a _cab+=1)
-if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&call :sum2cab)
+if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&call :sum2cab)
 if exist "!_DIR!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.cab"') do (set "pkgn=%%~n#"&call :sum2cab)
 set count=0&set isoupdate=&set tmpcmp=&set _rcu=
-if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :msu2)
+if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.msu"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :msu2)
 if exist "!_DIR!\*defender-dism*%_bit%*.cab" for /f "tokens=* delims=" %%# in ('dir /b "!_DIR!\*defender-dism*%_bit%*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 if exist "!_DIR!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\SSU-*-*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
-if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
+if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 if exist "!_DIR!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
-if exist "!_cabdir!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :psfx2)
+if exist "!_cabdir!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /os "!_cabdir!\*Windows1*-KB*.wim"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :psfx2)
 if exist "!_DIR!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\RCU-*-*.cab"') do (set "pkgn=%%~n#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :cab2)
 goto :eof
 
@@ -1073,7 +1107,7 @@ goto :eof
 :sum2cab
 for /f "tokens=2 delims=-" %%V in ('echo %pkgn%') do set pkgid=%%V
 set "uupmsu="
-if %_build% geq 21382 if exist "!_DIR!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*%pkgid%*%arch%*.msu"') do set "uupmsu=%%#"
+if %_build% geq 21382 if exist "!_DIR!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*%pkgid%*%arch%*.msu"') do set "uupmsu=%%#"
 if defined uupmsu (
   expand.exe -d -f:*Windows*.psf "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
   wimlib-imagex.exe dir "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
@@ -1085,7 +1119,7 @@ goto :eof
 :cab2
 for /f "tokens=2 delims=-" %%V in ('echo %pkgn%') do set pkgid=%%V
 set "uupmsu="
-if %_build% geq 21382 if exist "!_DIR!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*%pkgid%*%arch%*.msu"') do set "uupmsu=%%#"
+if %_build% geq 21382 if exist "!_DIR!\*Windows1*%pkgid%*%arch%*.msu" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*%pkgid%*%arch%*.msu"') do set "uupmsu=%%#"
 if defined uupmsu (
   expand.exe -d -f:*Windows*.psf "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
   wimlib-imagex.exe dir "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
@@ -1101,7 +1135,7 @@ if not exist "!dest!\update.mum" (
     echo [%count%/%_cab%] %package%
     expand.exe -f:* "!_DIR!\%package%" "!dest!" %_Nul3%
   ) else (
-    if not defined cab_%pkgn% echo [%count%/%_cab%] %package% [å®‰è£…æ–‡ä»¶æ›´æ–°]
+    if not defined cab_%pkgn% echo [%count%/%_cab%] %package% [°²×°ÎÄ¼ş¸üĞÂ]
     set isoupdate=!isoupdate! "%package%"
     set cab_%pkgn%=1
     rmdir /s /q "!dest!\" %_Nul3%
@@ -1111,11 +1145,11 @@ if not exist "!dest!\update.mum" (
 7z.exe e "!_DIR!\%package%" -o"!dest!" *.psf.cix.xml -aoa %_Nul3%
 if exist "!dest!\*.psf.cix.xml" (
   if not exist "!_DIR!\%pkgn%.psf" if not exist "!_DIR!\*%pkgid%*%arch%*.psf" (
-    call :dk_color1 %Red% "[%count%/%_cab%] %package% / PSF æ–‡ä»¶ä¸¢å¤±"
+    call :dk_color1 %Red% "[%count%/%_cab%] %package% / PSF ÎÄ¼ş¶ªÊ§"
     goto :eof
   )
   if %psfnet% equ 0 (
-    call :dk_color1 %Red% "[%count%/%_cab%] %package% / PSFExtractor ä¸å¯ç”¨"
+    call :dk_color1 %Red% "[%count%/%_cab%] %package% / PSFExtractor ²»¿ÉÓÃ"
     goto :eof
   )
   set psf_%pkgn%=1
@@ -1124,7 +1158,7 @@ findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && call :chklc
 findstr /i /m "Package_for_RevisedFix" "!dest!\update.mum" %_Nul3% && call :chklcu "!dest!" Package_for_RevisedFix
 7z.exe e "!_DIR!\%package%" -o"!dest!" toc.xml -aoa %_Nul3%
 if exist "!dest!\toc.xml" (
-  echo [%count%/%_cab%] %package% [ç»„åˆæ›´æ–°åŒ…]
+  echo [%count%/%_cab%] %package% [×éºÏ¸üĞÂ°ü]
   mkdir "!_cabdir!\lcu" %_Nul3%
   expand.exe -f:* "!_DIR!\%package%" "!_cabdir!\lcu" %_Nul3%
   if exist "!_cabdir!\lcu\SSU-*%arch%*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\SSU-*%arch%*.cab"') do (set "compkg=%%#"&call :inrencab)
@@ -1135,7 +1169,7 @@ if exist "!dest!\toc.xml" (
 set _extsafe=0
 set "_type="
 if not defined _type (
-  findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS åŠ¨æ€æ›´æ–°]"&set uwinpe=1)
+  findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (set "_type=[SafeOS ¶¯Ì¬¸üĞÂ]"&set uwinpe=1)
 )
 if not defined _type if %_build% geq 17763 findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
   %_Nul3% findstr /i /m "Edition\"" "!dest!\update.mum"
@@ -1144,32 +1178,32 @@ if not defined _type if %_build% geq 17763 findstr /i /m "WinPE" "!dest!\update.
 if not defined _type set _extsafe=1
 if %_extsafe% equ 1 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-sysreset_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS åŠ¨æ€æ›´æ–°]"&set uwinpe=1)
+  if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS ¶¯Ì¬¸üĞÂ]"&set uwinpe=1)
 )
 if %_extsafe% equ 1 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-winpe_tools_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS åŠ¨æ€æ›´æ–°]"&set uwinpe=1)
+  if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS ¶¯Ì¬¸üĞÂ]"&set uwinpe=1)
 )
 if %_extsafe% equ 1 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-winre-tools_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS åŠ¨æ€æ›´æ–°]"&set uwinpe=1)
+  if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS ¶¯Ì¬¸üĞÂ]"&set uwinpe=1)
 )
 if %_extsafe% equ 1 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-i..dsetup-rejuvenation_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS åŠ¨æ€æ›´æ–°]"&set uwinpe=1)
+  if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (set "_type=[SafeOS ¶¯Ì¬¸üĞÂ]"&set uwinpe=1)
 )
 if not defined _type (
-  findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && (set "_type=[ç´¯ç§¯æ›´æ–°]"&set uwinpe=1)
+  findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && (set "_type=[ÀÛ»ı¸üĞÂ]"&set uwinpe=1)
 )
 if not defined _type (
-  findstr /i /m "Package_for_RevisedFix" "!dest!\update.mum" %_Nul3% && (set "_type=[ä¿®è®¢ç´¯ç§¯æ›´æ–°]"&set uwinpe=1)
+  findstr /i /m "Package_for_RevisedFix" "!dest!\update.mum" %_Nul3% && (set "_type=[ĞŞ¶©ÀÛ»ı¸üĞÂ]"&set uwinpe=1)
 )
 if not defined _type (
-  findstr /i /m "Package_for_WindowsExperienceFeaturePack" "!dest!\update.mum" %_Nul3% && set "_type=[åŠŸèƒ½ä½“éªŒåŒ…]"
+  findstr /i /m "Package_for_WindowsExperienceFeaturePack" "!dest!\update.mum" %_Nul3% && set "_type=[¹¦ÄÜÌåÑé°ü]"
 )
 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-servicingstack_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-servicingstack_*.manifest" set "_type=[æœåŠ¡å †æ ˆæ›´æ–°]"&set uwinpe=1&call :chkssu "!dest!" "%package%"
+  if exist "!dest!\*_microsoft-windows-servicingstack_*.manifest" set "_type=[·şÎñ¶ÑÕ»¸üĞÂ]"&set uwinpe=1&call :chkssu "!dest!" "%package%"
 )
 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_netfx4*.manifest -aoa %_Nul3%
@@ -1177,15 +1211,15 @@ if not defined _type (
 )
 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-s..boot-firmwareupdate_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-s..boot-firmwareupdate_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[å®‰å…¨å¯åŠ¨]"
+  if exist "!dest!\*_microsoft-windows-s..boot-firmwareupdate_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[°²È«Æô¶¯]"
 )
 if not defined _type if %_build% geq 18362 (
   7z.exe e "!_DIR!\%package%" -o"!dest!" microsoft-windows-*enablement-package~*.mum -aoa %_Nul3%
-  if exist "!dest!\microsoft-windows-*enablement-package~*.mum" set "_type=[åŠŸèƒ½å¯ç”¨]"
+  if exist "!dest!\microsoft-windows-*enablement-package~*.mum" set "_type=[¹¦ÄÜÆôÓÃ]"
 )
 if %_build% geq 18362 if exist "!dest!\*enablement-package*.mum" (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-e..-firsttimeinstaller_*.manifest -aoa %_Nul3%
-  if exist "!dest!\*_microsoft-windows-e..-firsttimeinstaller_*.manifest" set "_type=[åŠŸèƒ½å¯ç”¨ / EdgeChromium]"
+  if exist "!dest!\*_microsoft-windows-e..-firsttimeinstaller_*.manifest" set "_type=[¹¦ÄÜÆôÓÃ / EdgeChromium]"
 )
 if not defined _type (
   7z.exe e "!_DIR!\%package%" -o"!dest!" *_microsoft-windows-e..-firsttimeinstaller_*.manifest -aoa %_Nul3%
@@ -1198,12 +1232,14 @@ if not defined _type (
 if not defined _type (
 expand.exe -f:*_microsoft-windows-m..update-genuineintel_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
 expand.exe -f:*_microsoft-windows-m..update-authenticamd_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
-if exist "!dest!\*_microsoft-windows-m..update-*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[å¾®ç ]"
+if exist "!dest!\*_microsoft-windows-m..update-*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[Î¢Âë]"
 )
 if not defined _type (
 expand.exe -f:*_microsoft-onecore-c..dexperiencehost-api_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+expand.exe -f:*_microsoft-updatetar..dowsoobe-*.manifest "!_DIR!\%package%" "!dest!" %_Null%
 expand.exe -f:*_microsoft-updatetargeting-windowsoobe_*.manifest "!_DIR!\%package%" "!dest!" %_Null%
 expand.exe -f:*_microsoft-windows-oobe-*.manifest "!_DIR!\%package%" "!dest!" %_Null%
+expand.exe -f:*_microsoft-windows-shell-oobe*.manifest "!_DIR!\%package%" "!dest!" %_Null%
 if exist "!dest!\*_microsoft-*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || set "_type=[OOBE]"
 )
 echo [%count%/%_cab%] %package% %_type%
@@ -1226,7 +1262,7 @@ if exist "!dest!\*cablist.ini" (
 if defined wim_%pkgn% (
   wimlib-imagex.exe apply "!_DIR!\%package%" 1 "!dest!" --no-acls --no-attributes %_Nul3%
   if !errorlevel! neq 0 (
-    call :dk_color1 %Red% "å‡ºç°é”™è¯¯ï¼šè§£å‹ WIM æ›´æ–°åŒ…å¤±è´¥"
+    call :dk_color1 %Red% "³öÏÖ´íÎó£º½âÑ¹ WIM ¸üĞÂ°üÊ§°Ü"
     rmdir /s /q "!dest!\" %_Nul3%
     set wim_%pkgn%=
     goto :eof
@@ -1237,7 +1273,7 @@ if defined psf_%pkgn% (
   if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
   PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
   if !errorlevel! neq 0 (
-    call :dk_color1 %Red% "å‡ºç°é”™è¯¯ï¼šè§£å‹ PSF æ›´æ–°åŒ…å¤±è´¥"
+    call :dk_color1 %Red% "³öÏÖ´íÎó£º½âÑ¹ PSF ¸üĞÂ°üÊ§°Ü"
     rmdir /s /q "!dest!\" %_Nul3%
     set psf_%pkgn%=
     goto :eof
@@ -1268,12 +1304,12 @@ if %msuwim% equ 1 if %_build% geq 26052 (
   for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\lcu\*.AggregatedMetadata*.cab" %_Nul6%') do (expand.exe -f:HotpatchCompDB*.cab "!_cabdir!\lcu\%%#" "!_cabdir!\lcu" %_Nul3%)
 )
 if exist "!_cabdir!\lcu\HotpatchCompDB*.cab" (
-  call :dk_color1 %_Yellow% "ä¸æ”¯æŒçš„æ›´æ–°ï¼š%package% [çƒ­ä¿®å¤æ›´æ–°]" 4
+  call :dk_color1 %_Yellow% "²»Ö§³ÖµÄ¸üĞÂ£º%package% [ÈÈĞŞ¸´¸üĞÂ]" 4
   rmdir /s /q "!_cabdir!\lcu\" %_Nul3%
   goto :eof
 )
 set /a count+=1
-echo [%count%/%_cab%] %package% [ç»„åˆç´¯ç§¯æ›´æ–°]
+echo [%count%/%_cab%] %package% [×éºÏÀÛ»ı¸üĞÂ]
 if %msuwim% equ 0 (
   expand.exe -f:*Windows*.cab "!_DIR!\%package%" "!_cabdir!\lcu" %_Nul3%
   expand.exe -f:SSU-*%arch%*.cab "!_DIR!\%package%" "!_cabdir!\lcu" %_Nul3%
@@ -1312,13 +1348,13 @@ set msu_%pkgm%=
 set psf_%pkgn%=1
 set /a count+=1
 call set /a _cab+=1
-echo [%count%/%_cab%] %package% [ç´¯ç§¯æ›´æ–°]
+echo [%count%/%_cab%] %package% [ÀÛ»ı¸üĞÂ]
 wimlib-imagex.exe apply "!_cabdir!\%package%" 1 "!dest!" --no-acls --no-attributes %_Null%
 if not exist "!dest!\express.psf.cix.xml" for /f %%# in ('dir /b /a:-d "!dest!\*.psf.cix.xml"') do rename "!dest!\%%#" express.psf.cix.xml %_Nul3%
 if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
 PSFExtractor.exe -v2 "!_cabdir!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!dest!" %_Nul3%
 if !errorlevel! neq 0 (
-  call :dk_color1 %Red% "å‡ºç°é”™è¯¯ï¼šè§£å‹ PSF æ›´æ–°åŒ…å¤±è´¥"
+  call :dk_color1 %Red% "³öÏÖ´íÎó£º½âÑ¹ PSF ¸üĞÂ°üÊ§°Ü"
   rmdir /s /q "!dest!\" %_Nul3%
   set psf_%pkgn%=
   goto :eof
@@ -1339,13 +1375,17 @@ for /f "tokens=5-8 delims==. " %%H in ('findstr /i %kbnm% "%~1\update.mum"') do 
 if %_build% geq 22621 (
   if not exist "!_cabdir!\LCUmum\%kbnm%~%_Pkt%~%_ss%~~%cver%.mum" copy /y "%~1\update.mum" "!_cabdir!\LCUmum\%kbnm%~%_Pkt%~%_ss%~~%cver%.mum" %_Nul1%
 )
-if %LCUmsuExpand% equ 0 if %_build% geq 26052 (
-if not exist "!_cabdir!\LCUall\*Windows*%pkgid%*.msu" if not exist "!_cabdir!\LCUall\%package%" (
-  copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
+if %_build% geq 26052 if %LCUmsuExpand% equ 0 (
+  if not exist "!_cabdir!\LCUall\*Windows*%pkgid%*.msu" if not exist "!_cabdir!\LCUall\%package%" (
+    copy /y "!_DIR!\%package%" "!_cabdir!\LCUall\%package%" %_Nul1%
+  )
+  if %u_msulcu% equ 9 echo %kbvr% | findstr /i "174*" %_Nul1% && if not exist "!_cabdir!\LCUbase\%package%" (
+    copy /y "!_DIR!\%package%" "!_cabdir!\LCUbase\%package%" %_Nul1%
+  )
 )
-if %LCUmsuExpand% equ 0 echo %package% |findstr /i "KB5043080 KB5068181" %_Nul1% && if not exist "!_cabdir!\LCUbase\%package%" (
-  mkdir "!_cabdir!\LCUbase" %_Nul3%
-  copy /y "!_DIR!\%package%" "!_cabdir!\LCUbase\%package%" %_Nul1%
+if %_build% geq 26052 if %LCUmsuExpand% equ 1 (
+  if not exist "!_cabdir!\LCUwpe\*Windows*%kb%*.msu" if not exist "!_cabdir!\LCUwpe\%package%" (
+    copy /y "!_DIR!\%package%" "!_cabdir!\LCUwpe\%package%" %_Nul1%
   )
 )
 if %kbvr% geq %c_ver% (
@@ -1425,6 +1465,7 @@ if exist "%_mount%\Windows\Servicing\Packages\*~arm64~~*.mum" (
 for /f "tokens=4,5,6 delims=_" %%H in ('dir /b "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-foundation_*.manifest"') do set "_Fnd=microsoft-w..-foundation_%_Pkt%_%%H_%%~nJ"
 if %_build% geq 14393 if %_build% lss 19041 if not exist "%_mount%\Windows\WinSxS\Manifests\%_SupCom%.manifest" call :Latent _Sup %_Nul3%
 if %_build% geq 14393 if %_build% lss 19046 if not exist "%_mount%\Windows\WinSxS\Manifests\%_EsuCom%.manifest" call :Latent _Esu %_Nul3%
+set lcuwpe=
 set lcuall=
 set lcumsu=
 set mpamfe=
@@ -1450,11 +1491,11 @@ set ldr=
 set mounterr=
 if exist "!_DIR!\SSU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\SSU-*-*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
 if exist "!_DIR!\*Windows1*-KB*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
-if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.msu"') do if defined msu_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
-if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\*Windows1*-KB*.wim"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
-if %LCUmsuExpand% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" (for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\*Windows1*-KB*.wim"') do if defined psf_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+if %_build% geq 21382 if exist "!_DIR!\*Windows1*-KB*.msu" (for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.msu"') do if defined msu_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+if exist "!_DIR!\*Windows1*-KB*.wim" for /f "tokens=* delims=" %%# in ('dir /b /os "!_DIR!\*Windows1*-KB*.wim"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
+if %LCUmsuExpand% equ 1 if exist "!_cabdir!\*Windows1*-KB*.wim" (for /f "tokens=* delims=" %%# in ('dir /b /os "!_cabdir!\*Windows1*-KB*.wim"') do if defined psf_%%~n# (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
 if %LCUmsuExpand% equ 1 if exist "!_DIR!\RCU-*-*.cab" for /f "tokens=* delims=" %%# in ('dir /b /on "!_DIR!\RCU-*-*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum)
-if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if exist "!_DIR!\*defender-dism*%_bit%*.cab" (for /f "tokens=* delims=" %%# in ('dir /b "!_DIR!\*defender-dism*%_bit%*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
+if not exist "%_mount%\Windows\System32\wpeinit.exe" if exist "!_DIR!\*defender-dism*%_bit%*.cab" (for /f "tokens=* delims=" %%# in ('dir /b "!_DIR!\*defender-dism*%_bit%*.cab"') do (set "pckn=%%~n#"&set "packx=%%~x#"&set "package=%%#"&set "dest=!_cabdir!\%%~n#"&call :procmum))
 call :wds_add
 if %_build% geq 22621 if %winbuild% lss 10240 reg.exe query "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentMajorVersionNumber %_Nul3% || (
 reg.exe add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion" /v CurrentMajorVersionNumber /t REG_DWORD /d 10 /f
@@ -1464,20 +1505,20 @@ if %_build% geq 19041 if %winbuild% lss 17133 if not exist "%SysPath%\ext-ms-win
   copy /y %SysPath%\slc.dll %SysPath%\ext-ms-win-security-slc-l1-1-0.dll %_Nul1%
   if /i not %xOS%==x86 copy /y %SystemRoot%\SysWOW64\slc.dll %SystemRoot%\SysWOW64\ext-ms-win-security-slc-l1-1-0.dll %_Nul1%
 )
-if %winbuild% lss 15063 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if %winbuild% lss 15063 if not exist "%_mount%\Windows\System32\wpeinit.exe" (
   call :RegLoad
   if /i %arch%==arm64 reg.exe add HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v AllowImproperDeploymentProcessorArchitecture /t REG_DWORD /d 1 /f %_Nul1%
   if %winbuild% lss 9600 reg.exe add HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\SideBySide /v AllowImproperDeploymentProcessorArchitecture /t REG_DWORD /d 1 /f %_Nul1%
   call :RggUnload
 )
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
   call :SBSConfig 9 9 1
 )
 if defined netpack set "ldr=!netpack! !ldr!"
 if defined ekbpack set "ldr=!ekbpack! !ldr!"
 for %%# in (dupdt,cupdt,supdt,fupdt,safeos,secureboot,edge,ldr,cumulative,lcumsu) do if defined %%# set overall=1
 if not defined overall if not defined mpamfe if not defined servicingstack goto :eof
-call :dk_color1 %Blue% "=== æ­£åœ¨å®‰è£…æ›´æ–°..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚ°²×°¸üĞÂ..." 4
 if defined servicingstack (
   set idpkg=ServicingStack
   set callclean=1
@@ -1488,9 +1529,11 @@ if defined servicingstack (
 )
 if not defined overall if not defined mpamfe goto :eof
 if not exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" goto :skipsafeos
+if not exist "%_mount%\Windows\Servicing\Packages\*FontSupport-WinRE*.mum" goto :skipsafeos
+:: if not exist "%_mount%\Windows\WinSxS\Manifests\*wimconfig-winre*.manifest" goto :skipsafeos
 if not defined safeos if %LCUWinre% equ 0 (
   call :DoUnmount
-  if %CleanWinre% equ 0 (
+  if %CleanWim% equ 0 (
     set mounterr=1
     goto :eof
   ) else (
@@ -1510,7 +1553,7 @@ if defined safeos (
 :skipsafeos
 if not defined cumulative if not defined lcumsu goto :scbt
 set _gobk=scbt
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :updtlcu
+if exist "%_mount%\Windows\System32\wpeinit.exe" goto :updtlcu
 :scbt
 if defined secureboot (
   set idpkg=SecureBoot
@@ -1524,7 +1567,7 @@ if defined ldr (
   set callclean=1
   %_Dism% /LogPath:"%_dLog%\DismUpdt.log" /Image:"%_mount%" /Add-Package %ldr%
   call :chkEC !errorlevel!
-  if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
+  if !_ec!==1 if not exist "%_mount%\Windows\System32\wpeinit.exe" goto :errmount
 )
 if defined fupdt (
   set "_SxsKey=%_EdgKey%"
@@ -1562,13 +1605,13 @@ if defined dupdt (
 )
 if not defined cumulative if not defined lcumsu goto :cuwd
 set _gobk=cuwd
-if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :updtlcu
+if not exist "%_mount%\Windows\System32\wpeinit.exe" goto :updtlcu
 :cuwd
 if defined basekbn call :RegBase
 if defined lcupkg call :ReLCU
 if defined callclean call :Cleanup
 if defined mpamfe (
-  call :dk_color1 %Blue% "=== æ­£åœ¨æ·»åŠ  Defender æ›´æ–°..." 4 5
+  call :dk_color1 %Blue% "=== ÕıÔÚÌí¼Ó Defender ¸üĞÂ..." 4 5
   call :defender_update
 )
 if not defined edge goto :eof
@@ -1582,7 +1625,7 @@ goto :eof
 
 :updtlcu
 set "_DsmLog=DismLCU.log"
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" set "_DsmLog=DismLCUBoot.log"
+if exist "%_mount%\Windows\System32\wpeinit.exe" set "_DsmLog=DismLCUBoot.log"
 if exist "%_mount%\Windows\Servicing\Packages\*WinRE-Package*.mum" set "_DsmLog=DismLCUWinre.log"
 set idpkg=LCU
 set callclean=1
@@ -1591,9 +1634,9 @@ set _e_=0
 if defined cumulative for %%# in (%cumulative%) do call :lcuadd %%#
 if defined lcumsu for %%# in (%lcumsu%) do call :lcuadd %%#
 call :chkEC %_e_%
-if !_ec!==1 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :errmount
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %LCUWinre% equ 1 call :Cleanup
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :%_gobk%
+if !_ec!==1 if not exist "%_mount%\Windows\System32\wpeinit.exe" goto :errmount
+if exist "%_mount%\Windows\System32\wpeinit.exe" if %LCUWinre% equ 1 call :Cleanup
+if exist "%_mount%\Windows\System32\wpeinit.exe" goto :%_gobk%
 if not exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" goto :%_gobk%
 if not defined lcumsu goto :%_gobk%
 if not exist "!_cabdir!\LCUmum\*.mum" goto :%_gobk%
@@ -1610,7 +1653,7 @@ if exist "!_cabdir!\LCUbase\%~nx1" call set /a _c_+=1 & goto :eof
 %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:%1
 call set _e_=!errorlevel!
 call set /a _c_+=1
-if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
+if not exist "%_mount%\Windows\WinSxS\pending.xml" if not exist "%_mount%\Windows\System32\wpeinit.exe" if %ResetBase% equ 2 if %_build% geq 26052 if !_c_! lss %c_num% call :ResetBase
 goto :eof
 
 :svcpkg
@@ -1634,9 +1677,9 @@ goto :eof
 
 :errmount
 set mounterr=1
-set "msgerr=Dism.exe æ“ä½œå¤±è´¥"
-if defined idpkg set "msgerr=Dism.exe æ·»åŠ  %idpkg% æ›´æ–°å¤±è´¥"
-call :dk_color1 %Red% "%msgerr%ã€‚æ­£åœ¨ä¸¢å¼ƒå½“å‰æŒ‚è½½é•œåƒ..."
+set "msgerr=Dism.exe ²Ù×÷Ê§°Ü"
+if defined idpkg set "msgerr=Dism.exe Ìí¼Ó %idpkg% ¸üĞÂÊ§°Ü"
+call :dk_color1 %Red% "%msgerr%¡£ÕıÔÚ¶ªÆúµ±Ç°¹ÒÔØ¾µÏñ..."
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Image:"%_mount%" /Get-Packages %_Nul3%
 %_Dism% /LogPath:"%_dLog%\DismUnMount.log" /Unmount-Wim /MountDir:"%_mount%" /Discard
 %_Dism% /LogPath:"%_dLog%\DismNUL.log" /Cleanup-Mountpoints %_Nul3%
@@ -1658,7 +1701,7 @@ type nul>"temp\Reg-Similar.txt"
 if exist "temp\Reg-Baseline.txt" for /f "usebackq tokens=8 delims=\." %%G in ("temp\Reg-Baseline.txt") do (
   findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
 )
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" for %%G in (Microsoft-Windows-WinPE-LanguagePack-Package~ Microsoft-Windows-WinPE-Package~) do (
+if exist "%_mount%\Windows\System32\wpeinit.exe" for %%G in (Microsoft-Windows-WinPE-LanguagePack-Package~ Microsoft-Windows-WinPE-Package~) do (
   findstr /i "%%G" "temp\Reg-Similar.txt" %_Nul3% || reg.exe query "%_k_%" /k /f "%%G" %_Nul2% | findstr /i HKEY_LOCAL_MACHINE >>"temp\Reg-Similar.txt"
 )
 findstr /i HKEY_LOCAL_MACHINE "temp\Reg-Similar.txt" %_Nul3% && for %%# in (%basekbn%) do (
@@ -1689,7 +1732,7 @@ reg.exe load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul1%
 goto :eof
 
 :RggUnload
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
   reg.exe unload HKLM\%SOFTWARE% %_Nul1%
   goto :eof
 )
@@ -1726,7 +1769,7 @@ if exist "!lcudir!\*.psf.cix.xml" (
   if exist "temp\UpdateCompression.dll" (copy /y "temp\UpdateCompression.dll" "bin\MSDelta.dll" %_Nul3%) else (call :expand_dll UpdateCompression)
   PSFExtractor.exe -v2 "!_DIR!\%pkgn%.psf" "!dest!\express.psf.cix.xml" "!lcudir!" %_Nul3%
   if !errorlevel! neq 0 (
-    call :dk_color1 %Red% "å‡ºç°é”™è¯¯ï¼šè§£å‹ PSF æ›´æ–°åŒ…å¤±è´¥"
+    call :dk_color1 %Red% "³öÏÖ´íÎó£º½âÑ¹ PSF ¸üĞÂ°üÊ§°Ü"
     rmdir /s /q "!dest!\" %_Nul3%
     set psf_%pkgn%=
     goto :eof
@@ -1738,7 +1781,7 @@ goto :eof
 :procmum
 if exist "!dest!\*.psf.cix.xml" if not defined psf_%pckn% goto :eof
 if exist "!dest!\*defender*.xml" (
-  if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
+  if exist "%_mount%\Windows\System32\wpeinit.exe" goto :eof
   call :defender_check
   goto :eof
 )
@@ -1761,12 +1804,12 @@ if defined uupmsu (
   expand.exe -d -f:*Windows*.psf "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
   wimlib-imagex.exe dir "!_DIR!\%uupmsu%" %_Nul2% | findstr /i %arch%\.psf %_Nul3% && goto :eof
 )
-if %_build% geq 20348 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if %_build% geq 20348 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\System32\wpeinit.exe" (
 findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (findstr /i /m "Microsoft-Windows-NetFx" "!dest!\package_1_for*.mum" %_Nul3% && (
     if exist "!dest!\*_microsoft-windows-n..35wpfcomp.resources*.manifest" (set "netupdt=!netupdt! /PackagePath:!dest!\update.mum"&goto :eof)
   ))
 )
-if %_build% geq 17763 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if %_build% geq 17763 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\System32\wpeinit.exe" (
   findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (findstr /i /m "Microsoft-Windows-NetFx" "!dest!\*.mum" %_Nul3% && call :rollnet)
   findstr /i /m "Package_for_OasisAsset" "!dest!\update.mum" %_Nul3% && (if not exist "%_mount%\Windows\Servicing\packages\*OasisAssets-Package*.mum" goto :eof)
   findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && (
@@ -1774,7 +1817,7 @@ if %_build% geq 17763 if exist "!dest!\update.mum" if not exist "%_mount%\Window
     if errorlevel 1 goto :eof
   )
 )
-if %_build% geq 19041 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if %_build% geq 19041 if exist "!dest!\update.mum" if not exist "%_mount%\Windows\System32\wpeinit.exe" (
   findstr /i /m "Package_for_WindowsExperienceFeaturePack" "!dest!\update.mum" %_Nul3% && (
     if not exist "%_mount%\Windows\Servicing\packages\Microsoft-Windows-UserExperience-Desktop*.mum" goto :eof
     set fxupd=0
@@ -1788,12 +1831,12 @@ if exist "!dest!\*_microsoft-windows-servicingstack_*.manifest" (
   goto :eof
 )
 if exist "!dest!\*_netfx4-netfx_detectionkeys_extended*.manifest" findstr /i /m "Package_for_DotNetRollup" "!dest!\update.mum" %_Nul3% || (
-  if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
+  if exist "%_mount%\Windows\System32\wpeinit.exe" goto :eof
   set "netpack=!netpack! /PackagePath:!dest!\update.mum"
   goto :eof
 )
 if exist "!dest!\*_%_EdgCmp%_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-  if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
+  if exist "%_mount%\Windows\System32\wpeinit.exe" goto :eof
   if exist "!dest!\*enablement-package*.mum" (
     for /f %%# in ('dir /b /a:-d "!dest!\*enablement-package~*.mum"') do set "ldr=!ldr! /PackagePath:!dest!\%%#"
     set "edge=!edge! /PackagePath:!dest!\update.mum"
@@ -1803,37 +1846,37 @@ if exist "!dest!\*_%_EdgCmp%_*.manifest" findstr /i /m "Package_for_RollupFix" "
   goto :eof
 )
 if exist "!dest!\update.mum" findstr /i /m "Package_for_SafeOSDU" "!dest!\update.mum" %_Nul3% && (
-  if not exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" goto :eof
-  set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-  goto :eof
+if not exist "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-i..dsetup-rejuvenation_*.manifest" goto :eof
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
 )
 if exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-  if not exist "%_mount%\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
-  set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-  goto :eof
+if not exist "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-srt_*.manifest" goto :eof
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
 )
 if exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-  if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
-  set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-  goto :eof
+if not exist "%_mount%\Windows\System32\wpeinit.exe" goto :eof
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
 )
 if exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" if not exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-  if not exist "%_mount%\Windows\Servicing\Packages\WinPE-SRT-Package~*.mum" goto :eof
-  set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-  goto :eof
+if not exist "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-srt_*.manifest" goto :eof
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
 )
 if exist "!dest!\*_microsoft-windows-i..dsetup-rejuvenation_*.manifest" if not exist "!dest!\*_microsoft-windows-sysreset_*.manifest" if not exist "!dest!\*_microsoft-windows-winpe_tools_*.manifest" if not exist "!dest!\*_microsoft-windows-winre-tools_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-  if not exist "%_mount%\Windows\Servicing\Packages\WinPE-Rejuv-Package~*.mum" goto :eof
-  set "safeos=!safeos! /PackagePath:!dest!\update.mum"
-  goto :eof
+if not exist "%_mount%\Windows\WinSxS\Manifests\%xBT%_microsoft-windows-i..dsetup-rejuvenation_*.manifest" goto :eof
+set "safeos=!safeos! /PackagePath:!dest!\update.mum"
+goto :eof
 )
 if exist "!dest!\*_microsoft-windows-s..boot-firmwareupdate_*.manifest" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (
-  if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :eof
+  if exist "%_mount%\Windows\System32\wpeinit.exe" goto :eof
   if %winbuild% lss 9600 goto :eof
   set "secureboot=!secureboot! /PackagePath:"!_DIR!\%package%""
   goto :eof
 )
-if exist "!dest!\update.mum" if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if exist "!dest!\update.mum" if exist "%_mount%\Windows\System32\wpeinit.exe" (
   findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% || (findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (goto :eof))
   findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (findstr /i /m "WinPE-AppxDeployment" "!dest!\update.mum" %_Nul3% && (if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-AppxDeployment*.mum" goto :eof))
   findstr /i /m "WinPE-NetFx-Package" "!dest!\update.mum" %_Nul3% && (findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% || (goto :eof))
@@ -1849,8 +1892,9 @@ if exist "!dest!\*_adobe-flash-for-windows_*.manifest" if not exist "!dest!\*ena
 if exist "!dest!\*enablement-package*.mum" (
   set epkb=0
   for /f "tokens=3 delims== " %%# in ('findstr /i "Edition" "!dest!\update.mum" %_Nul6%') do if exist "%_mount%\Windows\Servicing\packages\%%~#*.mum" set epkb=1
-  if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && set epkb=1
+  if exist "%_mount%\Windows\System32\wpeinit.exe" findstr /i /m "WinPE" "!dest!\update.mum" %_Nul3% && set epkb=1
   if "!epkb!"=="0" goto :eof
+  if %_LTSC% equ 1 if %LTSCAddEKB% neq 1 goto :eof
   set "ekbpack=!ekbpack! /PackagePath:!dest!\update.mum"
   goto :eof
 )
@@ -1862,7 +1906,7 @@ for %%# in (%directcab%) do (
 )
 if exist "!dest!\update.mum" findstr /i /m "Package_for_RollupFix" "!dest!\update.mum" %_Nul3% && goto :proclcu
 if exist "!dest!\update.mum" findstr /i /m "Package_for_RevisedFix" "!dest!\update.mum" %_Nul3% && goto :procrcu
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
   set "ldr=!ldr! /PackagePath:!dest!\update.mum"
   goto :eof
 )
@@ -1884,17 +1928,25 @@ if %_build% geq 20231 if %_build% lss 26052 if %xmsu% equ 0 (
   set "lcudir=!dest!"
   set "lcupkg=%package%"
 )
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
-  if %xmsu% equ 1 (
-    call :setlcu
+set in_cu=0
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
+  if exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" findstr /i Baseline "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" %_Nul1% || set in_cu=1
+  if exist "%_mount%\Windows\Servicing\MumX\Package_for_RollupFix*.mumx*" set in_cu=1
+)
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
+  if %in_cu% equ 1 if exist "!_cabdir!\LCUwpe\*.msu" (
+    if defined lcuwpe goto :eof
+    for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\LCUwpe\*.msu"') do set "lcuwpe="!_cabdir!\LCUwpe\%%#""
     goto :eof
+  )
+  if %xmsu% equ 1 (
+    goto :setlcu
   )
   set "cumulative=!cumulative! !dest!\update.mum"
   goto :eof
 )
 if %xmsu% equ 1 (
-  call :setlcu
-  goto :eof
+  goto :setlcu
 )
 set "netlcu=!netlcu! /PackagePath:!dest!\update.mum"
 set "cumulative=!cumulative! !dest!\update.mum"
@@ -1903,7 +1955,9 @@ goto :eof
 :setlcu
 if exist "!_cabdir!\LCUall\*.msu" (
 if defined lcuall goto :eof
-for /f "tokens=* delims=" %%# in ('dir /b /a:-d "!_cabdir!\LCUall\*.msu"') do set "lcumsu=!lcumsu! "!_cabdir!\LCUall\%%#""
+for /f "tokens=* delims=" %%# in ('dir /b /on "!_cabdir!\LCUall\*.msu"') do (
+  if %u_msulcu% neq 9 (set "lcumsu="!_cabdir!\LCUall\%%#"") else (set "lcumsu=!lcumsu! "!_cabdir!\LCUall\%%#"")
+)
 set lcuall=1
 ) else (
 set "lcumsu=!lcumsu! "!_DIR!\%package%""
@@ -1988,10 +2042,10 @@ goto :eof
 if %_build% neq 18362 (
   call :cXML stage
   echo.
-  echo æ­£åœ¨å¤„ç† [1/1] - æ­£åœ¨æš‚å­˜ %cbsn%
+  echo ÕıÔÚ´¦Àí [1/1] - ÕıÔÚÔİ´æ %cbsn%
   %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Apply-Unattend:"!_cabdir!\stage.xml
   if !errorlevel! neq 0 if !errorlevel! neq 3010 (
-    echo æš‚å­˜ %cbsn% å¤±è´¥
+    echo Ôİ´æ %cbsn% Ê§°Ü
     goto :eof
   )
 )
@@ -2004,7 +2058,7 @@ if defined _dualSxS (
   if %_build% neq 18362 (call :Winner) else (call :Suppress)
 )
 %_Dism% /LogPath:"%_dLog%\%_DsmLog%" /Image:"%_mount%" /Add-Package /PackagePath:"!dest!\update.mum
-if !errorlevel! neq 0 echo å®‰è£… %cbsn% å¤±è´¥
+if !errorlevel! neq 0 echo °²×° %cbsn% Ê§°Ü
 if %_build% neq 18362 (del /f /q "!_cabdir!\stage.xml" %_Nul3%)
 goto :eof
 
@@ -2210,7 +2264,7 @@ exit /b
 :DoMount
 set _www=%~1
 set _nnn=%~nx1
-call :dk_color1 %Blue% "=== æ­£åœ¨æ›´æ–° %_nnn% [%_inx%/%imgcount%]" 4
+call :dk_color1 %Blue% "=== ÕıÔÚ¸üĞÂ %_nnn% [%_inx%/%imgcount%]" 4
 %_Dism% /LogPath:"%_dLog%\DismMount.log" /Mount-Wim /Wimfile:"%_www%" /Index:%_inx% /MountDir:"%_mount%"
 set ERRTEMP=%ERRORLEVEL%
 if %ERRTEMP% neq 0 call :Discard
@@ -2241,9 +2295,9 @@ if exist "%_mount%\" rmdir /s /q "%_mount%\"
 goto :eof
 
 :DoWork
-if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" if %_wimEdge% equ 1 call :AddEdge
+if not exist "%_mount%\Windows\System32\wpeinit.exe" if %_wimEdge% equ 1 call :AddEdge
 call :updatewim
-if %DeCheckPoint% equ 1 if %_build% geq 26100 if not exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if %DeCheckPoint% equ 1 if %_build% geq 26100 if not exist "%_mount%\Windows\System32\wpeinit.exe" (
   for /f %%i in ('dir /b /a:-d /od "%_mount%\Windows\servicing\Packages\Package_for_RollupFix~*~26100.174*.mum" %_Nul6%') do (
     %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Package /PackageName:"%%~ni"
     call :Cleanup
@@ -2259,13 +2313,13 @@ if %_build% geq 26100 if exist "%_mount%\sources\ServicingCommon.dll" (
   xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "ISOFOLDER\sources\" %_Nul3%
   xcopy /CDRUY "%_mount%\Windows\System32\ServicingCommon.dll" "%_mount%\sources\" %_Nul3%
 )
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-Setup-Package*.mum" (
+if exist "%_mount%\Windows\WinSxS\Manifests\*setup-media-base*.manifest" (
   set isoupdate=
   xcopy /CDRUY "%_mount%\sources\" "ISOFOLDER\sources\" %_Nul3%
   for /f %%# in ('dir /b /ad "%_mount%\sources\*-*" %_Nul6%') do if exist "ISOFOLDER\sources\%%#\*.mui" xcopy /CDRUY "%_mount%\sources\%%#\" "ISOFOLDER\sources\%%#\" %_Nul3%
 )
 if %AddDrivers% equ 1 call :AddDrivers
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" goto :DoCommit
+if exist "%_mount%\Windows\System32\wpeinit.exe" (if %uwinpe% equ 0 if %CleanWim% equ 1 call :Cleanup) & goto :DoCommit
 if %AddRegs% equ 1 call :DoReg
 if %FixPDF% equ 1 call :FixPDF
 if exist "%_mount%\Windows\Servicing\Packages\Microsoft-Windows-Server*CorEdition~*.mum" goto :DoneApps
@@ -2303,6 +2357,11 @@ xcopy /CIDRY "%_mount%\Windows\Boot\EFI\bootmgr.efi" "ISOFOLDER\" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 xcopy /CIDRY "%_mount%\Windows\Boot\EFI\boot.pnd.stl" "ISOFOLDER\efi\microsoft\boot\" %_Nul3%
 :Skiphand1
+set doHandle2=0
+if !handle2! equ 0 if not exist "%_mount%\Windows\System32\wpeinit.exe" (
+if exist "%_mount%\Windows\Servicing\Packages\Package_for_RollupFix*.mum" set doHandle2=1
+if exist "%_mount%\Windows\Servicing\MumX\Package_for_RollupFix*.mumx*" set doHandle2=1
+)
 if !handle2! equ 1 goto :Skiphand2
 set handle2=1
 set vermin=0
@@ -2319,7 +2378,7 @@ for /f %%i in ('"offlinereg.exe "%_mount%\Windows\System32\config\SOFTWARE" "!is
 if exist "%_mount%\inetpub" attrib +h "%_mount%\inetpub" %_Nul3%
 call :DoCommit
 if %UpgradeEdition% neq 1 goto :eof
-call :dk_color1 %Blue% "=== æ­£åœ¨è½¬æ¢ Windows ç‰ˆæœ¬..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚ×ª»» Windows °æ±¾..." 4
 if defined iCore if %_inx%==%iCore% for %%i in (CoreSingleLanguage) do ( set nedition=%%i & call :setedition)
 if defined iProf if %_inx%==%iProf% for %%i in (Education, ProfessionalEducation, ProfessionalWorkstation) do ( set nedition=%%i & call :setedition)
 if defined iProN if %_inx%==%iProN% for %%i in (EducationN, ProfessionalEducationN, ProfessionalWorkstationN) do ( set nedition=%%i & call :setedition)
@@ -2337,16 +2396,6 @@ if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard" /v "RequirePlatformSecurityFeatures" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\DeviceGuard\Scenarios\HypervisorEnforcedCodeIntegrity" /v "Enabled" /t REG_DWORD /d 0 /f %_Nul3%
 if %_mver% geq 26100 reg add "HKLM\%SYSTEM%\ControlSet001\Control\Lsa" /v "LsaCfgFlags" /t REG_DWORD /d 0 /f %_Nul3%
-:: if %_mver% geq 26100 (
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\156965516" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1853569164" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\3036241548" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledState" /t REG_DWORD /d 2 /f %_Nul3%
-  :: reg add "HKLM\%SYSTEM%\ControlSet001\Control\FeatureManagement\Overrides\14\1263161998" /v "EnabledStateOptions" /t REG_DWORD /d 0 /f %_Nul3%
-:: )
 reg unload HKLM\%SYSTEM% %_Nul3%
 reg load HKLM\%SOFTWARE% "%_mount%\Windows\System32\Config\SOFTWARE" %_Nul3%
 reg add "HKLM\%SOFTWARE%\Microsoft\Windows\CurrentVersion\Policies\System" /v "PromptOnSecureDesktop" /t REG_DWORD /d 0 /f %_Nul3%
@@ -2381,22 +2430,22 @@ goto :eof
 
 :AddEdge
 if exist "%_mount%\Program Files (x86)\Microsoft\Edge" (
-  call :dk_color1 %Blue% "=== æ­£åœ¨æ¸…ç†æ—§ç‰ˆ Microsoft Edge..." 4
+  call :dk_color1 %Blue% "=== ÕıÔÚÇåÀí¾É°æ Microsoft Edge..." 4
   %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Remove-Edge
 )
-call :dk_color1 %Blue% "=== æ­£åœ¨æ·»åŠ  Microsoft Edge..." 4
+call :dk_color1 %Blue% "=== ÕıÔÚÌí¼Ó Microsoft Edge..." 4
 %_Dism% /LogPath:"%_dLog%\DismEdge.log" /Image:"%_mount%" /Add-Edge /SupportPath:"!_DIR!"
-if !errorlevel! neq 0 call :dk_color1 %Red% "æ·»åŠ  Edge.wim å¤±è´¥" 4
+if !errorlevel! neq 0 call :dk_color1 %Red% "Ìí¼Ó Edge.wim Ê§°Ü" 4
 goto :eof
 
 :AddDrivers
 if not defined DrvSrcAll if not defined DrvSrcPE if not defined DrvSrcOS goto :eof
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
   if defined DrvSrcAll %_Dism% /LogPath:"%_dLog%\DrvPE.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcAll!" /Recurse
   if defined DrvSrcPE %_Dism% /LogPath:"%_dLog%\DrvPE.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcPE!" /Recurse
   goto :eof
 )
-call :dk_color1 %Blue% "=== æ­£åœ¨æ·»åŠ é©±åŠ¨" 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚÌí¼ÓÇı¶¯" 4 5
 if defined DrvSrcAll %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcAll!" /Recurse
 if defined DrvSrcOS %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add-Driver /Driver:"!DrvSrcOS!" /Recurse
 goto :eof
@@ -2410,9 +2459,9 @@ if %pdfm% neq %pdfj% %_Dism% /LogPath:"%_dLog%\DrvOS.log" /Image:"%_mount%" /Add
 goto :eof
 
 :appx_sort
-call :dk_color1 %Blue% "=== æ­£åœ¨è§£æåº”ç”¨ CompDB ä¿¡æ¯..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ½âÎöÓ¦ÓÃ CompDB ĞÅÏ¢..." 4 5
 if %_pwsh% equ 0 (
-call :dk_color1 %_Yellow% "æœªæ£€æµ‹åˆ° Windows PowerShellï¼Œå°†è·³è¿‡æ“ä½œã€‚"
+call :dk_color1 %_Yellow% "Î´¼ì²âµ½ Windows PowerShell£¬½«Ìø¹ı²Ù×÷¡£"
 goto :eof
 )
 pushd "!_DIR!"
@@ -2424,7 +2473,7 @@ for /f "delims=" %%# in ('dir /b /a:-d "*.AggregatedMetadata*.cab"') do (
 expand.exe -r -f:*.xml "_tmpMD\*%langid%*.cab" _tmpMD %_Null%
 expand.exe -r -f:*.xml "_tmpMD\*TargetCompDB_App_*.cab" _tmpMD %_Null%
 if not exist "_tmpMD\*TargetCompDB_App_*.xml" (
-call :dk_color1 %_Yellow% "ç”±äº CompDB_App.xml æ–‡ä»¶æ²¡æœ‰æ‰¾åˆ°ï¼Œå°†è·³è¿‡æ“ä½œã€‚"
+call :dk_color1 %_Yellow% "ÓÉÓÚ CompDB_App.xml ÎÄ¼şÃ»ÓĞÕÒµ½£¬½«Ìø¹ı²Ù×÷¡£"
 rmdir /s /q "_tmpMD\" %_Nul3%
 popd
 goto :eof
@@ -2452,7 +2501,7 @@ popd
 goto :eof
 
 :AddAppx
-call :dk_color1 %Blue% "=== æ­£åœ¨å®‰è£… Appxs è½¯ä»¶åŒ…..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚ°²×° Appxs Èí¼ş°ü..." 4 5
 pushd "!_DIR!\Apps"
 copy /y "!_work!\bin\CompDB_App.txt" . %_Nul3%
 if %_LTSC% equ 1 if exist Custom_Appxs_LTSC.txt for /f "eol=# tokens=* delims=" %%i in (Custom_Appxs_LTSC.txt) do call :AddAppxs "%%i"
@@ -2488,7 +2537,7 @@ for /f "delims=" %%i in ('dir /b /a:-d "*TargetCompDB_App_*.xml" %_Nul6%') do (
 goto :eof
 
 :RemoveAppx
-call :dk_color1 %Blue% "=== æ­£åœ¨å¸è½½ Appxs è½¯ä»¶åŒ…..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚĞ¶ÔØ Appxs Èí¼ş°ü..." 4 5
 for /f "eol=# tokens=* delims=" %%i in ('type "!_DIR!\Apps\Remove_Appxs.txt"') do (
   %_Dism% /LogPath:"%_dLog%\DismAppx.log" /English /Image:"%_mount%" /Remove-ProvisionedAppxPackage /PackageName:%%i | findstr /i /c:"successfully" %_Nul3% && echo %%i
 )
@@ -2508,7 +2557,7 @@ goto :eof
 
 :setedition
 call :setname
-call :dk_color1 %_Green% "æ­£åœ¨å¤„ç† !_nameb!" 4
+call :dk_color1 %_Green% "ÕıÔÚ´¦Àí !_nameb!" 4
 if exist "%_mount%\Windows\*.xml" del /f /q "%_mount%\Windows\*.xml" %_Nul3%
 set "channel="
 for %%# in (
@@ -2556,49 +2605,49 @@ for %%# in (
   "CloudEditionN:%_wtx% SE N:%_wtx% SE N"
   "CloudEditionL:%_wtx% LE:%_wtx% LE"
   "CloudEditionLN:%_wtx% LE N:%_wtx% LE N"
-  "Core:%_wtx% Home:%_wtx% å®¶åº­ç‰ˆ"
-  "CoreN:%_wtx% Home N:%_wtx% å®¶åº­ç‰ˆ N"
-  "CoreSingleLanguage:%_wtx% Home Single Language:%_wtx% å®¶åº­å•è¯­è¨€ç‰ˆ"
-  "CoreCountrySpecific:%_wtx% Home China:%_wtx% å®¶åº­ä¸­æ–‡ç‰ˆ"
-  "Professional:%_wtx% Pro:%_wtx% ä¸“ä¸šç‰ˆ"
-  "ProfessionalN:%_wtx% Pro N:%_wtx% ä¸“ä¸šç‰ˆ N"
-  "ProfessionalEducation:%_wtx% Pro Education:%_wtx% ä¸“ä¸šæ•™è‚²ç‰ˆ"
-  "ProfessionalEducationN:%_wtx% Pro Education N:%_wtx% ä¸“ä¸šæ•™è‚²ç‰ˆ N"
-  "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% ä¸“ä¸šå·¥ä½œç«™ç‰ˆ"
-  "ProfessionalWorkstationN:%_wtx% Pro N for Workstations:%_wtx% ä¸“ä¸šå·¥ä½œç«™ç‰ˆ N"
-  "ProfessionalSingleLanguage:%_wtx% Pro Single Language:%_wtx% ä¸“ä¸šå•è¯­è¨€ç‰ˆ"
-  "ProfessionalCountrySpecific:%_wtx% Pro China:%_wtx% ä¸“ä¸šä¸­æ–‡ç‰ˆ"
-  "PPIPro:%_wtx% Team:%_wtx% ååŒç‰ˆ"
-  "Education:%_wtx% Education:%_wtx% æ•™è‚²ç‰ˆ"
-  "EducationN:%_wtx% Education N:%_wtx% æ•™è‚²ç‰ˆ N"
-  "Enterprise:%_wtx% Enterprise:%_wtx% ä¼ä¸šç‰ˆ"
-  "EnterpriseN:%_wtx% Enterprise N:%_wtx% ä¼ä¸šç‰ˆ N"
-  "EnterpriseG:%_wtx% Enterprise G:%_wtx% ä¼ä¸šç‰ˆ G"
-  "EnterpriseGN:%_wtx% Enterprise G N:%_wtx% ä¼ä¸šç‰ˆ G N"
-  "EnterpriseS:%_wtx% Enterprise LTSC:%_wtx% ä¼ä¸šç‰ˆ LTSC"
-  "EnterpriseSN:%_wtx% Enterprise N LTSC:%_wtx% ä¼ä¸šç‰ˆ N LTSC"
-  "IoTEnterprise:%_wtx% IoT Enterprise:%_wtx% IoT ä¼ä¸šç‰ˆ"
-  "IoTEnterpriseS:%_wtx% IoT Enterprise LTSC:%_wtx% IoT ä¼ä¸šç‰ˆ LTSC"
-  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT ä¼ä¸šç‰ˆè®¢é˜…"
-  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT ä¼ä¸šç‰ˆè®¢é˜… LTSC"
-  "ServerRdsh:%_wtx% Enterprise Multi-Session:%_wtx% ä¼ä¸šç‰ˆå¤šä¼šè¯"
-  "Starter:%_wtx% Starter:%_wtx% å…¥é—¨ç‰ˆ"
-  "StarterN:%_wtx% Starter N:%_wtx% å…¥é—¨ç‰ˆ N"
+  "Core:%_wtx% Home:%_wtx% ¼ÒÍ¥°æ"
+  "CoreN:%_wtx% Home N:%_wtx% ¼ÒÍ¥°æ N"
+  "CoreSingleLanguage:%_wtx% Home Single Language:%_wtx% ¼ÒÍ¥µ¥ÓïÑÔ°æ"
+  "CoreCountrySpecific:%_wtx% Home China:%_wtx% ¼ÒÍ¥ÖĞÎÄ°æ"
+  "Professional:%_wtx% Pro:%_wtx% ×¨Òµ°æ"
+  "ProfessionalN:%_wtx% Pro N:%_wtx% ×¨Òµ°æ N"
+  "ProfessionalEducation:%_wtx% Pro Education:%_wtx% ×¨Òµ½ÌÓı°æ"
+  "ProfessionalEducationN:%_wtx% Pro Education N:%_wtx% ×¨Òµ½ÌÓı°æ N"
+  "ProfessionalWorkstation:%_wtx% Pro for Workstations:%_wtx% ×¨Òµ¹¤×÷Õ¾°æ"
+  "ProfessionalWorkstationN:%_wtx% Pro N for Workstations:%_wtx% ×¨Òµ¹¤×÷Õ¾°æ N"
+  "ProfessionalSingleLanguage:%_wtx% Pro Single Language:%_wtx% ×¨Òµµ¥ÓïÑÔ°æ"
+  "ProfessionalCountrySpecific:%_wtx% Pro China:%_wtx% ×¨ÒµÖĞÎÄ°æ"
+  "PPIPro:%_wtx% Team:%_wtx% Ğ­Í¬°æ"
+  "Education:%_wtx% Education:%_wtx% ½ÌÓı°æ"
+  "EducationN:%_wtx% Education N:%_wtx% ½ÌÓı°æ N"
+  "Enterprise:%_wtx% Enterprise:%_wtx% ÆóÒµ°æ"
+  "EnterpriseN:%_wtx% Enterprise N:%_wtx% ÆóÒµ°æ N"
+  "EnterpriseG:%_wtx% Enterprise G:%_wtx% ÆóÒµ°æ G"
+  "EnterpriseGN:%_wtx% Enterprise G N:%_wtx% ÆóÒµ°æ G N"
+  "EnterpriseS:%_wtx% Enterprise LTSC:%_wtx% ÆóÒµ°æ LTSC"
+  "EnterpriseSN:%_wtx% Enterprise N LTSC:%_wtx% ÆóÒµ°æ N LTSC"
+  "IoTEnterprise:%_wtx% IoT Enterprise:%_wtx% IoT ÆóÒµ°æ"
+  "IoTEnterpriseS:%_wtx% IoT Enterprise LTSC:%_wtx% IoT ÆóÒµ°æ LTSC"
+  "IoTEnterpriseK:%_wtx% IoT Enterprise Subscription:%_wtx% IoT ÆóÒµ°æ¶©ÔÄ"
+  "IoTEnterpriseSK:%_wtx% IoT Enterprise LTSC Subscription:%_wtx% IoT ÆóÒµ°æ¶©ÔÄ LTSC"
+  "ServerRdsh:%_wtx% Enterprise Multi-Session:%_wtx% ÆóÒµ°æ¶à»á»°"
+  "Starter:%_wtx% Starter:%_wtx% ÈëÃÅ°æ"
+  "StarterN:%_wtx% Starter N:%_wtx% ÈëÃÅ°æ N"
   "WNC:%_wtx% Cloud PC:%_wtx% Cloud PC"
-  "ServerStandardCore:%_wsr% SERVERSTANDARDCORE:%_wsr% Standard:ï¼ˆæ¨èï¼‰æ­¤é€‰é¡¹å¿½ç•¥å¤§éƒ¨åˆ† Windows å›¾å½¢ç¯å¢ƒã€‚é€šè¿‡å‘½ä»¤æç¤ºç¬¦å’Œ PowerShellï¼Œæˆ–è€…è¿œç¨‹ä½¿ç”¨ Windows Admin Center æˆ–å…¶ä»–å·¥å…·è¿›è¡Œç®¡ç†ã€‚"
-  "ServerStandard:%_wsr% SERVERSTANDARD:%_wsr% Standard (æ¡Œé¢ä½“éªŒ):æ­¤é€‰é¡¹å°†å®‰è£…çš„å®Œæ•´çš„ Windows å›¾å½¢ç¯å¢ƒï¼Œå ç”¨é¢å¤–çš„é©±åŠ¨å™¨ç©ºé—´ã€‚å¦‚æœä½ æƒ³è¦ä½¿ç”¨ Windows æ¡Œé¢æˆ–éœ€è¦æ¡Œé¢çš„åº”ç”¨ï¼Œåˆ™å®ƒä¼šå¾ˆæœ‰ç”¨ã€‚"
-  "ServerDatacenterCore:%_wsr% SERVERDATACENTERCORE:%_wsr% Datacenter:ï¼ˆæ¨èï¼‰æ­¤é€‰é¡¹å¿½ç•¥å¤§éƒ¨åˆ† Windows å›¾å½¢ç¯å¢ƒã€‚é€šè¿‡å‘½ä»¤æç¤ºç¬¦å’Œ PowerShellï¼Œæˆ–è€…è¿œç¨‹ä½¿ç”¨ Windows Admin Center æˆ–å…¶ä»–å·¥å…·è¿›è¡Œç®¡ç†ã€‚"
-  "ServerDatacenter:%_wsr% SERVERDATACENTER:%_wsr% Datacenter (æ¡Œé¢ä½“éªŒ):æ­¤é€‰é¡¹å°†å®‰è£…çš„å®Œæ•´çš„ Windows å›¾å½¢ç¯å¢ƒï¼Œå ç”¨é¢å¤–çš„é©±åŠ¨å™¨ç©ºé—´ã€‚å¦‚æœä½ æƒ³è¦ä½¿ç”¨ Windows æ¡Œé¢æˆ–éœ€è¦æ¡Œé¢çš„åº”ç”¨ï¼Œåˆ™å®ƒä¼šå¾ˆæœ‰ç”¨ã€‚"
-  "ServerTurbineCore:%_wsr% SERVERTURBINECORE:%_wsr% Datacenter Azure Edition:ï¼ˆæ¨èï¼‰æ­¤é€‰é¡¹å¿½ç•¥å¤§éƒ¨åˆ† Windows å›¾å½¢ç¯å¢ƒã€‚é€šè¿‡å‘½ä»¤æç¤ºç¬¦å’Œ PowerShellï¼Œæˆ–è€…è¿œç¨‹ä½¿ç”¨ Windows Admin Center æˆ–å…¶ä»–å·¥å…·è¿›è¡Œç®¡ç†ã€‚"
-  "ServerTurbine:%_wsr% SERVERTURBINE:%_wsr% Datacenter Azure Edition (æ¡Œé¢ä½“éªŒ):æ­¤é€‰é¡¹å°†å®‰è£…çš„å®Œæ•´çš„ Windows å›¾å½¢ç¯å¢ƒï¼Œå ç”¨é¢å¤–çš„é©±åŠ¨å™¨ç©ºé—´ã€‚å¦‚æœä½ æƒ³è¦ä½¿ç”¨ Windows æ¡Œé¢æˆ–éœ€è¦æ¡Œé¢çš„åº”ç”¨ï¼Œåˆ™å®ƒä¼šå¾ˆæœ‰ç”¨ã€‚"
-  "ServerAzureStackHCICor:Azure Stack HCI:æ­¤é€‰é¡¹å®‰è£… Azure Stack HCIã€‚"
+  "ServerStandardCore:%_wsr% SERVERSTANDARDCORE:%_wsr% Standard:£¨ÍÆ¼ö£©´ËÑ¡ÏîºöÂÔ´ó²¿·Ö Windows Í¼ĞÎ»·¾³¡£Í¨¹ıÃüÁîÌáÊ¾·ûºÍ PowerShell£¬»òÕßÔ¶³ÌÊ¹ÓÃ Windows Admin Center »òÆäËû¹¤¾ß½øĞĞ¹ÜÀí¡£"
+  "ServerStandard:%_wsr% SERVERSTANDARD:%_wsr% Standard (×ÀÃæÌåÑé):´ËÑ¡Ïî½«°²×°µÄÍêÕûµÄ Windows Í¼ĞÎ»·¾³£¬Õ¼ÓÃ¶îÍâµÄÇı¶¯Æ÷¿Õ¼ä¡£Èç¹ûÄãÏëÒªÊ¹ÓÃ Windows ×ÀÃæ»òĞèÒª×ÀÃæµÄÓ¦ÓÃ£¬ÔòËü»áºÜÓĞÓÃ¡£"
+  "ServerDatacenterCore:%_wsr% SERVERDATACENTERCORE:%_wsr% Datacenter:£¨ÍÆ¼ö£©´ËÑ¡ÏîºöÂÔ´ó²¿·Ö Windows Í¼ĞÎ»·¾³¡£Í¨¹ıÃüÁîÌáÊ¾·ûºÍ PowerShell£¬»òÕßÔ¶³ÌÊ¹ÓÃ Windows Admin Center »òÆäËû¹¤¾ß½øĞĞ¹ÜÀí¡£"
+  "ServerDatacenter:%_wsr% SERVERDATACENTER:%_wsr% Datacenter (×ÀÃæÌåÑé):´ËÑ¡Ïî½«°²×°µÄÍêÕûµÄ Windows Í¼ĞÎ»·¾³£¬Õ¼ÓÃ¶îÍâµÄÇı¶¯Æ÷¿Õ¼ä¡£Èç¹ûÄãÏëÒªÊ¹ÓÃ Windows ×ÀÃæ»òĞèÒª×ÀÃæµÄÓ¦ÓÃ£¬ÔòËü»áºÜÓĞÓÃ¡£"
+  "ServerTurbineCore:%_wsr% SERVERTURBINECORE:%_wsr% Datacenter Azure Edition:£¨ÍÆ¼ö£©´ËÑ¡ÏîºöÂÔ´ó²¿·Ö Windows Í¼ĞÎ»·¾³¡£Í¨¹ıÃüÁîÌáÊ¾·ûºÍ PowerShell£¬»òÕßÔ¶³ÌÊ¹ÓÃ Windows Admin Center »òÆäËû¹¤¾ß½øĞĞ¹ÜÀí¡£"
+  "ServerTurbine:%_wsr% SERVERTURBINE:%_wsr% Datacenter Azure Edition (×ÀÃæÌåÑé):´ËÑ¡Ïî½«°²×°µÄÍêÕûµÄ Windows Í¼ĞÎ»·¾³£¬Õ¼ÓÃ¶îÍâµÄÇı¶¯Æ÷¿Õ¼ä¡£Èç¹ûÄãÏëÒªÊ¹ÓÃ Windows ×ÀÃæ»òĞèÒª×ÀÃæµÄÓ¦ÓÃ£¬ÔòËü»áºÜÓĞÓÃ¡£"
+  "ServerAzureStackHCICor:Azure Stack HCI:´ËÑ¡Ïî°²×° Azure Stack HCI¡£"
 ) do for /f "tokens=1,2,3,4 delims=:" %%A in ("%%~#") do (
   if /i %nedition%==%%A set "_namea=%%B"&set "_nameb=%%C"&set "_namec=%%D"
 )
 goto :eof
 
 :Cleanup
-if exist "%_mount%\Windows\Servicing\Packages\*WinPE-LanguagePack*.mum" (
+if exist "%_mount%\Windows\System32\wpeinit.exe" (
   call :SBSConfig %savr% 9 1
   %_Dism% /LogPath:"%_dLog%\DismClean_PE.log" /Image:"%_mount%" /Cleanup-Image /StartComponentCleanup
   if %Cleanup% neq 0 (
@@ -2611,7 +2660,7 @@ if exist "%_mount%\Windows\WinSxS\pending.xml" goto :FinalClean
 set "_Nul8="
 if %_build% geq 25380 if %_build% lss 26000 (
   set "_Nul8=1>nul 2>nul"
-  call :dk_color1 %Gray% "æ­£åœ¨è¿è¡Œ Dism æ¸…ç†..." 4 5
+  call :dk_color1 %Gray% "ÕıÔÚÔËĞĞ Dism ÇåÀí..." 4 5
 )
 if %ResetBase% equ 0 (
   call :SBSConfig %savc% 1 9
@@ -2656,8 +2705,10 @@ if exist "%_mount%\Windows\DtcInstall.log" (
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\assembly\*NativeImages*" %_Nul6%') do rmdir /s /q "%_mount%\Windows\assembly\%%#" %_Nul3%
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\CbsTemp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\CbsTemp\%%#\" %_Nul3%
 del /s /f /q "%_mount%\Windows\CbsTemp\*" %_Nul3%
-for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\Temp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\Temp\%%#\" %_Nul3%
-del /s /f /q "%_mount%\Windows\Temp\*" %_Nul3%
+if not exist "%_mount%\Windows\EnterpriseG*.xml" (
+  for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\Temp\" %_Nul6%') do rmdir /s /q "%_mount%\Windows\Temp\%%#\" %_Nul3%
+  del /s /f /q "%_mount%\Windows\Temp\*" %_Nul3%
+)
 if exist "%_mount%\Windows\WinSxS\pending.xml" goto :eof
 for /f "tokens=* delims=" %%# in ('dir /b /ad "%_mount%\Windows\WinSxS\Temp\InFlight\" %_Nul6%') do (
   takeown /f "%_mount%\Windows\WinSxS\Temp\InFlight\%%#" /A %_Null%
@@ -2764,6 +2815,7 @@ set _niso=0
 set _wimEdge=0
 set _Srvr=0
 set _LTSC=0
+set msumumx=0
 set basekbn=
 set basepkg=
 set "_mount=%_drv%\Mount"
@@ -2833,7 +2885,7 @@ set  "_Green="Black" "Green""
 set "_Yellow="Black" "Yellow""
 )
 
-set "_err=echo: &call :dk_color1 %Red% "==== å‡ºç°é”™è¯¯ ====" &echo:"
+set "_err=echo: &call :dk_color1 %Red% "==== ³öÏÖ´íÎó ====" &echo:"
 exit /b
 
 :dk_color1
@@ -2862,40 +2914,40 @@ exit /b
 
 :E_NotFind
 %_err%
-call :dk_color1 %Red% "åœ¨æŒ‡å®šçš„è·¯å¾„ä¸­æœªæ‰¾åˆ°æ‰€éœ€æ–‡ä»¶ï¼ˆå¤¹ï¼‰ã€‚" 4 5
+call :dk_color1 %Red% "ÔÚÖ¸¶¨µÄÂ·¾¶ÖĞÎ´ÕÒµ½ËùĞèÎÄ¼ş£¨¼Ğ£©¡£" 4 5
 goto :QUIT
 
 :E_Admin
 %_err%
-call :dk_color1 %_Yellow% "æ­¤è„šæœ¬éœ€è¦ä»¥ç®¡ç†å‘˜æƒé™è¿è¡Œã€‚" 4
-call :dk_color1 %_Yellow% "è‹¥è¦ç»§ç»­æ‰§è¡Œï¼Œè¯·åœ¨è„šæœ¬ä¸Šå³é”®å•å‡»å¹¶é€‰æ‹©â€œä»¥ç®¡ç†å‘˜æƒé™è¿è¡Œâ€ã€‚"
-call :dk_color1 %_Yellow% "è¯·æŒ‰ä»»æ„é”®é€€å‡ºè„šæœ¬ã€‚" 4 5
+call :dk_color1 %_Yellow% "´Ë½Å±¾ĞèÒªÒÔ¹ÜÀíÔ±È¨ÏŞÔËĞĞ¡£" 4
+call :dk_color1 %_Yellow% "ÈôÒª¼ÌĞøÖ´ĞĞ£¬ÇëÔÚ½Å±¾ÉÏÓÒ¼üµ¥»÷²¢Ñ¡Ôñ¡°ÒÔ¹ÜÀíÔ±È¨ÏŞÔËĞĞ¡±¡£"
+call :dk_color1 %_Yellow% "Çë°´ÈÎÒâ¼üÍË³ö½Å±¾¡£" 4 5
 pause >nul
 exit /b
 
 :E_PowerShell
 %_err%
-call :dk_color1 %_Yellow% "æ­¤è„šæœ¬çš„å·¥ä½œéœ€è¦ Windows PowerShellã€‚" 4
-call :dk_color1 %_Yellow% "è¯·æŒ‰ä»»æ„é”®é€€å‡ºè„šæœ¬ã€‚" 4 5
+call :dk_color1 %_Yellow% "´Ë½Å±¾µÄ¹¤×÷ĞèÒª Windows PowerShell¡£" 4
+call :dk_color1 %_Yellow% "Çë°´ÈÎÒâ¼üÍË³ö½Å±¾¡£" 4 5
 pause >nul
 exit /b
 
 :E_BinMiss
 %_err%
-call :dk_color1 %Red% "æ‰€éœ€çš„æ–‡ä»¶ %_bin% ä¸¢å¤±ã€‚" 4 5
+call :dk_color1 %Red% "ËùĞèµÄÎÄ¼ş %_bin% ¶ªÊ§¡£" 4 5
 goto :QUIT
 
 :E_Apply
-call :dk_color1 %Red% "åœ¨åº”ç”¨æ˜ åƒçš„æ—¶å€™å‡ºç°é”™è¯¯ã€‚" 4 5
+call :dk_color1 %Red% "ÔÚÓ¦ÓÃÓ³ÏñµÄÊ±ºò³öÏÖ´íÎó¡£" 4 5
 goto :QUIT
 
 :E_Export
-call :dk_color1 %Red% "åœ¨å¯¼å‡ºæ˜ åƒçš„æ—¶å€™å‡ºç°é”™è¯¯ã€‚" 4 5
+call :dk_color1 %Red% "ÔÚµ¼³öÓ³ÏñµÄÊ±ºò³öÏÖ´íÎó¡£" 4 5
 goto :QUIT
 
 :E_ISOC
 ren ISOFOLDER %DVDISO%
-call :dk_color1 %Red% "åœ¨åˆ›å»ºISOæ˜ åƒçš„æ—¶å€™å‡ºç°é”™è¯¯ã€‚" 4 5
+call :dk_color1 %Red% "ÔÚ´´½¨ISOÓ³ÏñµÄÊ±ºò³öÏÖ´íÎó¡£" 4 5
 goto :QUIT
 
 :QUIT
@@ -2909,7 +2961,7 @@ if defined tmpcmp (
   for %%# in (%tmpcmp%) do del /f /q "!_DIR!\%%~#" %_Nul3%
   set tmpcmp=
 )
-call :dk_color1 %Blue% "=== æ­£åœ¨æ¸…ç†ä¸´æ—¶æ–‡ä»¶..." 4 5
+call :dk_color1 %Blue% "=== ÕıÔÚÇåÀíÁÙÊ±ÎÄ¼ş..." 4 5
 if exist "!_cabdir!\" rmdir /s /q "!_cabdir!\" %_Nul3%
 if exist "bin\MSDelta.dll" del /f /q "bin\MSDelta.dll" %_Nul3%
 if exist "!_cabdir!\" (
@@ -2920,6 +2972,6 @@ if exist "!_cabdir!\" (
 )
 if %AutoExit% neq 0 exit /b
 if %_Debug% neq 0 %FullExit%
-call :dk_color1 %_Yellow% "è¯·æŒ‰æ•°å­— 0 é”®é€€å‡ºè„šæœ¬ã€‚"
+call :dk_color1 %_Yellow% "Çë°´Êı×Ö 0 ¼üÍË³ö½Å±¾¡£"
 choice /c 0 /n
 if errorlevel 1 (%FullExit%) else (rem.)

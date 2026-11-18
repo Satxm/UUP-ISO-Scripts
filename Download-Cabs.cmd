@@ -62,7 +62,7 @@ echo %line%
 echo 正在检索 Cabs 更新包的 aria2 脚本……
 echo %line%
 echo.
-"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&pack=zh-cn&edition=updateOnly&aria2=2"
+"%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" -o"%files%" --allow-overwrite=true --auto-file-renaming=false "https://uupdump.net/get.php?id=%id%&edition=updateOnly&aria2=2"
 if not exist %files% goto :DOWNLOAD_CABS
 if exist %files% %psc% "(Get-Content %files%).Replace('-kb','-KB').Replace('windows1','Windows1').Replace('-ndp','-NDP') | Out-File %files% -Encoding ASCII"
 if exist %files% "%aria2%" --no-conf --console-log-level=warn --log-level=info --log="aria2_download.log" --allow-overwrite=true --auto-file-renaming=true -x16 -s16 -j5 -c -R -d"%Dir%" -i"%files%"
